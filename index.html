@@ -75,6 +75,9 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #setpanel.open{display:block}
 #setpanel select,#setpanel button{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 10px;max-width:100%}
 #setpanel .pr{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#meter{flex:1;min-width:140px;height:12px;background:#2a2f36;border-radius:6px;overflow:hidden}
+#meterbar{display:block;height:100%;width:0;background:var(--ok);transition:width .08s}
+#metertxt{min-width:5.5em;color:var(--muted)}
 #micnote{margin-top:8px;color:var(--muted);font-size:13px}
 #dot{width:10px;height:10px;border-radius:50%;background:#666;flex:none}
 #dot.live{background:var(--ok)}#dot.err{background:var(--bad)}
@@ -136,7 +139,8 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
   <div id="toast"></div>
   <div id="setpanel">
     <div class="pr"><b>마이크</b><select id="micsel"><option value="">기본 마이크</option></select><button id="micrefresh">목록 새로고침</button></div>
-    <div id="micnote">고른 마이크는 저장되고, 마이크를 켜 둔 상태에서 바꾸면 다시 시작됩니다. 선택이 적용되지 않으면(크롬 버전에 따라) 크롬 주소창에 chrome://settings/content/microphone 을 열어 기본 마이크를 바꿔 주세요.</div>
+    <div class="pr" style="margin-top:10px"><span>소리 크기</span><div id="meter"><i id="meterbar"></i></div><span id="metertxt">-</span></div>
+    <div id="micnote">막대가 말할 때 움직이면 이 마이크로 소리가 들어오는 것입니다. 고른 마이크는 저장되고, 마이크를 켜 둔 상태에서 바꾸면 다시 시작됩니다. 선택이 적용되지 않으면(크롬 버전에 따라) 크롬 주소창에 chrome://settings/content/microphone 을 열어 기본 마이크를 바꿔 주세요.</div>
   </div>
   <div id="bar">
     <span id="dot"></span>
@@ -989,13 +993,48 @@ async function listMics(){
   sel.value=micId;
 }
 function placePanel(){$('setpanel').style.bottom=($('bar').offsetHeight+8)+'px'}
-$('set').onclick=()=>{$('setpanel').classList.toggle('open'); if(panelOpen()){placePanel();listMics()} showBar()};
-$('micrefresh').onclick=listMics;
+// 설정 창이 열려 있는 동안 고른 마이크의 소리 크기를 막대로 보여 준다
+let meter=null;
+function stopMeter(){
+  if(!meter)return;
+  cancelAnimationFrame(meter.raf); try{meter.ac.close()}catch(_){}
+  if(meter.own)meter.stream.getTracks().forEach(t=>t.stop());
+  meter=null; $('meterbar').style.width='0'; $('metertxt').textContent='-';
+}
+async function startMeter(){
+  stopMeter();
+  const md=navigator.mediaDevices, AC=window.AudioContext||window.webkitAudioContext;
+  if(!md||!md.getUserMedia||!AC){$('metertxt').textContent='지원 안 함';return}
+  let stream, own=false;
+  if(listening&&micStream&&micStream.getAudioTracks().some(t=>t.readyState==='live'))stream=micStream;
+  else{
+    try{stream=await md.getUserMedia({audio:micId?{deviceId:{exact:micId}}:true}); own=true}
+    catch(_){ $('metertxt').textContent='열 수 없음'; return }
+  }
+  if(!panelOpen()){ if(own)stream.getTracks().forEach(t=>t.stop()); return }
+  const ac=new AC(); if(ac.state==='suspended')ac.resume().catch(()=>{});
+  const an=ac.createAnalyser(); an.fftSize=1024; ac.createMediaStreamSource(stream).connect(an);
+  const buf=new Float32Array(an.fftSize), m={ac,stream,own,raf:0};
+  const tick=()=>{
+    an.getFloatTimeDomainData(buf); let sum=0; for(let i=0;i<buf.length;i++)sum+=buf[i]*buf[i];
+    const db=20*Math.log10(Math.sqrt(sum/buf.length)||1e-5), lv=Math.max(0,Math.min(1,(db+60)/60));
+    $('meterbar').style.width=(lv*100).toFixed(0)+'%'; $('metertxt').textContent=db>-50?'소리 들어옴':'소리 없음';
+    m.raf=requestAnimationFrame(tick);
+  };
+  meter=m; tick();
+}
+function closePanel(){$('setpanel').classList.remove('open'); stopMeter()}
+$('set').onclick=()=>{
+  if(panelOpen()){closePanel()} else {$('setpanel').classList.add('open'); placePanel(); listMics().then(startMeter)}
+  showBar();
+};
+$('micrefresh').onclick=()=>listMics().then(startMeter);
 $('micsel').onchange=()=>{
   const sel=$('micsel'); micId=sel.value; micLabel=micId?sel.selectedOptions[0].textContent:'';
   try{localStorage.setItem('prompterMicId',micId); localStorage.setItem('prompterMicLabel',micLabel)}catch(_){}
   toast('마이크: '+(micId?micLabel:'기본 마이크'),3000);
   if(listening){stopMic(); setTimeout(startMic,400)}
+  setTimeout(()=>{if(panelOpen())startMeter()},700);
 };
 if(navigator.mediaDevices&&navigator.mediaDevices.addEventListener)navigator.mediaDevices.addEventListener('devicechange',()=>{if(panelOpen())listMics()});
 
@@ -1154,10 +1193,10 @@ try{const t=localStorage.getItem('prompterTheme');if(t)$('theme').value=t}catch(
 try{const n=localStorage.getItem('prompterLines');const r=n&&document.querySelector('input[name=lines][value="'+n+'"]');if(r)r.checked=true}catch(_){}
 $('theme').onchange=applyTheme;
 $('fs').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
-$('back').onclick=()=>{endEdit();stopMic();$('view').style.display='none';$('setup').style.display='block'};
+$('back').onclick=()=>{endEdit();stopMic();closePanel();$('view').style.display='none';$('setup').style.display='block'};
 addEventListener('resize',()=>{fit(); if(panelOpen())placePanel()});
 addEventListener('keydown',e=>{
-  if(e.key==='Escape'&&panelOpen()){$('setpanel').classList.remove('open'); showBar(); return}
+  if(e.key==='Escape'&&panelOpen()){closePanel(); showBar(); return}
   if($('view').style.display!=='block'||e.target.tagName==='SELECT')return;
   if(editing){editKey(e);showBar();return}
   const k=e.key;
