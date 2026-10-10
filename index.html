@@ -533,12 +533,14 @@ function buildUnits(paras){
   // 잠언처럼 빈 줄 없이 한 칸 들여 쓴 문단이 앞 문단을 잇는 원고는, 들여 쓰지 않은 문단마다 새 덩어리(= 한 잠언 한 쪽)
   const rest=paras.slice(s).filter(p=>rawOf(p).trim());
   const indented=p=>/^[ \t 　]/.test(rawOf(p));
-  const proverbs=rest.length===paras.slice(s).length&&rest.some(indented)&&rest.some(p=>!indented(p));
+  const indentMode=rest.length===paras.slice(s).length&&rest.some(indented)&&rest.some(p=>!indented(p));
+  const proverbs=indentMode||rest.filter(p=>p.num).length>=3;   // 번호 매긴 문단이 여러 개면 말씀 중간의 잠언 목록으로 본다
   const units=[]; let blk=0, last=null;
   for(let pi=s;pi<paras.length;pi++){
     const p=paras[pi];
     if(!p.runs.some(r=>r.t.replace(/[\s 　]/g,''))&&units.length)blk++;
-    else if(proverbs&&units.length&&rawOf(p).trim()&&!indented(p))blk++;
+    else if(indentMode&&units.length&&rawOf(p).trim()&&!indented(p))blk++;
+    if(proverbs&&p.num&&units.length&&rawOf(p).trim())blk++;      // 번호가 붙은 문단 = 새 잠언
     const {segs,mpos}=paraSegs(p);
     const chars=[]; for(const sg of segs)for(const ch of sg.t)chars.push([ch,sg.c]);
     let cw=null, cu={words:[],blk}, mk=0;
