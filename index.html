@@ -70,6 +70,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #bar.hide{opacity:0;pointer-events:none}
 #bar select,#bar button{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
 #mic.on{background:var(--ok);color:#000;border-color:var(--ok)}
+#cap{position:absolute;top:64px;left:12px;max-width:70vw;padding:6px 10px;border-radius:8px;background:rgba(0,0,0,.7);color:#9fd0ff;font-size:14px;line-height:1.4;display:none;pointer-events:none;z-index:5}
 #setpanel{position:absolute;left:16px;bottom:64px;display:none;max-width:min(460px,calc(100vw - 32px));padding:14px;border-radius:10px;
   background:rgba(17,20,24,.97);color:var(--text);border:1px solid var(--line);font-size:14px;line-height:1.6}
 #setpanel.open{display:block}
@@ -83,6 +84,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #dot.live{background:var(--ok)}#dot.err{background:var(--bad)}
 #heard{flex:1;min-width:30px;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;direction:rtl;text-align:left}
 #pg{font-variant-numeric:tabular-nums}
+@media(max-width:700px){#heard{flex-basis:100%}}
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
@@ -137,6 +139,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 <div id="view">
   <div id="stage"><div id="page"><div id="lines"></div></div></div>
   <div id="toast"></div>
+  <div id="cap"></div>
   <div id="setpanel">
     <div class="pr"><b>마이크</b><select id="micsel"><option value="">기본 마이크</option></select><button id="micrefresh">목록 새로고침</button></div>
     <div class="pr" style="margin-top:10px"><span>소리 크기</span><div id="meter"><i id="meterbar"></i></div><span id="metertxt">-</span></div>
@@ -901,18 +904,22 @@ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 let rec=null, listening=false, heardCarry='', sessionText='', lastTail='';
 function toast(msg,ms=3000){const t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',ms)}
 function setDot(cls){$('dot').className=cls||''}
+// 화면 왼쪽 위에 지금 어디까지 되고 있는지 보여 준다 (소리가 들어오는지, 글자로 바뀌는지, 원고에서 찾았는지)
+function cap(msg,force){const c=$('cap'); clearTimeout(c._h); if(!msg||(!listening&&!force)){c.style.display='none';return} c.style.display='block'; c.textContent=msg; if(force)c._h=setTimeout(()=>c.style.display='none',20000)}
 function onHeard(text){
   const all=normStr(heardCarry+text);
   $('heard').textContent=text.slice(-40);
-  const S=all.slice(-14);
-  if(S.length<5||S===lastTail)return;
+  const S=all.slice(-14), base='들림 「'+text.slice(-24)+'」';
+  if(S.length<5){cap(base+' · 너무 짧아 기다림');return}
+  if(S===lastTail)return;
   lastTail=S;
   const hit=locate(S,cursor);
-  if(!hit)return;
+  if(!hit){cap(base+' · 원고에서 못 찾음');return}
   const far=pageOf(hit.pos)>page+1;
   const limit=far?2:Math.floor(S.length*0.3);
-  if(hit.d>limit)return;
-  if(hit.pos<cursor && hit.d>1)return;          // 뒤로 가는 건 아주 확실할 때만
+  if(hit.d>limit){cap(base+' · 비슷한 곳이 멀어 건너뜀');return}
+  if(hit.pos<cursor && hit.d>1){cap(base+' · 앞쪽이라 건너뜀');return}          // 뒤로 가는 건 아주 확실할 때만
+  cap(base+' ✓ 원고 위치 찾음');
   cursor=hit.pos;
   let target=pageOf(cursor);
   const lead=+$('lead').value;
@@ -945,13 +952,15 @@ async function startMic(){
     sessionText=t; onHeard(t);
   };
   rec.onerror=e=>{
-    if(e.error==='no-speech'||e.error==='aborted')return;
+    if(e.error==='no-speech'){cap('말소리가 안 들립니다 (소리가 안 들어오거나 너무 작음)');return}
+    if(e.error==='aborted')return;
     setDot('err');
     const msg={'not-allowed':'마이크 권한이 막혔습니다. 주소창 왼쪽 아이콘에서 마이크를 허용해 주세요.',
       'network':'음성인식 서버에 연결할 수 없습니다. 인터넷 연결을 확인해 주세요.',
       'audio-capture':'마이크를 찾을 수 없습니다.'}[e.error]||('음성인식 오류: '+e.error);
     toast(msg,6000);
     if(e.error==='not-allowed'||e.error==='audio-capture')stopMic();
+    cap('오류('+e.error+') '+msg,true);
   };
   // 크롬은 침묵이 길거나 1분쯤 지나면 스스로 멈춘다. 켜 둔 동안은 바로 다시 시작한다.
   rec.onend=()=>{
@@ -959,13 +968,15 @@ async function startMic(){
     if(listening){try{startRec()}catch(_){setTimeout(()=>{if(listening)try{startRec()}catch(__){}},300)}}
     else setDot('');
   };
-  rec.onstart=()=>setDot('live');
-  listening=true; startRec();
+  rec.onstart=()=>{setDot('live'); cap('듣는 중 · 말씀해 보세요')};
+  rec.onaudiostart=()=>cap('마이크 소리가 들어옵니다 · 말씀해 보세요');
+  rec.onspeechstart=()=>cap('말소리 감지 · 글자로 바꾸는 중');
+  listening=true; cap('마이크 여는 중…'); startRec();
   $('mic').classList.add('on'); $('mic').textContent='마이크 끄기 (M)';
   keepAwake();
 }
 function stopMic(){
-  listening=false; releaseMic(); if(rec)try{rec.stop()}catch(_){}
+  listening=false; cap(''); releaseMic(); if(rec)try{rec.stop()}catch(_){}
   $('mic').classList.remove('on'); $('mic').textContent='마이크 켜기 (M)'; setDot('');
 }
 let wake=null;
