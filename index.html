@@ -320,8 +320,18 @@ async function parseHwp(buf){
   if(flags&2)throw new Error('암호가 걸린 hwp 파일입니다. 암호를 풀고 저장해 주세요.');
   if(flags&4)throw new Error('배포용 hwp 파일이라 읽을 수 없습니다. 한글에서 hwpx로 저장해 주세요.');
   const read=async n=>{const d=get(n);if(!d)return null;return (flags&1)?inflateRaw(d):d};
-  const colors=[];
+  const colors=[], numberings=[], pshapes=[];
   for(const r of hwpRecords(await read('DocInfo'))){
+    if(r.tag===23){ // 문단 번호 정의: 7수준 × (속성4·너비2·거리2·글자모양4·번호 형식 문자열) 뒤에 시작 번호
+      const dv=new DataView(r.data.buffer,r.data.byteOffset,r.data.byteLength), fm=[]; let k=0;
+      try{ for(let lv=0;lv<7;lv++){ k+=12; const n=dv.getUint16(k,true); k+=2; fm.push(new TextDecoder('utf-16le').decode(r.data.subarray(k,k+2*n))); k+=2*n }
+        const st=[]; for(let lv=0;lv<7;lv++){ const o=k+2+4*lv; st.push(o+4<=r.data.length?dv.getUint32(o,true):1) }
+        numberings.push({fm,st}) }catch(_){ numberings.push(null) }
+    }
+    if(r.tag===25&&r.data.length>=32){ // 문단 모양: 머리 모양(0 없음·1 개요·2 번호·3 글머리표), 수준, 번호 정의 번호(1부터)
+      const dv=new DataView(r.data.buffer,r.data.byteOffset,r.data.byteLength), a=dv.getUint32(0,true);
+      pshapes.push({head:(a>>>23)&3,lvl:(a>>>25)&7,numId:dv.getUint16(30,true)});
+    }
     if(r.tag===21&&r.data.length>=56){ // 글자 모양: 52바이트 위치가 글자색(COLORREF)
       const c=new DataView(r.data.buffer,r.data.byteOffset).getUint32(52,true);
       colors.push([c&255,(c>>8)&255,(c>>16)&255].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase());
@@ -333,7 +343,7 @@ async function parseHwp(buf){
     let cur=null;
     for(const r of hwpRecords(sec)){
       if(r.tag===66){ // 문단 머리: 11바이트 위치가 나누기 종류(1=구역, 4=쪽)
-        if(r.lvl===0){cur={lvl:0,text:null,cs:[],ls:[],pb:r.data.length>11&&(r.data[11]&5)!==0};paras.push(cur)} else cur=null;
+        if(r.lvl===0){cur={lvl:0,text:null,cs:[],ls:[],psid:r.data.length>=10?new DataView(r.data.buffer,r.data.byteOffset).getUint16(8,true):-1,pb:r.data.length>11&&(r.data[11]&5)!==0};paras.push(cur)} else cur=null;
       }else if(cur&&r.lvl===cur.lvl+1){
         if(r.tag===67)cur.text=r.data;
         else if(r.tag===69){const dv=new DataView(r.data.buffer,r.data.byteOffset,r.data.byteLength); // 줄 배치: 36바이트마다 글자 위치(4)·세로 위치(4)…
@@ -344,6 +354,14 @@ async function parseHwp(buf){
     }
   }
   // 줄 배치의 세로 위치가 되감기면 원고의 다음 쪽이 시작된 것 (원고 쪽번호용)
+  const cnt={};
+  for(const pa of paras){      // 자동 문단 번호('1.' 등)는 글자가 아니라 문단 모양에 있으므로 따로 센다
+    const ps=pshapes[pa.psid], nd=ps&&ps.numId>0?numberings[ps.numId-1]:null;
+    if(!ps||!nd||(ps.head!==1&&ps.head!==2))continue;
+    const c=cnt[ps.numId]||(cnt[ps.numId]=[0,0,0,0,0,0,0]), lv=Math.min(ps.lvl,6);
+    c[lv]=c[lv]?c[lv]+1:Math.max(1,nd.st[lv]||1); for(let j=lv+1;j<7;j++)c[j]=0;
+    pa.num=nd.fm[lv].replace(/\^(\d)/g,(m,d)=>c[+d-1]||0);
+  }
   let pageNo=1, prevV=-1;
   for(const pa of paras){
     pa.marks=[];
@@ -368,7 +386,7 @@ async function parseHwp(buf){
       }
     }
     while(mi<marks.length){marks[mi].off=outLen;mi++}
-    return {runs,pb:pa.pb,marks};
+    return {runs,pb:pa.pb,marks,num:pa.num};
   });
   return {pages:paginate(out),bg:null};
 }
@@ -384,7 +402,7 @@ function index(){
     pg.forEach(runs=>{
       const s=norm.length;
       // 빨간 숫자(원고 쪽번호)는 소리 내 읽지 않으므로 맞추기에서 뺀다
-      for(const r of runs) if(r.c!=='r') norm+=normStr(r.t);
+      for(const r of runs) if(r.c!=='r'&&r.c!=='n') norm+=normStr(r.t);
       lineRange[pi].push([s,norm.length]);
     });
     pEnd[pi]=norm.length;
@@ -524,6 +542,7 @@ function buildUnits(paras){
     const {segs,mpos}=paraSegs(p);
     const chars=[]; for(const sg of segs)for(const ch of sg.t)chars.push([ch,sg.c]);
     let cw=null, cu={words:[],blk}, mk=0;
+    if(p.num&&rawOf(p).trim())cu.words.push({segs:[{t:p.num,c:'n'}],marks:[],num:true});   // 번호는 단어로 맨 앞에 (직전 단어로 치지 않는다)
     const endWord=()=>{if(cw){cu.words.push(cw);last=cw;cw=null}};
     const endUnit=()=>{endWord();if(cu.words.length)units.push(cu);cu={words:[],blk}};
     const marksAt=i=>{while(mk<mpos.length&&mpos[mk].pos<=i){const w=cw||last;if(w)w.marks.push(mpos[mk].page);mk++}};
@@ -542,7 +561,7 @@ function wrapUnit(u){
   const ws=u.words.map(w=>{
     const segs=w.segs.map(s=>({...s}));
     for(const m of w.marks)segs.push({t:' ',c:'k'},{t:String(m),c:'r'});
-    return {segs,w:pw(segs.map(s=>s.t).join('')),end:w.segs.length?w.segs[w.segs.length-1].t.slice(-1):''};
+    return {segs,w:pw(segs.map(s=>s.t).join('')),end:w.num?'':w.segs.length?w.segs[w.segs.length-1].t.slice(-1):''};
   });
   const n=ws.length; if(!n)return [];
   const join=arr=>{
