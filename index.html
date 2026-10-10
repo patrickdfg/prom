@@ -92,7 +92,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 <body>
 <div id="setup">
   <h1>음성 설교 프롬프터</h1>
-  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-10 20:50</div>
+  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-10 20:55</div>
   <p>프롬프터 파일(.hwp, .hwpx)이나 대본(.txt), html 원고(.html), 이 프로그램에서 저장한 파일(.json)을 불러오세요. 파일을 고른 뒤 한 화면 줄 수(5·6·7줄)를 정하고 시작을 누르면, 그 줄 수에 맞게 글자 크기가 정해집니다. 설교를 시작하면 읽는 소리를 듣고 쪽을 자동으로 넘깁니다. 크롬에서 열어야 합니다.</p>
   <div id="drop">
     <b>파일을 여기로 끌어 놓거나</b>
@@ -143,8 +143,9 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
   <div id="cap"></div>
   <div id="setpanel">
     <div class="pr"><b>마이크</b><span id="micname">크롬 기본 마이크</span><select id="micsel" hidden><option value="">기본 마이크</option></select><button id="micrefresh" hidden>목록 새로고침</button></div>
+    <div class="pr" style="margin-top:8px"><button id="copyset">크롬 마이크 설정 주소 복사</button></div>
     <div class="pr" style="margin-top:10px"><span>소리 크기</span><div id="meter"><i id="meterbar"></i></div><span id="metertxt">-</span></div>
-    <div id="micnote">음성인식은 크롬 기본 마이크로 듣습니다. 말할 때 막대가 움직이면 소리가 들어오는 것입니다. 마이크를 바꾸려면 크롬 주소창에 chrome://settings/content/microphone 을 입력해 열고 마이크를 고른 뒤 이 화면을 새로고침하세요.</div>
+    <div id="micnote">음성인식은 크롬 기본 마이크로 듣습니다. 말할 때 막대가 움직이면 소리가 들어오는 것입니다. 마이크를 바꾸려면 위 버튼으로 주소를 복사해 새 탭 주소창에 붙여 넣고 Enter, 마이크를 고른 뒤 이 화면을 새로고침하세요. (크롬은 웹 페이지에서 설정 화면을 바로 열지 못하게 막습니다.)</div>
   </div>
   <div id="bar">
     <span id="dot"></span>
@@ -1047,6 +1048,12 @@ $('set').onclick=()=>{
   if(ANDROID&&listening&&!panelOpen()){toast('폰에서는 마이크를 켠 동안 설정 창을 열 수 없습니다. 마이크를 끄고 열어 주세요.',5000);return}
   if(panelOpen()){closePanel()} else {$('setpanel').classList.add('open'); placePanel(); listMics().then(startMeter)}
   showBar();
+};
+$('copyset').onclick=async()=>{
+  const u='chrome://settings/content/microphone';
+  let ok=false; try{await navigator.clipboard.writeText(u); ok=true}catch(_){}
+  if(!ok){const t=document.createElement('textarea'); t.value=u; document.body.appendChild(t); t.select(); try{ok=document.execCommand('copy')}catch(_){} t.remove()}
+  toast(ok?'복사했습니다. 새 탭(Ctrl+T) 주소창에 붙여 넣고(Ctrl+V) Enter 를 누르세요.':'복사하지 못했습니다. 주소창에 '+u+' 를 직접 입력하세요.',7000);
 };
 $('micrefresh').onclick=()=>listMics().then(startMeter);
 $('micsel').onchange=()=>{
