@@ -76,11 +76,11 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 <body>
 <div id="setup">
   <h1>음성 설교 프롬프터</h1>
-  <p>프롬프터 파일(.hwp, .hwpx)이나 대본(.txt), html 원고(.html)를 불러오세요. 파일을 고른 뒤 한 화면 줄 수(5·6·7줄)를 정하고 시작을 누르면, 그 줄 수에 맞게 글자 크기가 정해집니다. 설교를 시작하면 읽는 소리를 듣고 쪽을 자동으로 넘깁니다. 크롬에서 열어야 합니다.</p>
+  <p>프롬프터 파일(.hwp, .hwpx)이나 대본(.txt), html 원고(.html), 이 프로그램에서 저장한 파일(.json)을 불러오세요. 파일을 고른 뒤 한 화면 줄 수(5·6·7줄)를 정하고 시작을 누르면, 그 줄 수에 맞게 글자 크기가 정해집니다. 설교를 시작하면 읽는 소리를 듣고 쪽을 자동으로 넘깁니다. 크롬에서 열어야 합니다.</p>
   <div id="drop">
     <b>파일을 여기로 끌어 놓거나</b>
     <button class="btn" id="pick">파일 선택</button>
-    <input type="file" id="file" accept=".hwp,.hwpx,.txt,.html,.htm" hidden>
+    <input type="file" id="file" accept=".hwp,.hwpx,.txt,.html,.htm,.json" hidden>
   </div>
   <div class="row" id="optrow"><b>한 화면 줄 수</b>
     <label><input type="radio" name="lines" value="5" checked> 5줄</label>
@@ -105,6 +105,8 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <label><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label>
     <span id="heard"></span>
     <button id="edit">편집 (E)</button>
+    <button id="save">저장</button>
+    <button id="openf">열기</button>
     <button id="fs">전체화면 (F)</button>
     <button id="back">다른 원고</button>
   </div>
@@ -684,7 +686,7 @@ function startWith(pages,bg){
 }
 /* ---------- 화면에서 바로 고치기 ---------- */
 // Enter=줄 나누기, Backspace=지우기·줄 합치기(쪽 맨 앞이면 앞 쪽과 합침), Ctrl+Enter=그 자리부터 다음 쪽, Esc=편집 끝
-let editing=false;
+let editing=false, dirty=false, baseName='대본';
 const hasText=ls=>ls.some(l=>l.some(r=>r.t.trim()));
 function readLines(trim=true){
   const out=[];
@@ -741,6 +743,48 @@ function endEdit(){
   index(); page=Math.min(page,P.length-1); cursor=pStart[page]||0; render();
 }
 $('edit').onclick=()=>editing?endEdit():beginEdit();
+$('lines').addEventListener('input',()=>{if(editing)dirty=true});
+/* ---------- 저장·열기 ---------- */
+// 저장 파일(.json)은 쪽·줄·빈 줄·>>·색 종류(k 일반, b 강조, r 쪽번호, n 번호)를 그대로 담는다. 열면 다시 변환하지 않고 그대로 보여 준다
+function snapshotPages(){
+  const q=P.map(p=>p.map(l=>l.map(r=>({t:r.t,c:r.c}))));
+  if(editing){        // 편집 중이면 화면에 있는 현재 쪽 내용을 반영한다 (편집 상태는 그대로 둔다)
+    const ls=readLines();
+    if(!hasText(ls)&&q.length>1)q.splice(page,1);
+    else{const parts=[ls.slice(0,LINES)]; for(let i=LINES;i<ls.length;i+=LINES)parts.push(ls.slice(i,i+LINES)); q.splice(page,1,...parts)}
+  }
+  return q;
+}
+async function savePages(){
+  if(!P.length)return;
+  const q=snapshotPages();
+  const body='{"app":"sermon-prompter","v":1,"lines":'+LINES+',"pages":[\n'+q.map(p=>JSON.stringify(p)).join(',\n')+'\n]}\n';
+  const name=baseName+'_프롬프터.json', blob=new Blob([body],{type:'application/json'});
+  if(window.showSaveFilePicker){      // 크롬: 내 컴퓨터에서 저장할 폴더·이름을 고른다
+    try{
+      const h=await showSaveFilePicker({suggestedName:name,types:[{description:'설교 프롬프터 저장 파일',accept:{'application/json':['.json']}}]});
+      const w=await h.createWritable(); await w.write(blob); await w.close();
+      dirty=false; toast('저장했습니다 · '+h.name+' · '+q.length+'쪽',6000); return;
+    }catch(e){ if(e&&e.name==='AbortError')return; }      // 취소하면 아무것도 하지 않고, 그 밖의 오류는 다운로드로 대신한다
+  }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),10000);
+  dirty=false; toast('저장했습니다 · '+name+' · '+q.length+'쪽 (다운로드 폴더)',6000);
+}
+function parseSaved(text){
+  let o; try{o=JSON.parse(text)}catch(_){throw new Error('저장 파일을 읽지 못했습니다.')}
+  if(!o||o.app!=='sermon-prompter'||!Array.isArray(o.pages))throw new Error('이 프로그램에서 저장한 파일이 아닙니다.');
+  const pages=o.pages.map(p=>(Array.isArray(p)?p:[]).map(l=>(Array.isArray(l)?l:[]).filter(r=>r&&typeof r.t==='string')
+    .map(r=>({t:cleanText(r.t,true),c:['k','b','r','n'].includes(r.c)?r.c:'k'})).filter(r=>r.t)));
+  const lines=Math.min(12,Math.max(5,+o.lines||5,...pages.map(p=>p.length)));
+  if(!pages.some(hasText))throw new Error('읽을 내용이 없습니다.');
+  return {pages,lines};
+}
+$('save').onclick=savePages;
+$('openf').onclick=()=>{
+  if(dirty&&!confirm('고친 내용을 저장하지 않았습니다. 그래도 다른 파일을 열까요?'))return;
+  $('file').click();
+};
 $('lines').addEventListener('paste',e=>{     // 붙여 넣기는 글자만, 줄바꿈은 줄 나누기로
   if(!editing)return; e.preventDefault();
   const t=cleanText((e.clipboardData.getData('text/plain')||'').replace(/\r\n?/g,'\n'),true);
@@ -758,7 +802,7 @@ function editKey(e){      // 편집 중 키. true 를 돌려주면 여기서 처
     while(a.length>1&&!a[a.length-1].length)a.pop();      // 줄 맨 앞에서 나눈 경우 생긴 빈 줄은 뺀다
     while(b.length&&!b[b.length-1].length)b.pop();
     if(!hasText(b))return true;
-    P.splice(page,1,a,b); page++; render(); focusLine(0); return true;
+    P.splice(page,1,a,b); dirty=true; page++; render(); focusLine(0); return true;
   }
   if(e.key==='Backspace'&&page>0){
     const sel=getSelection();
@@ -769,7 +813,7 @@ function editKey(e){      // 편집 중 키. true 를 돌려주면 여기서 처
         e.preventDefault();
         let prev=P[page-1].slice(); while(prev.length&&!prev[prev.length-1].some(x=>x.t.trim()))prev.pop();
         const m=prev.concat(readLines()), n=prev.length;
-        P.splice(page-1,2,...(m.length>LINES?[m.slice(0,LINES),m.slice(LINES)]:[m]));
+        P.splice(page-1,2,...(m.length>LINES?[m.slice(0,LINES),m.slice(LINES)]:[m])); dirty=true;
         page--; render(); focusLine(Math.min(n,Math.max(0,m.length-1))); return true;
       }
     }
@@ -951,6 +995,7 @@ async function htmlRendered(src){
 }
 async function loadFile(f){
   remClear(); pending=null; $('start').disabled=true; $('fname').textContent=''; $('loadmsg').textContent='읽는 중…';
+  baseName=f.name.replace(/\.[^.]+$/,'').replace(/_프롬프터$/,'')||'대본';
   try{
     let r;
     if(/\.hwpx$/i.test(f.name)){
@@ -959,6 +1004,12 @@ async function loadFile(f){
     }else if(/\.hwp$/i.test(f.name)){
       if(!('DecompressionStream' in window))throw new Error('이 브라우저는 hwp를 읽지 못합니다. 최신 크롬으로 열어 주세요.');
       r=await parseHwp(await f.arrayBuffer());
+    }else if(/\.json$/i.test(f.name)){
+      // 이 프로그램에서 저장한 파일은 다시 변환하지 않고 그대로 연다
+      const s=parseSaved(await f.text());
+      if(listening)stopMic(); if(editing)endEdit();
+      LINES=s.lines; open(s.pages); dirty=false; $('loadmsg').textContent='';
+      toast('저장한 파일을 열었습니다 · '+P.length+'쪽 · '+LINES+'줄',5000); return;
     }else if(/\.html?$/i.test(f.name)){
       // html 은 이미 쪽이 나뉘어 있으니 줄 수 선택 없이 그대로 바로 연다
       r=await parseHtml(await f.arrayBuffer());
@@ -971,11 +1022,11 @@ async function loadFile(f){
     if(!r.pages.some(p=>p.some(l=>l.some(x=>x.t.trim()))))throw new Error('읽을 내용이 없습니다.');
     pending=r; $('start').disabled=false; $('fname').textContent=f.name+' 을(를) 읽었습니다. 줄 수를 고르고 시작을 누르세요.';
     $('loadmsg').textContent=''; const rr=remReport(); if(rr)toast(rr,10000);
-  }catch(e){$('loadmsg').textContent=e.message}
+  }catch(e){$('loadmsg').textContent=e.message; if($('view').style.display==='block')toast(e.message,6000)}
 }
 $('start').onclick=()=>{ if(pending)startWith(pending.pages,pending.bg) };
 $('pick').onclick=()=>$('file').click();
-$('file').onchange=e=>e.target.files[0]&&loadFile(e.target.files[0]);
+$('file').onchange=e=>{const f=e.target.files[0]; e.target.value=''; if(f)loadFile(f)};
 const drop=$('drop');
 drop.ondragover=e=>{e.preventDefault();drop.classList.add('over')};
 drop.ondragleave=()=>drop.classList.remove('over');
