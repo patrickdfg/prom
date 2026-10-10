@@ -907,6 +907,8 @@ function setDot(cls){$('dot').className=cls||''}
 // 화면 왼쪽 위에 지금 어디까지 되고 있는지 보여 준다 (소리가 들어오는지, 글자로 바뀌는지, 원고에서 찾았는지)
 function cap(msg,force){const c=$('cap'); clearTimeout(c._h); if(!msg||(!listening&&!force)){c.style.display='none';return} c.style.display='block'; c.textContent=msg; if(force)c._h=setTimeout(()=>c.style.display='none',20000)}
 function onHeard(text){
+  // 기준 위치는 지금 화면에 떠 있는 쪽. 어긋나 있으면 그 쪽 시작으로 맞춘다
+  if(P.length&&pageOf(cursor)!==page){cursor=pStart[page]||0; heardCarry=''; lastTail=''}
   const all=normStr(heardCarry+text);
   $('heard').textContent=text.slice(-40);
   const S=all.slice(-14), base='들림 「'+text.slice(-24)+'」';
@@ -971,6 +973,7 @@ async function startMic(){
   rec.onstart=()=>{setDot('live'); cap('듣는 중 · 말씀해 보세요')};
   rec.onaudiostart=()=>cap('마이크 소리가 들어옵니다 · 말씀해 보세요');
   rec.onspeechstart=()=>cap('말소리 감지 · 글자로 바꾸는 중');
+  cursor=pStart[page]||0; heardCarry=''; sessionText=''; lastTail='';     // 켤 때 보고 있는 쪽부터 찾는다
   listening=true; cap('마이크 여는 중…'); startRec();
   $('mic').classList.add('on'); $('mic').textContent='마이크 끄기 (M)';
   keepAwake();
