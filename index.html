@@ -93,7 +93,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 <body>
 <div id="setup">
   <h1>음성 설교 프롬프터</h1>
-  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-11 08:05</div>
+  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-11 08:10</div>
   <p>프롬프터 파일(.hwp, .hwpx)이나 대본(.txt), html 원고(.html), 이 프로그램에서 저장한 파일(.json)을 불러오세요. 파일을 고른 뒤 한 화면 줄 수(5·6·7줄)를 정하고 시작을 누르면, 그 줄 수에 맞게 글자 크기가 정해집니다. 설교를 시작하면 읽는 소리를 듣고 쪽을 자동으로 넘깁니다. 크롬에서 열어야 합니다.</p>
   <div id="drop">
     <b>파일을 여기로 끌어 놓거나</b>
@@ -107,6 +107,10 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <span id="optnote">줄 수가 많을수록 글자가 작아집니다.</span></div>
   <div class="row"><button class="btn" id="start" disabled>시작</button><span id="fname"></span></div>
   <textarea id="paste" placeholder="또는 대본 글을 붙여 넣으세요. 쪽 구분은 --- 한 줄입니다. 구분이 없으면 고른 줄 수대로 나눕니다."></textarea>
+  <div class="row" style="align-items:center"><b>한 화면 줄 수</b>
+    <label><input type="radio" name="lines2" value="5" checked> 5줄</label>
+    <label><input type="radio" name="lines2" value="6"> 6줄</label>
+    <label><input type="radio" name="lines2" value="7"> 7줄</label></div>
   <div class="row"><button class="btn ghost" id="usePaste">붙여 넣은 글로 시작</button></div>
   <button class="btn" id="demo">설교 프롬프터 테스트</button>
   <details id="obsHelp"><summary>OBS와 함께 쓸 때 설정법</summary>
@@ -1239,6 +1243,8 @@ const DEMO=`
 내 원고를 불러오세요.
 `;
 $('demo').onclick=()=>{remClear(); baseName='테스트'; startWith(parseTxt(DEMO)); toast('테스트 원고입니다. 마이크 켜기를 누르고 화면 글을 읽어 보세요.',7000)};
+function syncLines(from,to){document.querySelectorAll('input[name='+from+']').forEach(r=>r.addEventListener('change',()=>{const t=document.querySelector('input[name='+to+'][value="'+r.value+'"]');if(t)t.checked=true}))}
+syncLines('lines','lines2'); syncLines('lines2','lines');
 $('usePaste').onclick=()=>{const t=$('paste').value.trim();remClear();if(t){startWith(parseTxt(t));const rr=remReport();if(rr)toast(rr,10000)}else $('loadmsg').textContent='붙여 넣은 글이 없습니다.'};
 $('mic').onclick=()=>listening?stopMic():startMic();
 $('prev').onclick=()=>go(page-1,true);
@@ -1246,7 +1252,7 @@ $('next').onclick=()=>go(page+1,true);
 $('dim').onchange=render;
 function applyTheme(){$('page').classList.toggle('dark',$('theme').value==='dark');try{localStorage.setItem('prompterTheme',$('theme').value)}catch(_){}}
 try{const t=localStorage.getItem('prompterTheme');if(t)$('theme').value=t}catch(_){}
-try{const n=localStorage.getItem('prompterLines');const r=n&&document.querySelector('input[name=lines][value="'+n+'"]');if(r)r.checked=true}catch(_){}
+try{const n=localStorage.getItem('prompterLines');['lines','lines2'].forEach(nm=>{const r=n&&document.querySelector('input[name='+nm+'][value="'+n+'"]');if(r)r.checked=true})}catch(_){}
 $('theme').onchange=applyTheme;
 $('fs').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
 $('back').onclick=()=>{endEdit();stopMic();closePanel();$('view').style.display='none';$('setup').style.display='block'};
