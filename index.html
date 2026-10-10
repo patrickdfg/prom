@@ -720,12 +720,33 @@ function focusLine(i,atEnd){
   const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r);
 }
 // 지금 화면의 줄을 P 에 반영한다. LINES 줄을 넘는 줄은 다음 쪽으로 넘기고, 넘긴 쪽 수를 돌려준다
+// 쪽이 덩어리(문단)의 끝인지. 맨 끝 쪽이거나, 앞이 비고 >> 로 끝나지 않는 쪽(reflow 와 같은 기준)
+function blockEnd(i){
+  if(i>=P.length-1)return true;
+  const pg=P[i]; if(!pg.length)return true;
+  const lastTxt=lineText(pg[pg.length-1]).trim(), firstBlank=!lineText(pg[0]).trim();
+  return !/>>$/.test(lastTxt)&&(lastTxt===''||firstBlank);
+}
+// 쪽에서 앞뒤 빈 줄 채움과 >> 를 뺀 내용 줄만 꺼낸다
+function pageContent(ls){
+  const L=ls.filter(l=>lineText(l).trim()!=='>>').map(l=>l.map(r=>({...r})));
+  while(L.length&&!lineText(L[L.length-1]).trim())L.pop();
+  if(L.length){const last=L[L.length-1], r=last[last.length-1]; r.t=r.t.replace(/\s*>>\s*$/,''); if(!r.t&&last.length>1)last.pop()}
+  while(L.length&&!lineText(L[0]).trim())L.shift();
+  return L;
+}
 function commitEdit(){
-  const ls=readLines(); let added=0;
+  const ls=readLines();
   if(!hasText(ls)&&P.length>1){P.splice(page,1);page=Math.min(page,P.length-1);return -1}
-  const parts=[ls.slice(0,LINES)]; for(let i=LINES;i<ls.length;i+=LINES)parts.push(ls.slice(i,i+LINES));
-  P.splice(page,1,...parts); added=parts.length-1;
-  return added;
+  if(ls.length<=LINES){P.splice(page,1,ls);return 0}
+  // 줄이 넘치면 같은 문단 안에서는 뒤 쪽들이 이어받고(규칙대로 다시 나눔), 문단이 끝나는 쪽이면 새 쪽이 된다
+  let end=page; while(end<P.length-1&&!blockEnd(end))end++;
+  const L=[];
+  pageContent(ls).forEach(r=>L.push({runs:r,blk:0,ue:true}));
+  for(let i=page+1;i<=end;i++)pageContent(P[i]).forEach(r=>L.push({runs:r,blk:0,ue:true}));
+  const out=paginateLines(L,LINES), old=end-page+1;
+  P.splice(page,old,...out);
+  return out.length-old;
 }
 function beginEdit(){
   if(editing)return;
@@ -733,7 +754,7 @@ function beginEdit(){
   editing=true; $('lines').classList.add('edit'); $('lines').contentEditable='true'; $('lines').spellcheck=false;
   $('edit').textContent='편집 끝내기 (Esc)';
   render(); focusLine(0);
-  toast('편집 중 · Enter 줄 나누기 · Backspace 지우기/합치기 · Ctrl+Enter 다음 쪽으로 · Esc 끝내기',7000);
+  toast('편집 중 · Enter 줄 나누기 · Backspace 지우기/합치기 · Ctrl+Enter 새 쪽(문단이 끝날 때) · 줄이 넘치면 같은 문단은 뒤 쪽이 이어받음 · Esc 끝내기',7000);
 }
 function endEdit(){
   if(!editing)return;
