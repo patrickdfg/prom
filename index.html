@@ -92,7 +92,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 <body>
 <div id="setup">
   <h1>음성 설교 프롬프터</h1>
-  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-10 20:46</div>
+  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-10 20:50</div>
   <p>프롬프터 파일(.hwp, .hwpx)이나 대본(.txt), html 원고(.html), 이 프로그램에서 저장한 파일(.json)을 불러오세요. 파일을 고른 뒤 한 화면 줄 수(5·6·7줄)를 정하고 시작을 누르면, 그 줄 수에 맞게 글자 크기가 정해집니다. 설교를 시작하면 읽는 소리를 듣고 쪽을 자동으로 넘깁니다. 크롬에서 열어야 합니다.</p>
   <div id="drop">
     <b>파일을 여기로 끌어 놓거나</b>
@@ -142,9 +142,9 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
   <div id="toast"></div>
   <div id="cap"></div>
   <div id="setpanel">
-    <div class="pr"><b>마이크</b><select id="micsel"><option value="">기본 마이크</option></select><button id="micrefresh">목록 새로고침</button></div>
+    <div class="pr"><b>마이크</b><span id="micname">크롬 기본 마이크</span><select id="micsel" hidden><option value="">기본 마이크</option></select><button id="micrefresh" hidden>목록 새로고침</button></div>
     <div class="pr" style="margin-top:10px"><span>소리 크기</span><div id="meter"><i id="meterbar"></i></div><span id="metertxt">-</span></div>
-    <div id="micnote">막대가 말할 때 움직이면 이 마이크로 소리가 들어오는 것입니다. 고른 마이크는 저장되고, 마이크를 켜 둔 상태에서 바꾸면 다시 시작됩니다. 선택이 적용되지 않으면(크롬 버전에 따라) 크롬 주소창에 chrome://settings/content/microphone 을 열어 기본 마이크를 바꿔 주세요.</div>
+    <div id="micnote">음성인식은 크롬 기본 마이크로 듣습니다. 말할 때 막대가 움직이면 소리가 들어오는 것입니다. 마이크를 바꾸려면 크롬 주소창에 chrome://settings/content/microphone 을 입력해 열고 마이크를 고른 뒤 이 화면을 새로고침하세요.</div>
   </div>
   <div id="bar">
     <span id="dot"></span>
@@ -935,14 +935,14 @@ const ANDROID=/Android/i.test(navigator.userAgent);
 let micStream=null;
 async function holdMic(){
   if(ANDROID||micStream||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return;
-  try{micStream=await navigator.mediaDevices.getUserMedia({audio:micId?{deviceId:{exact:micId}}:true})}
+  try{micStream=await navigator.mediaDevices.getUserMedia({audio:true})}
   catch(_){
     if(micId){toast('고른 마이크를 열지 못해 기본 마이크로 듣습니다.',5000); try{micStream=await navigator.mediaDevices.getUserMedia({audio:true})}catch(__){}}
   }
 }
 // 고른 마이크가 있으면 그 트랙을 음성인식에 넘긴다. 크롬이 트랙 지정을 지원하지 않으면 기본 마이크로 듣는다
 function startRec(){
-  const tr=!ANDROID&&micId&&micStream?micStream.getAudioTracks()[0]:null;
+  const tr=null&&micStream?micStream.getAudioTracks()[0]:null;
   if(tr&&tr.readyState==='live'){try{rec.start(tr);return}catch(_){}}
   rec.start();
 }
@@ -992,7 +992,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 
 /* ---------- 설정: 마이크 고르기 ---------- */
 let micId='', micLabel='';
-try{micId=localStorage.getItem('prompterMicId')||''; micLabel=localStorage.getItem('prompterMicLabel')||''}catch(_){}
+try{localStorage.removeItem('prompterMicId'); localStorage.removeItem('prompterMicLabel')}catch(_){}      // 예전에 고른 마이크는 쓰지 않는다
 const panelOpen=()=>$('setpanel').classList.contains('open');
 async function listMics(){
   const md=navigator.mediaDevices;
@@ -1030,6 +1030,7 @@ async function startMeter(){
     catch(_){ $('metertxt').textContent='열 수 없음'; return }
   }
   if(!panelOpen()){ if(own)stream.getTracks().forEach(t=>t.stop()); return }
+  const tl=stream.getAudioTracks()[0]; if(tl&&tl.label)$('micname').textContent=tl.label;
   const ac=new AC(); if(ac.state==='suspended')ac.resume().catch(()=>{});
   const an=ac.createAnalyser(); an.fftSize=1024; ac.createMediaStreamSource(stream).connect(an);
   const buf=new Float32Array(an.fftSize), m={ac,stream,own,raf:0};
