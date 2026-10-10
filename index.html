@@ -44,6 +44,11 @@ button{font:inherit;cursor:pointer}
 textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px;line-height:1.5;font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif}
 .row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 #loadmsg{margin-top:12px;color:var(--warn);min-height:1.4em}
+#obsHelp{margin-top:20px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+#obsHelp summary{cursor:pointer;padding:12px 14px;font-weight:700}
+#obsHelp div{padding:0 16px 14px;line-height:1.7;color:var(--muted);font-size:14px}
+#obsHelp ol{margin:6px 0 10px;padding-left:20px}
+#obsHelp a{color:var(--accent)}
 /* 프롬프터 화면 */
 #view{display:none;position:fixed;inset:0;background:#000}
 #stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
@@ -90,6 +95,33 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
   <div class="row"><button class="btn" id="start" disabled>시작</button><span id="fname"></span></div>
   <textarea id="paste" placeholder="또는 대본 글을 붙여 넣으세요. 쪽 구분은 --- 한 줄입니다. 구분이 없으면 고른 줄 수대로 나눕니다."></textarea>
   <div class="row"><button class="btn ghost" id="usePaste">붙여 넣은 글로 시작</button></div>
+  <details id="obsHelp"><summary>OBS와 함께 쓸 때 설정법</summary>
+    <div>
+      <p>OBS 소리를 이 프롬프터가 마이크처럼 듣게 하려면, 윈도우에 가상 오디오 선(VB-CABLE)을 하나 만들어 연결합니다. 방송 PC와 이 화면이 같은 PC일 때 쓰는 방법입니다. 다른 PC라면 이 PC에 마이크를 직접 연결하는 편이 단순합니다.</p>
+      <b>1. 가상 선 설치</b>
+      <ol>
+        <li><a href="https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack45.zip">VB-CABLE 바로 받기 (Windows, zip)</a> · <a href="https://vb-audio.com/Cable/" target="_blank" rel="noopener">공식 페이지</a></li>
+        <li>압축을 풀고 설치 프로그램을 관리자 권한으로 실행한 뒤 재부팅합니다.</li>
+        <li>소리 장치에 CABLE Input, CABLE Output이 생기면 설치 끝입니다.</li>
+      </ol>
+      <b>2. OBS 설정</b>
+      <ol>
+        <li>OBS 설정 → 오디오 → 고급 → 모니터링 장치(Monitoring Device)를 CABLE Input으로 고르고 적용합니다.</li>
+        <li>오디오 믹서에서 설교자 마이크 소스의 점 세 개 → 고급 오디오 속성을 엽니다.</li>
+        <li>오디오 모니터링(Audio Monitoring)을 "모니터링 및 출력(Monitor and Output)"으로 바꿉니다. "모니터링만(Monitor Only)"을 고르면 방송과 녹화에서 그 소리가 빠지니 피하세요.</li>
+      </ol>
+      <b>3. 크롬 설정</b>
+      <ol>
+        <li>크롬 주소창에 chrome://settings/content/microphone 을 입력해 열고, 마이크를 CABLE Output으로 고릅니다.</li>
+        <li>이 프롬프터에서 마이크 켜기를 누르고 설교자가 말하면 따라 넘어갑니다.</li>
+      </ol>
+      <b>알아 둘 점</b>
+      <ol>
+        <li>모니터링을 CABLE Input으로 돌리면 이 PC 스피커로는 OBS 소리가 나지 않습니다. 스피커로도 들으려면 Voicemeeter 같은 믹서가 따로 필요합니다.</li>
+        <li>메뉴 이름은 OBS 버전과 언어에 따라 조금 다를 수 있습니다.</li>
+      </ol>
+    </div>
+  </details>
   <div id="loadmsg"></div>
 </div>
 
