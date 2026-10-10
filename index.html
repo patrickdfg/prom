@@ -65,14 +65,20 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 /* 여주교회 형식: 검정 배경·흰 글씨·노란 강조·빨간 쪽번호 */
 #page.dark{background:#000!important;color:#fff}
 #page.dark .b{color:#ffff00}
-#bar{position:absolute;left:0;right:0;bottom:0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+#bar{position:absolute;left:0;right:0;bottom:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;
   padding:10px 16px;background:rgba(17,20,24,.92);color:var(--text);font-size:14px;transition:opacity .3s}
 #bar.hide{opacity:0;pointer-events:none}
-#bar select,#bar button{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+#bar select,#bar button{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
 #mic.on{background:var(--ok);color:#000;border-color:var(--ok)}
+#setpanel{position:absolute;left:16px;bottom:64px;display:none;max-width:min(460px,calc(100vw - 32px));padding:14px;border-radius:10px;
+  background:rgba(17,20,24,.97);color:var(--text);border:1px solid var(--line);font-size:14px;line-height:1.6}
+#setpanel.open{display:block}
+#setpanel select,#setpanel button{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 10px;max-width:100%}
+#setpanel .pr{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#micnote{margin-top:8px;color:var(--muted);font-size:13px}
 #dot{width:10px;height:10px;border-radius:50%;background:#666;flex:none}
 #dot.live{background:var(--ok)}#dot.err{background:var(--bad)}
-#heard{flex:1;min-width:120px;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;direction:rtl;text-align:left}
+#heard{flex:1;min-width:30px;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;direction:rtl;text-align:left}
 #pg{font-variant-numeric:tabular-nums}
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
@@ -128,9 +134,14 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 <div id="view">
   <div id="stage"><div id="page"><div id="lines"></div></div></div>
   <div id="toast"></div>
+  <div id="setpanel">
+    <div class="pr"><b>마이크</b><select id="micsel"><option value="">기본 마이크</option></select><button id="micrefresh">목록 새로고침</button></div>
+    <div id="micnote">고른 마이크는 저장되고, 마이크를 켜 둔 상태에서 바꾸면 다시 시작됩니다. 선택이 적용되지 않으면(크롬 버전에 따라) 크롬 주소창에 chrome://settings/content/microphone 을 열어 기본 마이크를 바꿔 주세요.</div>
+  </div>
   <div id="bar">
     <span id="dot"></span>
     <button id="mic">마이크 켜기 (M)</button>
+    <button id="set">설정</button>
     <button id="prev">◀</button><span id="pg">1 / 1</span><button id="next">▶</button>
     <label>넘김 <select id="lead"><option value="6">빠르게</option><option value="3" selected>보통</option><option value="1">늦게</option></select></label>
     <label>화면 <select id="theme"><option value="dark" selected>검정화면</option><option value="cloud">구름 배경</option></select></label>
@@ -908,7 +919,16 @@ function onHeard(text){
 let micStream=null;
 async function holdMic(){
   if(micStream||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return;
-  try{micStream=await navigator.mediaDevices.getUserMedia({audio:true})}catch(_){}
+  try{micStream=await navigator.mediaDevices.getUserMedia({audio:micId?{deviceId:{exact:micId}}:true})}
+  catch(_){
+    if(micId){toast('고른 마이크를 열지 못해 기본 마이크로 듣습니다.',5000); try{micStream=await navigator.mediaDevices.getUserMedia({audio:true})}catch(__){}}
+  }
+}
+// 고른 마이크가 있으면 그 트랙을 음성인식에 넘긴다. 크롬이 트랙 지정을 지원하지 않으면 기본 마이크로 듣는다
+function startRec(){
+  const tr=micId&&micStream?micStream.getAudioTracks()[0]:null;
+  if(tr&&tr.readyState==='live'){try{rec.start(tr);return}catch(_){}}
+  rec.start();
 }
 function releaseMic(){if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null}}
 async function startMic(){
@@ -932,11 +952,11 @@ async function startMic(){
   // 크롬은 침묵이 길거나 1분쯤 지나면 스스로 멈춘다. 켜 둔 동안은 바로 다시 시작한다.
   rec.onend=()=>{
     heardCarry=(heardCarry+sessionText).slice(-60); sessionText='';
-    if(listening){try{rec.start()}catch(_){setTimeout(()=>listening&&rec.start(),300)}}
+    if(listening){try{startRec()}catch(_){setTimeout(()=>{if(listening)try{startRec()}catch(__){}},300)}}
     else setDot('');
   };
   rec.onstart=()=>setDot('live');
-  listening=true; rec.start();
+  listening=true; startRec();
   $('mic').classList.add('on'); $('mic').textContent='마이크 끄기 (M)';
   keepAwake();
 }
@@ -947,6 +967,37 @@ function stopMic(){
 let wake=null;
 async function keepAwake(){try{if('wakeLock' in navigator&&!wake){wake=await navigator.wakeLock.request('screen');wake.addEventListener('release',()=>wake=null)}}catch(_){}}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&listening)keepAwake()});
+
+/* ---------- 설정: 마이크 고르기 ---------- */
+let micId='', micLabel='';
+try{micId=localStorage.getItem('prompterMicId')||''; micLabel=localStorage.getItem('prompterMicLabel')||''}catch(_){}
+const panelOpen=()=>$('setpanel').classList.contains('open');
+async function listMics(){
+  const md=navigator.mediaDevices;
+  if(!md||!md.enumerateDevices){$('micnote').textContent='이 브라우저는 마이크 목록을 보여 주지 못합니다. 크롬으로 열어 주세요.';return}
+  let ins=(await md.enumerateDevices()).filter(d=>d.kind==='audioinput');
+  if(ins.length&&ins.every(d=>!d.label)){        // 허용하기 전에는 이름이 비어 있어 한 번 열었다 닫는다
+    try{(await md.getUserMedia({audio:true})).getTracks().forEach(t=>t.stop()); ins=(await md.enumerateDevices()).filter(d=>d.kind==='audioinput')}catch(_){}
+  }
+  ins=ins.filter(d=>d.deviceId!=='default'&&d.deviceId!=='communications');
+  const sel=$('micsel'); sel.innerHTML='';
+  const add=(v,t)=>{const o=document.createElement('option'); o.value=v; o.textContent=t; sel.appendChild(o)};
+  add('','기본 마이크');
+  ins.forEach((d,i)=>add(d.deviceId,d.label||('마이크 '+(i+1))));
+  let hit=ins.find(d=>d.deviceId===micId)||(micLabel&&ins.find(d=>d.label===micLabel));
+  if(hit){micId=hit.deviceId} else if(micId){micId=''}      // 없어진 마이크는 기본으로
+  sel.value=micId;
+}
+function placePanel(){$('setpanel').style.bottom=($('bar').offsetHeight+8)+'px'}
+$('set').onclick=()=>{$('setpanel').classList.toggle('open'); if(panelOpen()){placePanel();listMics()} showBar()};
+$('micrefresh').onclick=listMics;
+$('micsel').onchange=()=>{
+  const sel=$('micsel'); micId=sel.value; micLabel=micId?sel.selectedOptions[0].textContent:'';
+  try{localStorage.setItem('prompterMicId',micId); localStorage.setItem('prompterMicLabel',micLabel)}catch(_){}
+  toast('마이크: '+(micId?micLabel:'기본 마이크'),3000);
+  if(listening){stopMic(); setTimeout(startMic,400)}
+};
+if(navigator.mediaDevices&&navigator.mediaDevices.addEventListener)navigator.mediaDevices.addEventListener('devicechange',()=>{if(panelOpen())listMics()});
 
 /* ---------- 시작·조작 ---------- */
 function open(pages,bg){
@@ -1104,8 +1155,9 @@ try{const n=localStorage.getItem('prompterLines');const r=n&&document.querySelec
 $('theme').onchange=applyTheme;
 $('fs').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
 $('back').onclick=()=>{endEdit();stopMic();$('view').style.display='none';$('setup').style.display='block'};
-addEventListener('resize',fit);
+addEventListener('resize',()=>{fit(); if(panelOpen())placePanel()});
 addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&panelOpen()){$('setpanel').classList.remove('open'); showBar(); return}
   if($('view').style.display!=='block'||e.target.tagName==='SELECT')return;
   if(editing){editKey(e);showBar();return}
   const k=e.key;
@@ -1122,7 +1174,7 @@ addEventListener('keydown',e=>{
   showBar();
 });
 let barT;
-function showBar(){$('bar').classList.remove('hide');clearTimeout(barT);barT=setTimeout(()=>$('bar').classList.add('hide'),4000)}
+function showBar(){$('bar').classList.remove('hide');clearTimeout(barT);barT=setTimeout(()=>{if(!panelOpen())$('bar').classList.add('hide')},4000)}
 addEventListener('mousemove',showBar);
 // 시험용: 콘솔에서 __feed('들은 말')로 음성인식 결과를 흉내 낼 수 있다
 window.__feed=t=>onHeard(t);
