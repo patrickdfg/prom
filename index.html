@@ -53,6 +53,9 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #lines{position:absolute;inset:4.24% 2.38%;display:flex;flex-direction:column}
 .ln{flex:1;display:flex;align-items:center;justify-content:center;white-space:pre;transition:opacity .25s}
 .ln.read{opacity:.4}
+#lines.edit{outline:3px dashed #4f8cff;outline-offset:-3px;cursor:text;caret-color:#ff0}
+#lines.edit .ln{display:block;flex:none;height:var(--lh);line-height:var(--lh);white-space:pre-wrap;transition:none}
+#lines.edit:focus{outline-color:#ff0}
 .b{color:#0000ff;font-weight:700}.r{color:#ff0000}
 /* 여주교회 형식: 검정 배경·흰 글씨·노란 강조·빨간 쪽번호 */
 #page.dark{background:#000!important;color:#fff}
@@ -101,6 +104,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <label>화면 <select id="theme"><option value="dark" selected>검정화면</option><option value="cloud">구름 배경</option></select></label>
     <label><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label>
     <span id="heard"></span>
+    <button id="edit">편집 (E)</button>
     <button id="fs">전체화면 (F)</button>
     <button id="back">다른 원고</button>
   </div>
@@ -444,6 +448,10 @@ function render(){
   const pg=P[page]||[];
   const dim=$('dim').checked;
   let html='';
+  if(editing){
+    for(let i=0;i<Math.max(LINES,pg.length);i++)html+=`<div class="ln">${(pg[i]||[]).map(r=>r.c==='k'?esc(r.t):`<span class="${r.c}">${esc(r.t)}</span>`).join('')}</div>`;
+    $('lines').innerHTML=html; $('pg').textContent=`${page+1} / ${P.length}`; return;
+  }
   for(let i=0;i<LINES;i++){
     const runs=pg[i]||[];
     const rg=lineRange[page]&&lineRange[page][i];
@@ -464,7 +472,8 @@ function fit(){
   let w=W,h=W/ratio; if(h>H){h=H;w=H*ratio}
   const el=$('page'); el.style.width=w+'px'; el.style.height=h+'px';
   // 32pt 글자 / 118mm 높이 비율을 그대로 유지
-  el.style.fontSize=(h*11.29/118*5/LINES)+'px';   // 줄 수가 늘면 글자가 그만큼 작아진다
+  el.style.fontSize=(h*11.29/118*5/LINES)+'px';
+  $('lines').style.setProperty('--lh',(h*(1-2*0.0424)/LINES)+'px');   // 편집할 때 한 줄 높이   // 줄 수가 늘면 글자가 그만큼 작아진다
 }
 // 글꼴에 없어서 네모(□)로 그려지는 글자를 캔버스로 직접 알아내 지운다. 없는 글자(기준)와 똑같이 그려지면 네모다
 const tofuCache={};
@@ -673,10 +682,106 @@ function startWith(pages,bg){
   }
   open(reflow(pages,n),bg);
 }
+/* ---------- 화면에서 바로 고치기 ---------- */
+// Enter=줄 나누기, Backspace=지우기·줄 합치기(쪽 맨 앞이면 앞 쪽과 합침), Ctrl+Enter=그 자리부터 다음 쪽, Esc=편집 끝
+let editing=false;
+const hasText=ls=>ls.some(l=>l.some(r=>r.t.trim()));
+function readLines(trim=true){
+  const out=[];
+  for(const d of $('lines').children){
+    const runs=[];
+    const walk=(n,c)=>{
+      if(n.nodeType===3){
+        const t=n.nodeValue.replace(/[ ​]/g,' ').replace(/\n/g,'');
+        if(t){const l=runs[runs.length-1]; if(l&&l.c===c)l.t+=t; else runs.push({t,c})}
+      }else if(n.nodeType===1&&n.tagName!=='BR'){
+        const m=(n.className||'').match(/(^|\s)(b|r|n)(\s|$)/);
+        n.childNodes.forEach(x=>walk(x,m?m[2]:c));
+      }
+    };
+    d.childNodes.forEach(x=>walk(x,'k'));
+    if(runs.length){runs[0].t=runs[0].t.replace(/^\s+/,''); const l=runs[runs.length-1]; l.t=l.t.replace(/\s+$/,'')}   // 줄 앞뒤 공백은 지움
+    out.push(runs.filter(r=>r.t));
+  }
+  if(trim)while(out.length&&!out[out.length-1].length)out.pop();      // 뒤쪽 빈 줄은 화면에 차이가 없으니 뺀다
+  return out;
+}
+function caretLine(){
+  const sel=getSelection(); if(!sel.rangeCount)return -1;
+  let n=sel.anchorNode; while(n&&n.parentNode!==$('lines'))n=n.parentNode;
+  return n?[...$('lines').children].indexOf(n):-1;
+}
+function focusLine(i,atEnd){
+  const el=$('lines').children[i]; if(!el)return;
+  $('lines').focus();
+  const r=document.createRange(); r.selectNodeContents(el); r.collapse(!atEnd);
+  const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r);
+}
+// 지금 화면의 줄을 P 에 반영한다. LINES 줄을 넘는 줄은 다음 쪽으로 넘기고, 넘긴 쪽 수를 돌려준다
+function commitEdit(){
+  const ls=readLines(); let added=0;
+  if(!hasText(ls)&&P.length>1){P.splice(page,1);page=Math.min(page,P.length-1);return -1}
+  const parts=[ls.slice(0,LINES)]; for(let i=LINES;i<ls.length;i+=LINES)parts.push(ls.slice(i,i+LINES));
+  P.splice(page,1,...parts); added=parts.length-1;
+  return added;
+}
+function beginEdit(){
+  if(editing)return;
+  if(listening)stopMic();
+  editing=true; $('lines').classList.add('edit'); $('lines').contentEditable='true'; $('lines').spellcheck=false;
+  $('edit').textContent='편집 끝내기 (Esc)';
+  render(); focusLine(0);
+  toast('편집 중 · Enter 줄 나누기 · Backspace 지우기/합치기 · Ctrl+Enter 다음 쪽으로 · Esc 끝내기',7000);
+}
+function endEdit(){
+  if(!editing)return;
+  commitEdit(); editing=false;
+  $('lines').classList.remove('edit'); $('lines').contentEditable='false'; $('lines').blur();
+  $('edit').textContent='편집 (E)';
+  index(); page=Math.min(page,P.length-1); cursor=pStart[page]||0; render();
+}
+$('edit').onclick=()=>editing?endEdit():beginEdit();
+$('lines').addEventListener('paste',e=>{     // 붙여 넣기는 글자만, 줄바꿈은 줄 나누기로
+  if(!editing)return; e.preventDefault();
+  const t=cleanText((e.clipboardData.getData('text/plain')||'').replace(/\r\n?/g,'\n'),true);
+  t.split('\n').forEach((part,i)=>{ if(i)document.execCommand('insertParagraph'); if(part)document.execCommand('insertText',false,part) });
+});
+function editKey(e){      // 편집 중 키. true 를 돌려주면 여기서 처리 끝
+  if(e.isComposing||e.keyCode===229)return true;
+  if(e.key==='Escape'){e.preventDefault();endEdit();return true}
+  if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){
+    e.preventDefault();
+    document.execCommand('insertParagraph');            // 그 자리에서 줄을 나눈 뒤 아래쪽 줄을 다음 쪽으로
+    const ci=caretLine(), ls=readLines(false);
+    if(ci<=0)return true;
+    const a=ls.slice(0,ci), b=ls.slice(ci);
+    while(a.length>1&&!a[a.length-1].length)a.pop();      // 줄 맨 앞에서 나눈 경우 생긴 빈 줄은 뺀다
+    while(b.length&&!b[b.length-1].length)b.pop();
+    if(!hasText(b))return true;
+    P.splice(page,1,a,b); page++; render(); focusLine(0); return true;
+  }
+  if(e.key==='Backspace'&&page>0){
+    const sel=getSelection();
+    if(sel.rangeCount&&sel.isCollapsed&&caretLine()===0){
+      const first=$('lines').children[0], r=document.createRange();
+      r.selectNodeContents(first); r.setEnd(sel.anchorNode,sel.anchorOffset);
+      if(!r.toString().replace(/[ ​]/g,'')){        // 쪽 맨 앞 → 앞 쪽 뒤에 이어 붙인다
+        e.preventDefault();
+        let prev=P[page-1].slice(); while(prev.length&&!prev[prev.length-1].some(x=>x.t.trim()))prev.pop();
+        const m=prev.concat(readLines()), n=prev.length;
+        P.splice(page-1,2,...(m.length>LINES?[m.slice(0,LINES),m.slice(LINES)]:[m]));
+        page--; render(); focusLine(Math.min(n,Math.max(0,m.length-1))); return true;
+      }
+    }
+  }
+  return false;
+}
 function go(p,manual){
+  if(editing){const b=page,d=commitEdit(); if(p>b)p+=d}
   p=Math.max(0,Math.min(P.length-1,p));
   if(manual){ cursor=pStart[p]; heardCarry=''; sessionText=''; lastTail=''; }
   page=p; render();
+  if(editing)focusLine(0);
 }
 
 /* ---------- 음성 인식 ---------- */
@@ -710,6 +815,7 @@ async function holdMic(){
 }
 function releaseMic(){if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null}}
 async function startMic(){
+  if(editing){toast('편집을 끝낸 뒤(Esc) 마이크를 켜세요.',4000);return}
   if(!SR){toast('이 브라우저는 음성인식을 지원하지 않습니다. 크롬으로 열어 주세요.',6000);return}
   await holdMic();
   rec=new SR(); rec.lang='ko-KR'; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
@@ -893,16 +999,18 @@ try{const t=localStorage.getItem('prompterTheme');if(t)$('theme').value=t}catch(
 try{const n=localStorage.getItem('prompterLines');const r=n&&document.querySelector('input[name=lines][value="'+n+'"]');if(r)r.checked=true}catch(_){}
 $('theme').onchange=applyTheme;
 $('fs').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
-$('back').onclick=()=>{stopMic();$('view').style.display='none';$('setup').style.display='block'};
+$('back').onclick=()=>{endEdit();stopMic();$('view').style.display='none';$('setup').style.display='block'};
 addEventListener('resize',fit);
 addEventListener('keydown',e=>{
   if($('view').style.display!=='block'||e.target.tagName==='SELECT')return;
+  if(editing){editKey(e);showBar();return}
   const k=e.key;
   if(['ArrowRight','ArrowDown','PageDown',' '].includes(k)){e.preventDefault();go(page+1,true)}
   else if(['ArrowLeft','ArrowUp','PageUp'].includes(k)){e.preventDefault();go(page-1,true)}
   else if(k==='Home')go(0,true);
   else if(k==='m'||k==='M'||k==='ㅡ')$('mic').click();
   else if(k==='f'||k==='F'||k==='ㄹ')$('fs').click();
+  else if(k==='e'||k==='E'||k==='ㄷ'){e.preventDefault();beginEdit()}
   else if(k==='d'||k==='D'||k==='ㅇ'){      // 진단: 이 쪽에 있는 한글·영문·숫자 밖의 글자 코드를 보여 준다
     const set={}; for(const ln of P[page]||[])for(const r of ln)for(const ch of r.t){const c=ch.codePointAt(0); if(!(c>=0xAC00&&c<=0xD7A3)&&!(c>=0x20&&c<=0x7E))set[c]=ch}
     toast('이 쪽 특수 글자 '+(Object.keys(set).map(c=>set[c]+' U+'+(+c).toString(16).toUpperCase()).join(', ')||'없음'),8000);
