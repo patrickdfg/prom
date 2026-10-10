@@ -929,9 +929,11 @@ function onHeard(text){
   if(target>page) go(target); else render();
 }
 // 마이크를 한 번 열어 두면 크롬이 허용을 이어 가므로, 음성인식이 저절로 다시 시작될 때마다 허용창이 뜨는 일을 줄인다
+// 안드로이드는 마이크를 붙잡아 두면 음성인식과 부딪칠 수 있어 붙잡지 않고, 음성인식이 기본 마이크를 혼자 쓰게 한다
+const ANDROID=/Android/i.test(navigator.userAgent);
 let micStream=null;
 async function holdMic(){
-  if(micStream||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return;
+  if(ANDROID||micStream||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return;
   try{micStream=await navigator.mediaDevices.getUserMedia({audio:micId?{deviceId:{exact:micId}}:true})}
   catch(_){
     if(micId){toast('고른 마이크를 열지 못해 기본 마이크로 듣습니다.',5000); try{micStream=await navigator.mediaDevices.getUserMedia({audio:true})}catch(__){}}
@@ -939,7 +941,7 @@ async function holdMic(){
 }
 // 고른 마이크가 있으면 그 트랙을 음성인식에 넘긴다. 크롬이 트랙 지정을 지원하지 않으면 기본 마이크로 듣는다
 function startRec(){
-  const tr=micId&&micStream?micStream.getAudioTracks()[0]:null;
+  const tr=!ANDROID&&micId&&micStream?micStream.getAudioTracks()[0]:null;
   if(tr&&tr.readyState==='live'){try{rec.start(tr);return}catch(_){}}
   rec.start();
 }
@@ -1039,6 +1041,7 @@ async function startMeter(){
 }
 function closePanel(){$('setpanel').classList.remove('open'); stopMeter()}
 $('set').onclick=()=>{
+  if(ANDROID&&listening&&!panelOpen()){toast('폰에서는 마이크를 켠 동안 설정 창을 열 수 없습니다. 마이크를 끄고 열어 주세요.',5000);return}
   if(panelOpen()){closePanel()} else {$('setpanel').classList.add('open'); placePanel(); listMics().then(startMeter)}
   showBar();
 };
