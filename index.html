@@ -96,7 +96,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 <body>
 <div id="setup">
   <h1>음성 설교 프롬프터</h1>
-  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-11 14:40</div>
+  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-11 18:55</div>
   <p>프롬프터 파일(.hwp, .hwpx)이나 대본(.txt), html 원고(.html), 이 프로그램에서 저장한 파일(.json)을 불러오세요. 파일을 고른 뒤 한 화면 줄 수(5·6·7줄)를 정하고 시작을 누르면, 그 줄 수에 맞게 글자 크기가 정해집니다. 설교를 시작하면 읽는 소리를 듣고 쪽을 자동으로 넘깁니다. 크롬에서 열어야 합니다.</p>
   <div id="drop">
     <b>파일을 여기로 끌어 놓거나</b>
@@ -242,11 +242,12 @@ function parseTxt(text){
   if(cur.some(r=>r.length))pages.push(...chunk5(fitLines(cur)));
   return pages;
 }
-// 색 → 표시 종류. 프롬프터 파일은 빨강=쪽번호, 일반 원고는 빨강도 강조로 보고 주황(연출 메모)은 뺀다
-function classify(hex,manuscript){
+// 색 → 표시 종류. 프롬프터 파일은 빨강=쪽번호, 일반 원고는 빨강도 강조로 본다
+// 주황은 원고마다 쓰임이 달라, 괄호로 통째로 감싼 것(예: "(양손)", "( 잠언 2줄은 … 자막 )")만 연출 메모로 빼고 나머지는 읽는 글자(강조)로 둔다
+function classify(hex,manuscript,text){
   hex=(hex||'000000').toUpperCase();
   if(hex==='000000'||hex==='FFFFFF')return 'k';
-  if(manuscript&&hex==='FF6600')return null;
+  if(manuscript&&hex==='FF6600'&&/^\s*[(（][^]*[)）]\s*$/.test(text||''))return null;
   if(hex==='FF0000')return manuscript?'b':'r';
   return 'b';
 }
@@ -254,7 +255,7 @@ function classify(hex,manuscript){
 function paraLines(p,manuscript){
   const lines=[[]];
   for(const r of p.runs){
-    const c=classify(r.hex,manuscript); if(!c)continue;
+    const c=classify(r.hex,manuscript,r.t); if(!c)continue;
     cleanText(r.t).split('\n').forEach((part,i)=>{
       if(i>0)lines.push([]);
       if(part)lines[lines.length-1].push({t:part,c});
@@ -593,12 +594,12 @@ const chosenLines=()=>{const r=document.querySelector('input[name=lines]:checked
 const pw=s=>{let w=0;for(const ch of s)w+=/[가-힣ᄀ-ᇿ㄰-㆏一-鿿　-〿！-｠￠-￦]/.test(ch)?1:0.5;return w};
 const MAXW=17.5, TARGET=12.5;
 const R_SENT=/[.?!][”’)\]」』"']*$/, R_CLAUSE=/[,;:]$/;
-// 문단 하나를 (색 구간, 원고 쪽 바뀜 위치)로 바꾼다. 주황 연출 메모와 ◎ ◯ 는 뺀다
+// 문단 하나를 (색 구간, 원고 쪽 바뀜 위치)로 바꾼다. 괄호로 감싼 주황 연출 메모와 ◎ ◯ 는 뺀다
 function paraSegs(p){
   const segs=[], mpos=[], marks=p.marks||[]; let mi=0, raw=0, total=0;
   const cl=(s,q)=>cleanText(s,q).replace(/[◎◯]/g,'');
   for(const r of p.runs){
-    const c=classify(r.hex,true), end=raw+r.t.length;
+    const c=classify(r.hex,true,r.t), end=raw+r.t.length;
     while(mi<marks.length&&marks[mi].off<=end){
       const inside=Math.max(0,marks[mi].off-raw);
       mpos.push({pos:total+(c?cl(r.t.slice(0,inside),true).length:0),page:marks[mi].page}); mi++;
