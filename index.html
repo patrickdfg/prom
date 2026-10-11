@@ -96,7 +96,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 <body>
 <div id="setup">
   <h1>음성 설교 프롬프터</h1>
-  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-11 14:25</div>
+  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-11 14:40</div>
   <p>프롬프터 파일(.hwp, .hwpx)이나 대본(.txt), html 원고(.html), 이 프로그램에서 저장한 파일(.json)을 불러오세요. 파일을 고른 뒤 한 화면 줄 수(5·6·7줄)를 정하고 시작을 누르면, 그 줄 수에 맞게 글자 크기가 정해집니다. 설교를 시작하면 읽는 소리를 듣고 쪽을 자동으로 넘깁니다. 크롬에서 열어야 합니다.</p>
   <div id="drop">
     <b>파일을 여기로 끌어 놓거나</b>
@@ -468,6 +468,29 @@ function index(){
 function pageOf(pos){
   for(let i=0;i<P.length;i++) if(pos<pEnd[i]) return i;
   return P.length-1;
+}
+// 들은 말 끝부분 S가 원고에서 끝나는 곳을 세 구역에서 따로 찾는다
+// back: 이미 읽은 곳(지금 위치 40자 이전 ~ 300자 이전), near: 지금 위치 -40 ~ +45, far: +45 ~ +350
+let pend=null;
+function locate3(S,cursor){
+  const NEAR=45, from=Math.max(0,cursor-300), to=Math.min(norm.length,cursor+350);
+  const T=norm.slice(from,to), m=S.length, n=T.length, out={back:null,near:null,far:null};
+  if(!n)return out;
+  let prev=new Array(n+1).fill(0), cur=new Array(n+1);
+  for(let i=1;i<=m;i++){
+    cur[0]=i;
+    for(let j=1;j<=n;j++) cur[j]=Math.min(prev[j-1]+(S[i-1]===T[j-1]?0:1), prev[j]+1, cur[j-1]+1);
+    [prev,cur]=[cur,prev];
+  }
+  for(let j=1;j<=n;j++){
+    const pos=from+j, d=prev[j];
+    let k, sc;
+    if(pos<cursor-40){k='back'; sc=d+(cursor-pos)*0.001}
+    else if(pos<=cursor+NEAR){k='near'; sc=d+(pos>=cursor?(pos-cursor)*0.006:(cursor-pos)*0.03)}
+    else{k='far'; sc=d+(pos-cursor)*0.002}
+    if(!out[k]||sc<out[k].sc)out[k]={pos,d,sc};
+  }
+  return out;
 }
 // 들은 말 끝부분 S가 원고 window 안 어디서 끝나는지 근사 검색(편집거리)
 function locate(S, cursor){
@@ -894,7 +917,7 @@ function editKey(e){      // 편집 중 키. true 를 돌려주면 여기서 처
 function go(p,manual){
   if(editing){const b=page,d=commitEdit(); if(p>b)p+=d}
   p=Math.max(0,Math.min(P.length-1,p));
-  if(manual){ cursor=pStart[p]; heardCarry=''; sessionText=''; lastTail=''; }
+  if(manual){ cursor=pStart[p]; heardCarry=''; sessionText=''; lastTail=''; pend=null; }
   page=p; render();
   if(editing)focusLine(0);
 }
@@ -916,13 +939,25 @@ function onHeard(text){
   if(S.length<5){cap(base+' · 너무 짧아 기다림');return}
   if(S===lastTail)return;
   lastTail=S;
-  const hit=locate(S,cursor);
-  if(!hit){cap(base+' · 원고에서 못 찾음');return}
-  const far=pageOf(hit.pos)>page+1;
-  const limit=far?2:Math.floor(S.length*0.3);
-  if(hit.d>limit){cap(base+' · 비슷한 곳이 멀어 건너뜀');return}
-  if(hit.pos<cursor && hit.d>1){cap(base+' · 앞쪽이라 건너뜀');return}          // 뒤로 가는 건 아주 확실할 때만
+  // 가까운 곳(지금 위치 앞뒤)을 먼저 본다. 이미 읽은 곳을 다시 읽으면(강조·다 같이 읽기) 그대로 두고,
+  // 멀리 앞쪽과 맞으면 바로 넘기지 않고 이어서 더 읽어 같은 흐름이 확인될 때만 넘긴다 (부연 설명 중 우연히 맞는 것 막기)
+  const h=locate3(S,cursor), lim=Math.floor(S.length*0.3);
+  let to;
+  if(h.near&&h.near.d<=lim){
+    if(h.near.pos<cursor&&h.near.d>1){cap(base+' · 앞쪽이라 그대로');return}
+    to=h.near.pos; pend=null;
+  }else if(h.back&&h.back.d<=2&&(!h.far||h.back.d<=h.far.d)){
+    pend=null; cap(base+' · 이미 읽은 곳을 다시 읽는 중 · 그대로'); return;
+  }else if(h.far&&h.far.d<=2&&S.length>=12){
+    const now=Date.now();
+    if(pend&&now-pend.t<15000&&h.far.pos>=pend.pos+24&&h.far.pos<=pend.pos+80){to=h.far.pos; pend=null}      // 같은 흐름으로 24자 넘게 이어 읽어야 넘긴다
+    else{
+      if(!pend||now-pend.t>=15000||h.far.pos<pend.pos||h.far.pos>pend.pos+80)pend={pos:h.far.pos,t:now};
+      cap(base+' · 먼 앞쪽과 맞음 · 이어 읽으면 넘어감'); return;
+    }
+  }else{cap(base+' · 원고와 안 맞음');return}
   cap(base+' ✓ 원고 위치 찾음');
+  const hit={pos:to};
   cursor=hit.pos;
   let target=pageOf(cursor);
   const lead=+$('lead').value;
