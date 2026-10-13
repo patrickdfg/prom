@@ -110,7 +110,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 <body>
 <div id="setup">
   <h1>음성 설교 프롬프터</h1>
-  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-13 17:50 · <a href="read.html" style="color:var(--accent)">원고 읽어주기로 가기</a></div>
+  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-13 18:10 · <a href="read.html" style="color:var(--accent)">원고 읽어주기로 가기</a></div>
   <p>프롬프터 파일(.hwp, .hwpx)이나 대본(.txt), html 원고(.html), 이 프로그램에서 저장한 파일(.json)을 불러오세요. 파일을 고른 뒤 한 화면 줄 수(5·6·7줄)를 정하고 시작을 누르면, 그 줄 수에 맞게 글자 크기가 정해집니다. 설교를 시작하면 읽는 소리를 듣고 쪽을 자동으로 넘깁니다. 크롬에서 열어야 합니다.</p>
   <div id="drop">
     <b>파일을 여기로 끌어 놓거나</b>
@@ -121,13 +121,15 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <label><input type="radio" name="lines" value="5" checked> 5줄</label>
     <label><input type="radio" name="lines" value="6"> 6줄</label>
     <label><input type="radio" name="lines" value="7"> 7줄</label>
+    <label><input type="radio" name="lines" value="m"> 모바일</label>
     <span id="optnote">줄 수가 많을수록 글자가 작아집니다.</span></div>
   <div class="row"><button class="btn" id="start" disabled>시작</button><span id="fname"></span></div>
   <textarea id="paste" placeholder="또는 대본 글을 붙여 넣으세요. 쪽 구분은 --- 한 줄입니다. 구분이 없으면 고른 줄 수대로 나눕니다."></textarea>
   <div class="row" style="align-items:center"><b>한 화면 줄 수</b>
     <label><input type="radio" name="lines2" value="5" checked> 5줄</label>
     <label><input type="radio" name="lines2" value="6"> 6줄</label>
-    <label><input type="radio" name="lines2" value="7"> 7줄</label></div>
+    <label><input type="radio" name="lines2" value="7"> 7줄</label>
+    <label><input type="radio" name="lines2" value="m"> 모바일</label></div>
   <div class="row"><button class="btn ghost" id="usePaste">붙여 넣은 글로 시작</button></div>
   <button class="btn" id="demo">설교 프롬프터 테스트</button>
   <details id="obsHelp"><summary>방송 장비(캡처보드·마이크)와 함께 쓸 때 설정법</summary>
@@ -567,9 +569,10 @@ function render(){
 function fit(){
   const W=innerWidth,H=innerHeight,ratio=210/118, L=$('lines'), el=$('page');
   // 세로 화면(폰): 화면 전체를 쓰고, 한 줄 폭 17.5자가 화면 폭에 들어가게 글자 크기를 정한 뒤 줄 묶음을 세로 가운데에 둔다
-  if(H>W*1.05){
+  if(MOBILE||H>W*1.05){
     el.style.width=W+'px'; el.style.height=H+'px';
-    const fs=W*0.94/17.5, pitch=fs*1.9, pad=Math.max(8,(H-pitch*LINES)/2);
+    let fs=W*0.94/MAXW, pitch=fs*(MOBILE?1.55:1.9); if(pitch*LINES>H*0.94){pitch=H*0.94/LINES; fs=pitch/1.55}
+    const pad=Math.max(8,(H-pitch*LINES)/2);
     el.style.fontSize=fs+'px';
     L.classList.remove('g6','g7'); L.style.top=L.style.bottom=pad+'px'; L.style.left=L.style.right='3%';
     L.style.setProperty('--lh',pitch+'px');
@@ -620,11 +623,14 @@ function scrubTofu(){
   window.__tofu=bad;
 }
 let LINES=5, pending=null;
-const chosenLines=()=>{const r=document.querySelector('input[name=lines]:checked');return r?+r.value:5};
+const chosenMode=()=>{const r=document.querySelector('input[name=lines]:checked');return r?r.value:'5'};
+const chosenLines=()=>{const m=chosenMode();return m==='m'?MOBILE_LINES:+m};
 /* ---------- 프롬프터 규칙으로 쪽 나누기 ---------- */
 // 폭: 한글·한자·전각은 1, 그 밖(영문·숫자·따옴표·부호)은 0.5. 한 줄은 17.5 이하, 줄 길이는 12.5 안팎으로 맞춘다
 const pw=s=>{let w=0;for(const ch of s)w+=/[가-힣ᄀ-ᇿ㄰-㆏一-鿿　-〿！-｠￠-￦]/.test(ch)?1:0.5;return w};
-const MAXW=17.5, TARGET=12.5;
+// 한 줄 폭. 모바일(폰 세로 전용)은 한 줄을 짧게(10.5) 하고 한 쪽에 10줄을 넣어 길게 만든다
+let MAXW=17.5, TARGET=12.5, MOBILE=false; const MOBILE_LINES=10;
+function setMode(m){MOBILE=!!m; MAXW=m?10.5:17.5; TARGET=m?7.5:12.5}
 const R_SENT=/[.?!][”’)\]」』"']*$/, R_CLAUSE=/[,;:]$/;
 // 문단 하나를 (색 구간, 원고 쪽 바뀜 위치)로 바꾼다. 괄호로 감싼 주황 연출 메모와 ◎ ◯ 는 뺀다
 function paraSegs(p){
@@ -695,7 +701,7 @@ function wrapUnit(u){
   const groups=[];
   for(const sw of sents){
     const m=sw.length, total=sw.reduce((a,w)=>a+w.w,0)+0.5*(m-1);
-    if(total<=MAXW&&!(total>15&&sw.some((w,i)=>i<m-1&&/,$/.test(w.end)&&sw.slice(0,i+1).reduce((a,x)=>a+x.w,0)+0.5*i>=5&&total-sw.slice(0,i+1).reduce((a,x)=>a+x.w,0)-0.5*(i+1)>=5))){groups.push(sw);continue}
+    if(total<=MAXW&&!(total>MAXW-2.5&&sw.some((w,i)=>i<m-1&&/,$/.test(w.end)&&sw.slice(0,i+1).reduce((a,x)=>a+x.w,0)+0.5*i>=5&&total-sw.slice(0,i+1).reduce((a,x)=>a+x.w,0)-0.5*(i+1)>=5))){groups.push(sw);continue}
     const f=Array(m+1).fill(1e9), pr=Array(m+1).fill(0); f[0]=0;
     for(let j=1;j<=m;j++){ let wd=0;
       for(let i=j-1;i>=0;i--){
@@ -780,13 +786,32 @@ function reflow(pages,n){
   }
   return paginateLines(L,n);
 }
+// 프롬프터 대본(쪽)을 모바일용으로 다시 접으려고 덩어리별 문단으로 되돌린다. 빨간 쪽번호와 >> 는 뺀다
+function pagesToMs(pages){
+  const ms=[]; let cur=[];
+  const flush=()=>{ if(cur.length){ms.push({runs:cur,pb:false}); ms.push({runs:[],pb:false}); cur=[]} };
+  for(const pg of pages){
+    const firstBlank=pg.length>0&&!lineText(pg[0]).trim(), lastTxt=pg.length?lineText(pg[pg.length-1]).trim():'';
+    for(const ln of pg){
+      const rs=ln.filter(x=>x.c!=='r'&&x.c!=='n').map(x=>({t:x.t,hex:x.c==='b'?'FFFF00':'000000'}));
+      if(rs.length)rs[rs.length-1].t=rs[rs.length-1].t.replace(/\s*>>\s*$/,'');
+      if(!rs.map(x=>x.t).join('').trim())continue;
+      if(cur.length)cur.push({t:' ',hex:'000000'});
+      cur.push(...rs);
+    }
+    if(!/>>$/.test(lastTxt)&&(lastTxt===''||firstBlank))flush();
+  }
+  flush(); return ms;
+}
 function startWith(pages,bg){
-  const n=chosenLines(); try{localStorage.setItem('prompterLines',String(n))}catch(_){}
+  const mode=chosenMode(); try{localStorage.setItem('prompterLines',mode)}catch(_){}
+  setMode(mode==='m'); const n=chosenLines();
   LINES=n;
-  if(pages.lines){open(paginateLines(pages.lines,n),bg);return}          // 덩어리 정보가 있는 프롬프터 대본
+  if(MOBILE&&!pages.ms){const out=buildPrompter(pagesToMs(pages),n); if(out.length){open(out,bg);return}}
+  if(pages.lines&&!MOBILE){open(paginateLines(pages.lines,n),bg);return}          // 덩어리 정보가 있는 프롬프터 대본
   if(pages.ms){
     const out=buildPrompter(pages.ms,n);
-    if(out.length){open(out,bg);toast('프롬프터 규칙으로 '+n+'줄 '+P.length+'쪽을 만들었습니다.',6000);return}
+    if(out.length){open(out,bg);toast('프롬프터 규칙으로 '+(MOBILE?'모바일 ':'')+n+'줄 '+P.length+'쪽을 만들었습니다.',6000);return}
   }
   open(reflow(pages,n),bg);
 }
@@ -885,7 +910,7 @@ function snapshotPages(){
 async function savePages(){
   if(!P.length)return;
   const q=snapshotPages();
-  const body='{"app":"sermon-prompter","v":1,"lines":'+LINES+',"pages":[\n'+q.map(p=>JSON.stringify(p)).join(',\n')+'\n]}\n';
+  const body='{"app":"sermon-prompter","v":1,"lines":'+LINES+(MOBILE?',"mobile":true':'')+',"pages":[\n'+q.map(p=>JSON.stringify(p)).join(',\n')+'\n]}\n';
   const name=baseName+'_프롬프터.json', blob=new Blob([body],{type:'application/json'});
   if(window.showSaveFilePicker){      // 크롬: 내 컴퓨터에서 저장할 폴더·이름을 고른다
     try{
@@ -903,9 +928,9 @@ function parseSaved(text){
   if(!o||o.app!=='sermon-prompter'||!Array.isArray(o.pages))throw new Error('이 프로그램에서 저장한 파일이 아닙니다.');
   const pages=o.pages.map(p=>(Array.isArray(p)?p:[]).map(l=>(Array.isArray(l)?l:[]).filter(r=>r&&typeof r.t==='string')
     .map(r=>({t:cleanText(r.t,true),c:['k','b','r','n'].includes(r.c)?r.c:'k'})).filter(r=>r.t)));
-  const lines=Math.min(12,Math.max(5,+o.lines||5,...pages.map(p=>p.length)));
+  const lines=Math.min(12,Math.max(5,+o.lines||5,...pages.map(p=>p.length)));      // 모바일은 10줄
   if(!pages.some(hasText))throw new Error('읽을 내용이 없습니다.');
-  return {pages,lines};
+  return {pages,lines,mobile:!!o.mobile};
 }
 $('save').onclick=savePages;
 $('openf').onclick=()=>{
@@ -1317,13 +1342,13 @@ async function loadFile(f){
       // 이 프로그램에서 저장한 파일은 다시 변환하지 않고 그대로 연다
       const s=parseSaved(await f.text());
       if(listening)stopMic(); if(editing)endEdit();
-      LINES=s.lines; open(s.pages); dirty=false; $('loadmsg').textContent='';
+      setMode(s.mobile); LINES=s.lines; open(s.pages); dirty=false; $('loadmsg').textContent='';
       toast('저장한 파일을 열었습니다 · '+P.length+'쪽 · '+LINES+'줄',5000); return;
     }else if(/\.html?$/i.test(f.name)){
       // html 은 이미 쪽이 나뉘어 있으니 줄 수 선택 없이 그대로 바로 연다
       r=await parseHtml(await f.arrayBuffer());
       if(!r.pages.some(p=>p.some(l=>l.some(x=>x.t.trim()))))throw new Error('읽을 내용이 없습니다.');
-      LINES=Math.max(5,...r.pages.map(p=>p.length)); open(r.pages,r.bg);
+      setMode(false); LINES=Math.max(5,...r.pages.map(p=>p.length)); open(r.pages,r.bg);
       $('loadmsg').textContent=''; const rr=remReport(); if(rr)toast(rr,10000); return;
     }
     else if(/\.txt$/i.test(f.name)) r={pages:parseTxt(await f.text()),bg:null};
