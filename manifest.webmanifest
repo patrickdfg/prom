@@ -1,7 +1,8 @@
 {
+ "id": "./?app=sermon-prompter-2",
  "name": "음성 설교 프롬프터",
  "short_name": "설교프롬프터",
- "start_url": "./",
+ "start_url": "./index.html",
  "scope": "./",
  "display": "standalone",
  "background_color": "#000000",
@@ -11,12 +12,14 @@
   {
    "src": "icon-192.png",
    "sizes": "192x192",
-   "type": "image/png"
+   "type": "image/png",
+   "purpose": "any"
   },
   {
    "src": "icon-512.png",
    "sizes": "512x512",
-   "type": "image/png"
+   "type": "image/png",
+   "purpose": "any"
   }
  ]
 }
