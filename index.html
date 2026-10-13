@@ -74,6 +74,14 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #bar.hide{opacity:0;pointer-events:none}
 #bar select,#bar button{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
 #mic.on{background:var(--ok);color:#000;border-color:var(--ok)}
+#fontPanel{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);width:min(420px,calc(100vw - 24px));background:rgba(27,32,39,.98);border:1px solid var(--line);border-radius:16px;padding:16px;display:none;z-index:40;color:var(--text);text-align:center}
+#fontPanel.open{display:block}
+#fontPanel .ctl{display:flex;gap:12px;justify-content:center;align-items:center}
+#fontPanel .ctl button{min-width:84px;padding:14px 10px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:22px;font-weight:700}
+#fontPanel #fVal{min-width:6em;font-size:15px;color:var(--muted)}
+#fontPanel .note{font-size:13px;color:var(--muted);margin:12px 0 4px}
+#fontPanel .foot{margin-top:10px}
+#fontPanel .foot button{border-radius:10px;padding:10px 24px;border:0;background:#ffd54a;color:#111;font-weight:700}
 #ttsPanel{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);width:min(560px,calc(100vw - 24px));background:rgba(27,32,39,.98);border:1px solid var(--line);border-radius:16px;padding:16px;display:none;z-index:40;box-shadow:0 10px 40px rgba(0,0,0,.5);color:var(--text)}
 #ttsPanel.open{display:block}
 #ttsPanel .ctl{display:flex;gap:8px;justify-content:center;margin-bottom:14px}
@@ -110,7 +118,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 <body>
 <div id="setup">
   <h1>음성 설교 프롬프터</h1>
-  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-13 18:10 · <a href="read.html" style="color:var(--accent)">원고 읽어주기로 가기</a></div>
+  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-13 18:30 · <a href="read.html" style="color:var(--accent)">원고 읽어주기로 가기</a></div>
   <p>프롬프터 파일(.hwp, .hwpx)이나 대본(.txt), html 원고(.html), 이 프로그램에서 저장한 파일(.json)을 불러오세요. 파일을 고른 뒤 한 화면 줄 수(5·6·7줄)를 정하고 시작을 누르면, 그 줄 수에 맞게 글자 크기가 정해집니다. 설교를 시작하면 읽는 소리를 듣고 쪽을 자동으로 넘깁니다. 크롬에서 열어야 합니다.</p>
   <div id="drop">
     <b>파일을 여기로 끌어 놓거나</b>
@@ -154,6 +162,11 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
   <div id="stage"><div id="page"><div id="lines"></div></div></div>
   <div id="toast"></div>
   <div id="cap"></div>
+  <div id="fontPanel">
+    <div class="ctl"><button id="fSmall" title="글자 작게">가-</button><span id="fVal"></span><button id="fBig" title="글자 크게">가+</button></div>
+    <div class="note">글자를 키우면 한 줄을 짧게 다시 나눕니다. 보던 곳은 그대로 둡니다.</div>
+    <div class="foot"><button id="fClose">닫기</button></div>
+  </div>
   <div id="ttsPanel">
     <div class="ctl"><button id="tPrev" title="이전 쪽">⏮</button><button id="tPP">⏸</button><button id="tNextB" title="다음 쪽">⏭</button></div>
     <label><span>속도</span><input type="range" id="tRate" min="0.5" max="2" step="0.05" value="1"><span class="val" id="tRateV">1.0배</span></label>
@@ -629,8 +642,12 @@ const chosenLines=()=>{const m=chosenMode();return m==='m'?MOBILE_LINES:+m};
 // 폭: 한글·한자·전각은 1, 그 밖(영문·숫자·따옴표·부호)은 0.5. 한 줄은 17.5 이하, 줄 길이는 12.5 안팎으로 맞춘다
 const pw=s=>{let w=0;for(const ch of s)w+=/[가-힣ᄀ-ᇿ㄰-㆏一-鿿　-〿！-｠￠-￦]/.test(ch)?1:0.5;return w};
 // 한 줄 폭. 모바일(폰 세로 전용)은 한 줄을 짧게(10.5) 하고 한 쪽에 10줄을 넣어 길게 만든다
-let MAXW=17.5, TARGET=12.5, MOBILE=false; const MOBILE_LINES=10;
-function setMode(m){MOBILE=!!m; MAXW=m?10.5:17.5; TARGET=m?7.5:12.5}
+// 모바일의 한 줄 글자 수는 글자 크기 창에서 고른다(글자가 클수록 한 줄이 짧다). 한 쪽 줄 수는 화면 높이에 맞춘다
+const CPL=[7,8,9,10.5,12,14]; let cplIdx=3;
+try{const v=+localStorage.getItem('mobileCpl'); if(CPL.includes(v))cplIdx=CPL.indexOf(v)}catch(_){}
+let MAXW=17.5, TARGET=12.5, MOBILE=false, MOBILE_LINES=10;
+function setMode(m){MOBILE=!!m; MAXW=m?CPL[cplIdx]:17.5; TARGET=MAXW*12.5/17.5; if(m)MOBILE_LINES=mobileLines()}
+function mobileLines(){const W=innerWidth,H=innerHeight,fs=W*0.94/MAXW; return Math.max(4,Math.min(16,Math.floor(H*0.92/(fs*1.55))))}
 const R_SENT=/[.?!][”’)\]」』"']*$/, R_CLAUSE=/[,;:]$/;
 // 문단 하나를 (색 구간, 원고 쪽 바뀜 위치)로 바꾼다. 괄호로 감싼 주황 연출 메모와 ◎ ◯ 는 뺀다
 function paraSegs(p){
@@ -755,7 +772,8 @@ function paginateLines(L,K,mix=3.0){
     const j=nxt[i], body=L.slice(i,j).map(l=>l.runs), k=j-i, sf=K-k, last=j===N, f=info[j-1];
     const boundary=!last&&L[j-1].blk!==L[j].blk;
     let pg;
-    if(last||boundary) pg=sf===0?body:[[]].concat(body,Array.from({length:sf-1},()=>[]));
+    if(MOBILE) pg=body.map(r=>r.slice());          // 폰 화면용은 >> 와 빈 줄 채움 없이 글만 둔다
+    else if(last||boundary) pg=sf===0?body:[[]].concat(body,Array.from({length:sf-1},()=>[]));
     else if(f.sent) pg=sf===0?body:Array.from({length:sf-1},()=>[]).concat(body,[gtRun()]);
     else if(k===K){ pg=body.map(r=>r.slice()); pg[k-1].push({t:' >>',c:'k'}) }
     else pg=Array.from({length:sf-1},()=>[]).concat(body,[gtRun()]);
@@ -803,7 +821,9 @@ function pagesToMs(pages){
   }
   flush(); return ms;
 }
+let lastSrc=null;
 function startWith(pages,bg){
+  lastSrc={pages,bg};
   const mode=chosenMode(); try{localStorage.setItem('prompterLines',mode)}catch(_){}
   setMode(mode==='m'); const n=chosenLines();
   LINES=n;
@@ -910,7 +930,7 @@ function snapshotPages(){
 async function savePages(){
   if(!P.length)return;
   const q=snapshotPages();
-  const body='{"app":"sermon-prompter","v":1,"lines":'+LINES+(MOBILE?',"mobile":true':'')+',"pages":[\n'+q.map(p=>JSON.stringify(p)).join(',\n')+'\n]}\n';
+  const body='{"app":"sermon-prompter","v":1,"lines":'+LINES+(MOBILE?',"mobile":'+MAXW:'')+',"pages":[\n'+q.map(p=>JSON.stringify(p)).join(',\n')+'\n]}\n';
   const name=baseName+'_프롬프터.json', blob=new Blob([body],{type:'application/json'});
   if(window.showSaveFilePicker){      // 크롬: 내 컴퓨터에서 저장할 폴더·이름을 고른다
     try{
@@ -928,9 +948,9 @@ function parseSaved(text){
   if(!o||o.app!=='sermon-prompter'||!Array.isArray(o.pages))throw new Error('이 프로그램에서 저장한 파일이 아닙니다.');
   const pages=o.pages.map(p=>(Array.isArray(p)?p:[]).map(l=>(Array.isArray(l)?l:[]).filter(r=>r&&typeof r.t==='string')
     .map(r=>({t:cleanText(r.t,true),c:['k','b','r','n'].includes(r.c)?r.c:'k'})).filter(r=>r.t)));
-  const lines=Math.min(12,Math.max(5,+o.lines||5,...pages.map(p=>p.length)));      // 모바일은 10줄
+  const lines=Math.min(16,Math.max(o.mobile?4:5,+o.lines||5,...pages.map(p=>p.length)));      // 모바일은 화면 높이에 따라 4~16줄
   if(!pages.some(hasText))throw new Error('읽을 내용이 없습니다.');
-  return {pages,lines,mobile:!!o.mobile};
+  return {pages,lines,mobile:o.mobile||false};
 }
 $('save').onclick=savePages;
 $('openf').onclick=()=>{
@@ -1227,7 +1247,30 @@ $('tRate').oninput=e=>{TS.rate=+e.target.value;tShow();tSave()}; $('tRate').onch
 $('tPitch').oninput=e=>{TS.pitch=+e.target.value;tShow();tSave()}; $('tPitch').onchange=tRestartCur;
 $('tVoice').onchange=e=>{TS.voice=e.target.value;tSave();tRestartCur()};
 // 읽어주는 중에는 화면을 누르면 조절 창을 열고 닫는다
-$('stage').addEventListener('click',()=>{ if(ttsOn&&!editing)$('ttsPanel').classList.toggle('open') });
+$('stage').addEventListener('click',()=>{
+  if(editing)return;
+  if(ttsOn){$('ttsPanel').classList.toggle('open');return}
+  if(MOBILE){$('fontPanel').classList.toggle('open'); fShow()}       // 폰 화면: 누르면 글자 크기 창
+});
+/* ---------- 모바일 글자 크기 ---------- */
+function fShow(){$('fVal').textContent='한 줄 '+CPL[cplIdx]+'자'; $('fSmall').disabled=cplIdx>=CPL.length-1; $('fBig').disabled=cplIdx<=0}
+function mobileRebuild(){
+  if(!lastSrc)return;
+  const at=pStart[page]||0;                 // 보던 쪽 첫 글자 위치를 기억했다가 같은 곳을 다시 띄운다
+  setMode(true); LINES=MOBILE_LINES;
+  const src=lastSrc.pages, out=src.ms?buildPrompter(src.ms,LINES):buildPrompter(pagesToMs(src),LINES);
+  if(!out.length)return;
+  P=out; index(); page=Math.min(pageOf(at),P.length-1); cursor=pStart[page]||0; fit(); render();
+  try{localStorage.setItem('mobileCpl',String(CPL[cplIdx]))}catch(_){}
+  toast('한 줄 '+CPL[cplIdx]+'자 · 한 쪽 '+LINES+'줄 · '+P.length+'쪽',2500);
+}
+function fStep(d){
+  const ni=cplIdx+d; if(ni<0||ni>=CPL.length)return;
+  if(dirty&&!confirm('화면에서 고친 내용은 다시 나누면 없어집니다. 계속할까요?'))return;
+  cplIdx=ni; dirty=false; mobileRebuild(); fShow();
+}
+$('fBig').onclick=()=>fStep(-1); $('fSmall').onclick=()=>fStep(1);
+$('fClose').onclick=()=>$('fontPanel').classList.remove('open');
 
 /* ---------- 시작·조작 ---------- */
 function open(pages,bg){
@@ -1342,7 +1385,7 @@ async function loadFile(f){
       // 이 프로그램에서 저장한 파일은 다시 변환하지 않고 그대로 연다
       const s=parseSaved(await f.text());
       if(listening)stopMic(); if(editing)endEdit();
-      setMode(s.mobile); LINES=s.lines; open(s.pages); dirty=false; $('loadmsg').textContent='';
+      if(s.mobile&&CPL.includes(+s.mobile))cplIdx=CPL.indexOf(+s.mobile); setMode(s.mobile); LINES=s.lines; open(s.pages); lastSrc={pages:P.map(p=>p.slice())}; dirty=false; $('loadmsg').textContent='';
       toast('저장한 파일을 열었습니다 · '+P.length+'쪽 · '+LINES+'줄',5000); return;
     }else if(/\.html?$/i.test(f.name)){
       // html 은 이미 쪽이 나뉘어 있으니 줄 수 선택 없이 그대로 바로 연다
@@ -1412,11 +1455,12 @@ try{const t=localStorage.getItem('prompterTheme');if(t)$('theme').value=t}catch(
 try{const n=localStorage.getItem('prompterLines');['lines','lines2'].forEach(nm=>{const r=n&&document.querySelector('input[name='+nm+'][value="'+n+'"]');if(r)r.checked=true})}catch(_){}
 $('theme').onchange=applyTheme;
 $('fs').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
-$('back').onclick=()=>{endEdit();stopMic();closePanel();tStop();$('view').style.display='none';$('setup').style.display='block'};
+$('back').onclick=()=>{endEdit();stopMic();closePanel();tStop();$('fontPanel').classList.remove('open');$('view').style.display='none';$('setup').style.display='block'};
 addEventListener('resize',()=>{fit(); if(panelOpen())placePanel()});
 addEventListener('keydown',e=>{
   if(e.key==='Escape'&&panelOpen()){closePanel(); showBar(); return}
   if(e.key==='Escape'&&$('ttsPanel').classList.contains('open')){$('ttsPanel').classList.remove('open'); return}
+  if(e.key==='Escape'&&$('fontPanel').classList.contains('open')){$('fontPanel').classList.remove('open'); return}
   if($('view').style.display!=='block'||e.target.tagName==='SELECT')return;
   if(editing){editKey(e);showBar();return}
   const k=e.key;
