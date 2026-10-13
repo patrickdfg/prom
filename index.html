@@ -56,6 +56,9 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #page{position:relative;background:#fff center/cover no-repeat;overflow:hidden;
   font-family:'PFont','Malgun Gothic',sans-serif;color:#000;text-align:center}
 #page.fallback{font-weight:700}
+/* 모바일(폰 세로 전용)은 굵게 하지 않는다. 강조는 노란색으로만 구분 */
+#page.mobile{font-family:'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif;font-weight:400}
+#page.mobile .b,#page.mobile *{font-weight:400}
 #lines{position:absolute;inset:4.24% 2.38%;display:flex;flex-direction:column}
 /* 줄 간격: 6줄은 90%, 7줄은 80%로 줄이고 가운데에 모은다 (글자 크기는 그대로) */
 #lines.g6{inset:8.82% 2.38%}
@@ -118,7 +121,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 <body>
 <div id="setup">
   <h1>음성 설교 프롬프터</h1>
-  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-13 19:15 · <a href="read.html" style="color:var(--accent)">원고 읽어주기로 가기</a></div>
+  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-13 19:45 · <a href="read.html" style="color:var(--accent)">원고 읽어주기로 가기</a></div>
   <p>프롬프터 파일(.hwp, .hwpx)이나 대본(.txt), html 원고(.html), 이 프로그램에서 저장한 파일(.json)을 불러오세요.</p>
   <div id="drop">
     <b>파일을 여기로 끌어 놓거나</b>
@@ -582,6 +585,7 @@ function render(){
 }
 function fit(){
   const W=innerWidth,H=innerHeight,ratio=210/118, L=$('lines'), el=$('page');
+  el.classList.toggle('mobile',MOBILE);
   // 세로 화면(폰): 화면 전체를 쓰고, 한 줄 폭 17.5자가 화면 폭에 들어가게 글자 크기를 정한 뒤 줄 묶음을 세로 가운데에 둔다
   if(MOBILE||H>W*1.05){
     el.style.width=W+'px'; el.style.height=H+'px';
