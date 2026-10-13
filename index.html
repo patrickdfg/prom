@@ -110,7 +110,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 <body>
 <div id="setup">
   <h1>음성 설교 프롬프터</h1>
-  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-13 17:35</div>
+  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-13 17:50 · <a href="read.html" style="color:var(--accent)">원고 읽어주기로 가기</a></div>
   <p>프롬프터 파일(.hwp, .hwpx)이나 대본(.txt), html 원고(.html), 이 프로그램에서 저장한 파일(.json)을 불러오세요. 파일을 고른 뒤 한 화면 줄 수(5·6·7줄)를 정하고 시작을 누르면, 그 줄 수에 맞게 글자 크기가 정해집니다. 설교를 시작하면 읽는 소리를 듣고 쪽을 자동으로 넘깁니다. 크롬에서 열어야 합니다.</p>
   <div id="drop">
     <b>파일을 여기로 끌어 놓거나</b>
@@ -565,13 +565,23 @@ function render(){
   $('pg').textContent=`${page+1} / ${P.length}`;
 }
 function fit(){
-  const W=innerWidth,H=innerHeight,ratio=210/118;
+  const W=innerWidth,H=innerHeight,ratio=210/118, L=$('lines'), el=$('page');
+  // 세로 화면(폰): 화면 전체를 쓰고, 한 줄 폭 17.5자가 화면 폭에 들어가게 글자 크기를 정한 뒤 줄 묶음을 세로 가운데에 둔다
+  if(H>W*1.05){
+    el.style.width=W+'px'; el.style.height=H+'px';
+    const fs=W*0.94/17.5, pitch=fs*1.9, pad=Math.max(8,(H-pitch*LINES)/2);
+    el.style.fontSize=fs+'px';
+    L.classList.remove('g6','g7'); L.style.top=L.style.bottom=pad+'px'; L.style.left=L.style.right='3%';
+    L.style.setProperty('--lh',pitch+'px');
+    return;
+  }
+  L.style.top=L.style.bottom=L.style.left=L.style.right='';
   let w=W,h=W/ratio; if(h>H){h=H;w=H*ratio}
-  const el=$('page'); el.style.width=w+'px'; el.style.height=h+'px';
+  el.style.width=w+'px'; el.style.height=h+'px';
   // 32pt 글자 / 118mm 높이 비율을 그대로 유지
   el.style.fontSize=(h*11.29/118*5/LINES)+'px';
-  $('lines').classList.toggle('g6',LINES===6); $('lines').classList.toggle('g7',LINES===7);
-  $('lines').style.setProperty('--lh',(h*(1-2*0.0424)/LINES*(LINES===7?0.8:LINES===6?0.9:1))+'px');   // 편집할 때 한 줄 높이   // 줄 수가 늘면 글자가 그만큼 작아진다
+  L.classList.toggle('g6',LINES===6); L.classList.toggle('g7',LINES===7);
+  L.style.setProperty('--lh',(h*(1-2*0.0424)/LINES*(LINES===7?0.8:LINES===6?0.9:1))+'px');   // 편집할 때 한 줄 높이
 }
 // 글꼴에 없어서 네모(□)로 그려지는 글자를 캔버스로 직접 알아내 지운다. 없는 글자(기준)와 똑같이 그려지면 네모다
 const tofuCache={};
