@@ -96,7 +96,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 <body>
 <div id="setup">
   <h1>음성 설교 프롬프터</h1>
-  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-11 18:55</div>
+  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-13 17:20</div>
   <p>프롬프터 파일(.hwp, .hwpx)이나 대본(.txt), html 원고(.html), 이 프로그램에서 저장한 파일(.json)을 불러오세요. 파일을 고른 뒤 한 화면 줄 수(5·6·7줄)를 정하고 시작을 누르면, 그 줄 수에 맞게 글자 크기가 정해집니다. 설교를 시작하면 읽는 소리를 듣고 쪽을 자동으로 넘깁니다. 크롬에서 열어야 합니다.</p>
   <div id="drop">
     <b>파일을 여기로 끌어 놓거나</b>
@@ -1308,6 +1308,17 @@ addEventListener('mousemove',showBar);
 // 시험용: 콘솔에서 __feed('들은 말')로 음성인식 결과를 흉내 낼 수 있다
 window.__feed=t=>onHeard(t);
 window.__state=()=>({page,cursor,total:P.length});
+// 원고 읽어주기(read)에서 넘어온 원고를 7줄 프롬프터로 바로 연다
+(function fromRead(){
+  if(!/[?&]from=read\b/.test(location.search))return;
+  let d=null; try{d=JSON.parse(localStorage.getItem('readToPrompter')||'null')}catch(_){}
+  try{history.replaceState(null,'',location.pathname)}catch(_){}
+  if(!d||(!d.ms&&!d.pages)){$('loadmsg').textContent='읽어주기에서 넘어온 원고를 찾지 못했습니다.';return}
+  const n=String(d.lines||7); ['lines','lines2'].forEach(nm=>{const r=document.querySelector('input[name='+nm+'][value="'+n+'"]'); if(r)r.checked=true});
+  baseName=(d.name||'원고').replace(/\.[^.]+$/,'');
+  remClear();
+  if(d.ms){const pg=[]; pg.ms=d.ms; startWith(pg)} else startWith(d.pages);
+})();
 if(window.PRELOAD_PAGES)open(window.PRELOAD_PAGES);
 </script>
 </body>
