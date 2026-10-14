@@ -43,6 +43,9 @@ button{font:inherit;cursor:pointer}
 .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
 #speedLayer{position:fixed;top:10px;right:12px;z-index:30;pointer-events:none;display:flex;align-items:baseline;gap:6px;padding:4px 12px;border-radius:10px;background:rgba(0,0,0,.45);color:#cfd8e3;font:600 15px/1.3 system-ui,sans-serif}
 #speedLayer[hidden]{display:none}
+#speedOptWrap{display:inline-flex;align-items:center;gap:5px;font-size:14px;white-space:nowrap;cursor:pointer}
+#speedOptWrap input{width:18px;height:18px;margin:0}
+@media(max-width:600px){#speedOptWrap .wide{display:none}#speedOptWrap{font-size:13px;gap:3px}}
 #speedLayer b{font-size:26px;color:#fff;min-width:2.2em;text-align:right;font-variant-numeric:tabular-nums}
 #speedLayer small{font-size:13px;opacity:.8}
 #demo{position:fixed;right:16px;bottom:16px;z-index:10;box-shadow:0 4px 14px rgba(0,0,0,.35)}
@@ -183,6 +186,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <button id="mic" title="원고만 전체화면으로 표시합니다. Esc 또는 M으로 끝냅니다.">마이크 켜기 (M)</button>
     <button id="prev" aria-label="이전 쪽">◀</button><span id="pg">1 / 1</span><button id="next" aria-label="다음 쪽">▶</button>
     <button id="fs">전체화면 (F)</button>
+    <label id="speedOptWrap" title="마이크를 켰을 때 오른쪽 위에 말하는 속도(현수 목소리=100)를 띄웁니다"><input type="checkbox" id="speedOpt" checked>속도<span class="wide"> 표시</span></label>
     <button id="more" aria-expanded="false" aria-controls="moreTools">더보기</button>
     <span id="autosaveState" role="status">기기에 저장됨</span>
     <div id="moreTools" hidden>
@@ -1308,7 +1312,7 @@ async function startMic(){
   rec=new SR(); rec.lang='ko-KR'; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
   rec.onresult=e=>{
     let t=''; for(let i=0;i<e.results.length;i++) t+=e.results[i][0].transcript;
-    sessionText=t; onHeard(t); speedFeed(t); lastResultAt=Date.now(); capFails=0;
+    sessionText=t; onHeard(t); speedFeed(e.results); lastResultAt=Date.now(); capFails=0;
   };
   rec.onerror=e=>{
     if(e.error==='no-speech'){cap('말소리가 인식되지 않습니다 · 마이크 입력을 확인해 주세요.');return}
@@ -1355,8 +1359,14 @@ function stopMic(){ speedStop(); endWait();
    그 빠르기를 100으로 놓고 보여 준다. 120이면 현수보다 20% 빠르다. */
 const HYUNSU_CPS=4.7, SP_WIN=20000;
 let spTotal=0, spLast=0, spHist=[], spHeardAt=0, spTimer=null;
-function speedFeed(t){
-  const L=normStr(t).length;
+// 폰 크롬은 앞 결과를 다음 결과에 또 담아 보낸다('안녕', '안녕하세요'). 앞 것을 이어 받은 결과는 덧붙이지 않고 바꿔 끼운다
+function speedText(res){
+  let out='', prev='';
+  for(let i=0;i<res.length;i++){const s=normStr(res[i][0].transcript); if(prev&&s.startsWith(prev))out=out.slice(0,out.length-prev.length)+s; else out+=s; prev=s}
+  return out;
+}
+function speedFeed(res){
+  const L=speedText(res).length;
   if(L>spLast){spTotal+=L-spLast; spHeardAt=Date.now()}
   spLast=Math.max(spLast,L);
 }
@@ -1367,7 +1377,10 @@ function speedTick(){
   if(!spHeardAt||now-spHeardAt>8000||span<4||spTotal===c0){v.textContent='—';return}
   v.textContent=Math.round((spTotal-c0)/span/HYUNSU_CPS*100);
 }
-function speedStart(){speedStop(); spTotal=0; spLast=0; spHist=[]; spHeardAt=0; $('speedVal').textContent='—'; $('speedLayer').hidden=false; spTimer=setInterval(speedTick,1000)}
+let showSpeed=true; try{showSpeed=localStorage.getItem('prompterShowSpeed')!=='0'}catch(_){}
+$('speedOpt').checked=showSpeed;
+$('speedOpt').onchange=()=>{showSpeed=$('speedOpt').checked; try{localStorage.setItem('prompterShowSpeed',showSpeed?'1':'0')}catch(_){} if(spTimer)$('speedLayer').hidden=!showSpeed};
+function speedStart(){speedStop(); spTotal=0; spLast=0; spHist=[]; spHeardAt=0; $('speedVal').textContent='—'; $('speedLayer').hidden=!showSpeed; spTimer=setInterval(speedTick,1000)}
 function speedStop(){clearInterval(spTimer); spTimer=null; $('speedLayer').hidden=true}
 let wake=null;
 async function keepAwake(){try{if('wakeLock' in navigator&&!wake){wake=await navigator.wakeLock.request('screen');wake.addEventListener('release',()=>wake=null)}}catch(_){}}
