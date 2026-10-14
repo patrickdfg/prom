@@ -18,7 +18,7 @@ Object.defineProperty(navigator,'mediaDevices',{value:{
 }});
 </script>'''
 CHECK = r'''<div style="position:fixed;right:8px;top:90px;z-index:9999;background:#234;color:white;padding:12px;max-width:450px">
-<button id="previewClean">원고 전용 화면 미리보기</button><button id="runVoiceRegression">음성 추적 회귀 시험 실행</button><pre id="testReport" style="white-space:pre-wrap"></pre></div>
+<button onclick="this.parentElement.hidden=true">시험 패널 닫기</button><button id="previewClean">원고 전용 화면 미리보기</button><button id="runVoiceRegression">음성 추적 회귀 시험 실행</button><pre id="testReport" style="white-space:pre-wrap"></pre></div>
 <script>
 document.getElementById('previewClean').onclick=()=>{document.getElementById('previewClean').parentElement.style.display='none';document.getElementById('demo').click();startMic();};
 document.getElementById('runVoiceRegression').onclick=async()=>{
@@ -27,17 +27,22 @@ document.getElementById('runVoiceRegression').onclick=async()=>{
  try{
   document.querySelector('input[name=lines][value="5"]').checked=true;
   document.getElementById('demo').click();
-  const newUI=!!document.getElementById('pageNote');
+  const newUI=!!document.getElementById('theme-dark');
   if(newUI){
    ok('불필요한 기능 삭제',['check','timerToggle','timerReset','targetMinutes','pickLine','sessionClock','noteDialog'].every(id=>!document.getElementById(id)));
    ok('화면 선택 상단 배치',document.getElementById('statusbar').contains(document.getElementById('theme')));
    document.getElementById('note').click();
-   const memo=document.getElementById('pageNote');memo.textContent='잠시 멈추고 회중 보기';memo.dispatchEvent(new Event('input'));
+   const memo=document.querySelector('.line-note.edit');memo.textContent='잠시 멈추고 회중 보기';memo.dispatchEvent(new Event('input',{bubbles:true}));
    ok('메모 직접 편집',memo.isContentEditable&&!document.querySelector('dialog[open]'));
    document.getElementById('note').click();
-   ok('메모 빨간색 표시',getComputedStyle(memo).color==='rgb(255, 52, 52)');
+   await Promise.resolve();ok('메모 빨간색 표시',getComputedStyle(document.querySelector('.line-note')).color==='rgb(255, 52, 52)');
+   document.querySelectorAll('.note-insert')[1].click();const second=document.querySelector('.line-note.edit');second.textContent='두 번째 줄에서 강조';second.dispatchEvent(new Event('input',{bubbles:true}));PromUI.finishNote();await Promise.resolve();
+   ok('모든 줄에 메모 버튼',document.querySelectorAll('.note-insert').length===LINES);
+   ok('각 줄 앞에 메모 저장',document.querySelectorAll('.line-note').length===2&&document.querySelectorAll('#lines>.ln')[1].querySelector('.line-note').textContent==='두 번째 줄에서 강조');
+   const roundTrip=JSON.parse(JSON.stringify(PromUI.metadata()));PromUI.applyMetadata(roundTrip);render();await Promise.resolve();ok('줄별 메모 저장 파일 복구',document.querySelectorAll('.line-note').length===2);
+   document.getElementById('theme-cloud').click();ok('하늘 구름 배경 선택',!document.getElementById('page').classList.contains('dark'));document.getElementById('theme-dark').click();ok('검정 배경 선택',document.getElementById('page').classList.contains('dark'));
    ok('메모 읽어주기 제외',!pageSay(page).includes('잠시 멈추고'));
-   ok('메모 저장',Object.values(PromUI.metadata().notes).includes('잠시 멈추고 회중 보기'));
+   ok('메모 저장',Object.values(PromUI.metadata().lineNotes).flat().includes('잠시 멈추고 회중 보기'));
    go(1,true);go(0,true);await Promise.resolve();
    ok('페이지 이동 후 맨 위부터 시작',cursor===pStart[page]);
   }
@@ -51,7 +56,7 @@ document.getElementById('runVoiceRegression').onclick=async()=>{
   ok('마이크 시작',listening);
   if(newUI){
    const hidden=id=>getComputedStyle(document.getElementById(id)).display==='none';
-   ok('마이크 중 원고 외 화면 숨김',['statusbar','bar','pageNote','voiceFeedback','toast'].every(hidden));
+   ok('마이크 중 원고 외 화면 숨김',['statusbar','bar','voiceFeedback','toast'].every(hidden)&&!document.querySelector('.line-note,.note-insert'));
    ok('마이크 중 원고가 전체 공간 사용',Math.abs(document.getElementById('stage').getBoundingClientRect().height-innerHeight)<1);
    document.dispatchEvent(new MouseEvent('mousemove',{bubbles:true}));
    ok('화면 가운데에서는 조작부 안 보임',hidden('bar'));
