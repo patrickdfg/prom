@@ -70,7 +70,7 @@
   const noteLayer=document.createElement('div');noteLayer.id='noteLayer';$('stage').append(noteLayer);
   const noteTools=document.createElement('div');noteTools.id='noteTools';noteTools.hidden=true;
   noteTools.setAttribute('role','toolbar');noteTools.setAttribute('aria-label','발표 메모 편집');
-  noteTools.innerHTML='<span>메모 글자</span><button type="button" id="noteSmaller" aria-label="메모 글자 줄이기">−</button><input id="noteSize" type="number" min="12" max="96" step="1" value="24" aria-label="메모 글자 크기"><span>px</span><button type="button" id="noteLarger" aria-label="메모 글자 키우기">＋</button><button type="button" id="noteDelete">삭제</button><button type="button" id="noteDone">완료</button>';
+  noteTools.innerHTML='<span>메모 글자</span><button type="button" id="noteSmaller" aria-label="메모 글자 줄이기">−</button><input id="noteSize" type="number" min="12" max="96" step="1" value="90" aria-label="메모 글자 크기"><span>px</span><button type="button" id="noteLarger" aria-label="메모 글자 키우기">＋</button><button type="button" id="noteDelete">삭제</button><button type="button" id="noteDone">완료</button>';
   $('view').append(noteTools);
   const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
   function storeNote() {
@@ -113,7 +113,7 @@
   $('note').onclick=()=>{
     finishNote();if(editing)endEdit();if(listening)stopMic();if(ttsOn)tStop();
     const key=noteKey(P[page]),items=notes[key]||(notes[key]=[]);
-    const offset=(items.length%6)*0.04,n={text:'',x:0.08+offset,y:0.12+offset,size:lastNoteSize??(innerWidth<600?20:28)};items.push(n);
+    const offset=(items.length%6)*0.04,n={text:'',x:0.08+offset,y:0.12+offset,size:lastNoteSize??90};items.push(n);
     menu.hidden=true;$('more').setAttribute('aria-expanded','false');selectNote(n);
   };
   noteLayer.addEventListener('click',e=>{e.stopPropagation();const object=e.target.closest('.note-object');if(object&&!object.classList.contains('selected'))selectNote(notes[noteKey(P[page])][+object.dataset.note]);});
@@ -140,7 +140,7 @@
   });
   function resizeNote(value){
     if(!activeNote)return;
-    activeNote.size=clamp(Number(value)||24,12,96);lastNoteSize=activeNote.size;
+    activeNote.size=clamp(Number(value)||90,12,96);lastNoteSize=activeNote.size;
     try{localStorage.setItem(NOTE_SIZE_STORAGE,String(lastNoteSize));}catch(_){}
     $('noteSize').value=activeNote.size;placeObject(noteBox.parentElement,activeNote);dirty=true;scheduleSave();
   }
