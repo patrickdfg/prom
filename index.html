@@ -117,13 +117,13 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
-<link rel="stylesheet" href="workspace.css?v=20261014-2">
+<link rel="stylesheet" href="workspace.css?v=20261014-3">
 </head>
 <body>
 <div id="setup">
   <header class="brandrow"><span class="brandmark">SERMON PROMPTER</span><a href="read.html">원고 읽어주기 ↗</a></header>
-  <h1>읽는 흐름에 맞춰,<br>원고가 따라옵니다.</h1>
-  <p class="intro">음성 설교 프롬프터 · 원고를 불러오고 편하게 말씀하세요.</p>
+  <h1>프롬프터 제작부터<br>자동 넘김·읽어주기까지</h1>
+  <p class="intro">원고를 프롬프터로 만들고, 말하는 흐름에 맞춰 넘기거나 음성으로 들어보세요.</p>
   <div id="resumeCard" hidden><div><b id="resumeTitle"></b><p id="resumeInfo"></p></div><button class="btn" id="resume">이어서 시작</button></div>
   <section class="setup-card" aria-label="설교 준비">
     <div class="input-tabs" role="tablist" aria-label="원고 가져오기">
@@ -171,10 +171,9 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 </div>
 
 <div id="view">
-  <div id="statusbar"><div class="mic-state"><span id="dot"></span><span id="micStatus" role="status">마이크 꺼짐</span></div><span id="sessionTitle"></span><span id="sessionClock">00:00 / 30분</span></div>
-  <div id="speakerNote" hidden></div>
+  <div id="statusbar"><div class="mic-state"><span id="dot"></span><span id="micStatus" role="status">마이크 꺼짐</span></div><span id="sessionTitle"></span><label>화면 <select id="theme"><option value="dark" selected>검정화면</option><option value="cloud">구름 배경</option></select></label></div>
   <div id="voiceFeedback" hidden></div>
-  <div id="stage"><div id="page"><div id="lines"></div></div></div>
+  <div id="stage"><div id="page"><div id="lines"></div><div id="pageNote" role="textbox" aria-label="발표 메모" aria-multiline="true" contenteditable="false" data-placeholder="여기에 발표 메모를 입력하세요 · Esc로 끝내기" hidden></div></div></div>
   <div id="toast"></div>
   <div id="cap"></div>
   <div id="fontPanel">
@@ -196,34 +195,23 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <div id="micnote">음성인식은 크롬 기본 마이크로 듣습니다. 말할 때 막대가 움직이면 소리가 들어오는 것입니다. 마이크를 바꾸려면 위 버튼으로 주소를 복사해 새 탭 주소창에 붙여 넣고 Enter, 마이크를 고른 뒤 이 화면을 새로고침하세요. (크롬은 웹 페이지에서 설정 화면을 바로 열지 못하게 막습니다.)</div>
   </div>
   <div id="bar">
-    <button id="mic">마이크 켜기 (M)</button>
+    <button id="mic" title="원고만 전체화면으로 표시합니다. Esc 또는 M으로 끝냅니다.">마이크 켜기 (M)</button>
     <button id="prev" aria-label="이전 쪽">◀</button><span id="pg">1 / 1</span><button id="next" aria-label="다음 쪽">▶</button>
     <button id="fs">전체화면 (F)</button>
     <button id="more" aria-expanded="false" aria-controls="moreTools">더보기</button>
     <span id="autosaveState" role="status">기기에 저장됨</span>
     <div id="moreTools" hidden>
-      <button id="find">검색 · 쪽 목록</button><button id="pickLine">여기부터 읽기</button><button id="note">발표 메모</button><button id="check">설교 전 점검</button>
+      <button id="find">검색 · 쪽 목록</button><button id="note">발표 메모</button>
       <button id="set">마이크 설정</button><button id="tts">읽어주기</button>
       <label>넘김 <select id="lead"><option value="6">빠르게</option><option value="3" selected>보통</option><option value="1">늦게</option></select></label>
-      <label>화면 <select id="theme"><option value="dark" selected>검정화면</option><option value="cloud">구름 배경</option></select></label>
       <label>강조 <select id="focusColor"><option value="#ffff00">노랑</option><option value="#b6f36a">연두</option></select></label>
       <label><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label>
-      <label>목표 <input type="number" id="targetMinutes" min="1" max="240" value="30" aria-label="목표 설교 시간 (분)">분</label>
-      <button id="timerToggle">시간 시작</button><button id="timerReset">시간 초기화</button>
       <button id="edit">편집 (E)</button><button id="save">저장</button><button id="openf">열기</button><button id="audience">별도 원고 화면 ↗</button><button id="back">다른 원고</button>
-      <span id="heard"></span><span id="linePickHint" hidden>다시 읽을 줄을 누르세요 · Esc 취소</span>
+      <span id="heard"></span>
     </div>
   </div>
   <dialog id="searchDialog" class="tool-dialog" aria-labelledby="searchTitle"><div class="dialog-head"><h2 id="searchTitle">검색 · 쪽 목록</h2><button data-close="searchDialog" aria-label="검색 닫기">닫기</button></div>
     <label class="sr-only" for="searchQuery">원고에서 찾을 말</label><input type="search" id="searchQuery" placeholder="성구나 문장을 입력하세요"><p id="searchCount" role="status"></p><div id="searchResults"></div>
-  </dialog>
-  <dialog id="noteDialog" class="tool-dialog" aria-labelledby="noteTitle"><div class="dialog-head"><h2 id="noteTitle">이 쪽의 발표 메모</h2><button data-close="noteDialog">닫기</button></div>
-    <p>잠시 멈춤 · 강조 · 회중 보기처럼 적어 두세요. 조작 화면에만 표시되며 읽어주기와 별도 원고 화면에는 포함되지 않습니다. 이 쪽의 본문을 바꾸면 메모를 다시 확인하세요.</p>
-    <label for="noteText">메모 (지우고 저장하면 삭제됩니다)</label><textarea id="noteText" maxlength="2000" placeholder="예: 잠시 멈추고 회중 보기"></textarea><div class="dialog-actions"><button id="saveNote" class="primary">메모 저장</button></div>
-  </dialog>
-  <dialog id="checkDialog" class="tool-dialog" aria-labelledby="checkTitle"><div class="dialog-head"><h2 id="checkTitle">설교 전, 잠깐 확인하세요</h2><button data-close="checkDialog">닫기</button></div>
-    <p id="checkSummary"></p><p id="checkSupport"></p><p>① 마이크 확인을 눌러 말할 때 소리 막대가 움직이는지 보세요.<br>② 전체화면에서 글자가 편하게 읽히는지 보세요.<br>③ 마이크 켜기와 시간 시작을 누르면 준비 완료입니다.</p>
-    <div class="dialog-actions"><button id="checkMic" class="primary">마이크 확인</button><button id="checkFull">전체화면 확인</button></div>
   </dialog>
 </div>
 
@@ -1122,6 +1110,7 @@ function commitEdit(){
   return out.length-old;
 }
 function beginEdit(){
+  notifyUI('beforeBodyEdit');
   if(editing)return;
   if(listening)stopMic();
   editing=true; $('lines').classList.add('edit'); $('lines').contentEditable='true'; $('lines').spellcheck=false;
@@ -1134,7 +1123,7 @@ function endEdit(){
   commitEdit(); editing=false;
   $('lines').classList.remove('edit'); $('lines').contentEditable='false'; $('lines').blur();
   $('edit').textContent='편집 (E)';
-  index(); page=Math.min(page,P.length-1); cursor=pStart[page]||0; render();
+  index(); page=Math.min(page,P.length-1); cursor=pStart[page]||0; notifyUI('afterBodyEdit');render();
 }
 $('edit').onclick=()=>editing?endEdit():beginEdit();
 $('lines').addEventListener('input',()=>{if(editing)dirty=true});
@@ -1215,6 +1204,7 @@ function editKey(e){      // 편집 중 키. true 를 돌려주면 여기서 처
   return false;
 }
 function go(p,manual){
+  notifyUI('finishNote');
   if(editing){const b=page,d=commitEdit(); if(p>b)p+=d}
   p=Math.max(0,Math.min(P.length-1,p));
   if(manual){ cursor=pStart[p]; heardCarry=''; sessionText=''; lastTail=''; pend=null; }
@@ -1225,7 +1215,7 @@ function go(p,manual){
 
 /* ---------- 음성 인식 ---------- */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-let rec=null, listening=false, heardCarry='', sessionText='', lastTail='';
+let rec=null, listening=false, heardCarry='', sessionText='', lastTail='', micFullscreen=false;
 function toast(msg,ms=3000){const t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',ms)}
 function setDot(cls){$('dot').className=cls||''; notifyUI('mic',cls)}
 // 화면 왼쪽 위에 지금 어디까지 되고 있는지 보여 준다 (소리가 들어오는지, 글자로 바뀌는지, 원고에서 찾았는지)
@@ -1290,7 +1280,10 @@ async function startMic(){
   if(ttsOn)tStop();
   if(editing){toast('편집을 끝낸 뒤(Esc) 마이크를 켜세요.',4000);return}
   if(!SR){toast('이 브라우저는 음성인식을 지원하지 않습니다. 크롬으로 열어 주세요.',6000);return}
-  closePanel(); stopMeter();
+  notifyUI('finishNote');closePanel(); stopMeter();
+  if(!document.fullscreenElement&&document.documentElement.requestFullscreen){
+    document.documentElement.requestFullscreen().then(()=>{micFullscreen=true}).catch(()=>{});
+  }
   await holdMic();
   rec=new SR(); rec.lang='ko-KR'; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
   rec.onresult=e=>{
@@ -1319,12 +1312,17 @@ async function startMic(){
   rec.onspeechstart=()=>cap('말소리 감지 · 글자로 바꾸는 중');
   if(ANDROID&&panelOpen())closePanel();      // 소리 막대가 마이크를 같이 잡지 않게
   cursor=pStart[page]||0; heardCarry=''; sessionText=''; lastTail='';     // 켤 때 보고 있는 쪽부터 찾는다
-  listening=true; setDot(''); cap('마이크 여는 중…'); startRec();
+  listening=true; $('view').classList.add('presenting');notifyUI('presentation');
+  $('fontPanel').classList.remove('open');$('ttsPanel').classList.remove('open');
+  document.activeElement?.blur();fit();render();
+  setDot(''); cap('마이크 여는 중…'); startRec();
   $('mic').classList.add('on'); $('mic').textContent='마이크 끄기 (M)';
   keepAwake();
 }
 function stopMic(){
-  listening=false; cap(''); releaseMic(); if(rec)try{rec.stop()}catch(_){}
+  listening=false;$('view').classList.remove('presenting','controls-open');fit();render();showBar();
+  if(micFullscreen){micFullscreen=false;if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});}
+  cap(''); releaseMic(); if(rec)try{rec.stop()}catch(_){}
   $('mic').classList.remove('on'); $('mic').textContent='마이크 켜기 (M)'; setDot('');
 }
 let wake=null;
@@ -1452,13 +1450,13 @@ function tNext(my){
 function tPlay(){
   if(!SYN){toast('이 브라우저는 읽어주기를 지원하지 않습니다. 크롬으로 열어 주세요.',5000);return}
   if(editing)endEdit(); if(listening)stopMic();
-  ttsOn=true; tPlaying=true; $('tPP').textContent='⏸'; $('tts').classList.add('on'); $('tts').textContent='읽기 끝내기';
+  notifyUI('finishNote');ttsOn=true;notifyUI('reading'); tPlaying=true; $('tPP').textContent='⏸'; $('tts').classList.add('on'); $('tts').textContent='읽기 끝내기';
   if(!document.fullscreenElement&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{});
   keepAwake(); tSpeakPage(page);
 }
 function tPause(){tPlaying=false; tTok++; SYN&&SYN.cancel(); $('tPP').textContent='▶'}
 function tStop(){
-  tPause(); ttsOn=false; $('ttsPanel').classList.remove('open');
+  tPause(); ttsOn=false;notifyUI('reading'); $('ttsPanel').classList.remove('open');
   $('tts').classList.remove('on'); $('tts').textContent='읽어주기';
 }
 function tRestartCur(){if(tPlaying)tSpeakPage(page)}
@@ -1473,8 +1471,8 @@ $('tRate').oninput=e=>{TS.rate=+e.target.value;tShow();tSave()}; $('tRate').onch
 $('tPitch').oninput=e=>{TS.pitch=+e.target.value;tShow();tSave()}; $('tPitch').onchange=tRestartCur;
 $('tVoice').onchange=e=>{TS.voice=e.target.value;tSave();tRestartCur()};
 // 읽어주는 중에는 화면을 누르면 조절 창을 열고 닫는다
-$('stage').addEventListener('click',()=>{
-  if(editing)return;
+$('stage').addEventListener('click',e=>{
+  if(editing||listening||e.target.closest('#pageNote'))return;
   if(ttsOn){$('ttsPanel').classList.toggle('open');return}
   if(MOBILE){$('fontPanel').classList.toggle('open'); fShow()}       // 폰 화면: 누르면 글자 크기 창
 });
@@ -1500,6 +1498,7 @@ $('fClose').onclick=()=>$('fontPanel').classList.remove('open');
 
 /* ---------- 시작·조작 ---------- */
 function openPrompter(pages,bg){
+  notifyUI('finishNote');
   P=pages.filter(p=>p.some(l=>l.some(r=>r.t.trim()))).map(p=>p.slice(0,LINES));
   if(!P.length){$('loadmsg').textContent='읽을 내용이 없습니다.';return}
   index(); page=0; cursor=0;
@@ -1689,7 +1688,9 @@ $('theme').onchange=applyTheme;
 $('fs').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();else toast('이 브라우저에서는 메뉴에서 전체화면으로 열어 주세요.')}catch(_){toast('전체화면으로 바꾸지 못했습니다. 다시 눌러 주세요.')}};
 $('back').onclick=()=>{endEdit();stopMic();closePanel();tStop();$('fontPanel').classList.remove('open');$('view').style.display='none';$('setup').style.display='block'};
 addEventListener('resize',()=>{fit(); if(panelOpen())placePanel()});
+addEventListener('fullscreenchange',()=>{if(listening&&micFullscreen&&!document.fullscreenElement)stopMic();});
 addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&listening){e.preventDefault();stopMic();return;}
   if(e.key==='Escape'&&panelOpen()){closePanel(); showBar(); return}
   if(e.key==='Escape'&&$('ttsPanel').classList.contains('open')){$('ttsPanel').classList.remove('open'); return}
   if(e.key==='Escape'&&$('fontPanel').classList.contains('open')){$('fontPanel').classList.remove('open'); return}
@@ -1710,7 +1711,7 @@ addEventListener('keydown',e=>{
   showBar();
 });
 let barT;
-function showBar(){$('bar').classList.remove('hide');clearTimeout(barT);barT=setTimeout(()=>{if(!panelOpen()&&!notifyUI('holdControls'))$('bar').classList.add('hide')},4000)}
+function showBar(){if(listening){$('bar').classList.add('hide');return;}$('bar').classList.remove('hide');clearTimeout(barT);barT=setTimeout(()=>{if(!panelOpen()&&!notifyUI('holdControls'))$('bar').classList.add('hide')},4000)}
 addEventListener('mousemove',showBar);
 // 시험용: 콘솔에서 __feed('들은 말')로 음성인식 결과를 흉내 낼 수 있다
 /* ---------- 바탕화면·홈 화면에 설치 ---------- */
@@ -1742,6 +1743,6 @@ window.__state=()=>({page,cursor,total:P.length});
 })();
 if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 </script>
-<script src="workspace.js?v=20261014-2"></script>
+<script src="workspace.js?v=20261014-3"></script>
 </body>
 </html>

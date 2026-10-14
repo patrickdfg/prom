@@ -18,14 +18,29 @@ Object.defineProperty(navigator,'mediaDevices',{value:{
 }});
 </script>'''
 CHECK = r'''<div style="position:fixed;right:8px;top:90px;z-index:9999;background:#234;color:white;padding:12px;max-width:450px">
-<button id="runVoiceRegression">음성 추적 회귀 시험 실행</button><pre id="testReport" style="white-space:pre-wrap"></pre></div>
+<button id="previewClean">원고 전용 화면 미리보기</button><button id="runVoiceRegression">음성 추적 회귀 시험 실행</button><pre id="testReport" style="white-space:pre-wrap"></pre></div>
 <script>
+document.getElementById('previewClean').onclick=()=>{document.getElementById('previewClean').parentElement.style.display='none';document.getElementById('demo').click();startMic();};
 document.getElementById('runVoiceRegression').onclick=async()=>{
  const report=document.getElementById('testReport');
  const failures=[];const ok=(name,v)=>{report.textContent+=(v?'PASS ':'FAIL ')+name+'\n';if(!v)failures.push(name);};
  try{
   document.querySelector('input[name=lines][value="5"]').checked=true;
   document.getElementById('demo').click();
+  const newUI=!!document.getElementById('pageNote');
+  if(newUI){
+   ok('불필요한 기능 삭제',['check','timerToggle','timerReset','targetMinutes','pickLine','sessionClock','noteDialog'].every(id=>!document.getElementById(id)));
+   ok('화면 선택 상단 배치',document.getElementById('statusbar').contains(document.getElementById('theme')));
+   document.getElementById('note').click();
+   const memo=document.getElementById('pageNote');memo.textContent='잠시 멈추고 회중 보기';memo.dispatchEvent(new Event('input'));
+   ok('메모 직접 편집',memo.isContentEditable&&!document.querySelector('dialog[open]'));
+   document.getElementById('note').click();
+   ok('메모 빨간색 표시',getComputedStyle(memo).color==='rgb(255, 52, 52)');
+   ok('메모 읽어주기 제외',!pageSay(page).includes('잠시 멈추고'));
+   ok('메모 저장',Object.values(PromUI.metadata().notes).includes('잠시 멈추고 회중 보기'));
+   go(1,true);go(0,true);await Promise.resolve();
+   ok('페이지 이동 후 맨 위부터 시작',cursor===pStart[page]);
+  }
   let meterStopped=false;
   if(window.PromUI){
    document.getElementById('setpanel').classList.add('open');
@@ -34,6 +49,18 @@ document.getElementById('runVoiceRegression').onclick=async()=>{
   await startMic();
   if(window.PromUI)ok('점검용 마이크 점유 해제',meterStopped&&!panelOpen()&&meter===null);
   ok('마이크 시작',listening);
+  if(newUI){
+   const hidden=id=>getComputedStyle(document.getElementById(id)).display==='none';
+   ok('마이크 중 원고 외 화면 숨김',['statusbar','bar','pageNote','voiceFeedback','toast'].every(hidden));
+   ok('마이크 중 원고가 전체 공간 사용',Math.abs(document.getElementById('stage').getBoundingClientRect().height-innerHeight)<1);
+   document.dispatchEvent(new MouseEvent('mousemove',{bubbles:true}));
+   ok('화면 가운데에서는 조작부 안 보임',hidden('bar'));
+   document.dispatchEvent(new MouseEvent('mousemove',{bubbles:true,clientY:innerHeight-2}));
+   ok('마우스 하단 이동 시 조작부 표시',!hidden('bar'));
+   document.dispatchEvent(new MouseEvent('mousemove',{bubbles:true,clientY:100}));
+   await new Promise(r=>setTimeout(r,1000));
+   ok('하단에서 벗어나면 다시 숨김',hidden('bar'));
+  }
   let transcript='';
   const fixture=Array.from(P,p=>p.map(l=>l.filter(r=>r.c!=='r'&&r.c!=='n').map(r=>r.t).join('')).join(' '));
   const total=P.length;
@@ -46,7 +73,7 @@ document.getElementById('runVoiceRegression').onclick=async()=>{
   }
   ok('마지막 쪽 도착',page===total-1);
   ok('읽은 줄 표시',!!document.querySelector('.ln.read'));
-  stopMic();ok('마이크 정지',!listening);
+  stopMic();ok('마이크 정지',!listening);if(newUI)ok('정지 후 조작부 복귀',getComputedStyle(document.getElementById('bar')).display!=='none');
   if(window.PromUI){
    const savedMic=PromUI.mic,savedRender=PromUI.render,errors=[];
    const onError=e=>errors.push(e.message);addEventListener('error',onError);
@@ -61,7 +88,7 @@ document.getElementById('runVoiceRegression').onclick=async()=>{
     ok('부가 기능 실패 중에도 음성으로 마지막 쪽 도착',page===total-1);
     ok('음성 이벤트 중단 오류 없음',errors.length===0);
     testRecognition.onerror({error:'no-speech'});
-    ok('인식 안 됨 안내 표시',!document.getElementById('voiceFeedback').hidden);
+    ok('진단 문구가 발표 화면을 덮지 않음',getComputedStyle(document.getElementById('voiceFeedback')).display==='none');
     stopMic();
    }finally{PromUI.mic=savedMic;PromUI.render=savedRender;removeEventListener('error',onError);}
   }

@@ -40,14 +40,12 @@ button:hover{filter:brightness(1.12)}
 #resumeCard p{margin:5px 0 0;font-size:13px}
 #resumeCard button{white-space:nowrap}
 #view{--focus:#ffff00}
-#stage{inset:90px 0 84px}
+#stage{inset:56px 0 84px}
 #page.dark .b{color:var(--focus)}
 .ln.current{position:relative}
 #page.dark .ln.current::before{content:'';position:absolute;left:0;width:4px;height:55%;background:var(--focus);border-radius:4px}
 #statusbar{position:absolute;top:0;left:0;right:0;z-index:6;display:flex;gap:14px;align-items:center;justify-content:space-between;padding:12px 20px;background:linear-gradient(#10151dea,transparent);font-size:12px;color:#b8c7da;pointer-events:none}
 .mic-state{display:flex;align-items:center;gap:8px}
-#sessionClock{font-variant-numeric:tabular-nums;color:#e8ecf1;font-size:15px;font-weight:700}
-#sessionClock.soon{color:#ffd166}#sessionClock.over{color:#ff8b8b}
 #sessionTitle{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:30vw}
 #bar{padding:12px 18px;gap:10px;border-top:1px solid #ffffff16;background:#111823ed;z-index:12;justify-content:center;max-height:50dvh;overflow-y:auto}
 #bar>button{min-height:44px;padding:10px 14px;border-radius:10px}
@@ -58,9 +56,7 @@ button:hover{filter:brightness(1.12)}
 #moreTools{display:flex;flex-wrap:wrap;align-items:center;gap:10px;width:100%;padding-top:12px;border-top:1px solid var(--line)}
 #moreTools button,#moreTools select{min-height:40px}
 #moreTools label{display:flex;align-items:center;gap:6px;font-size:13px}
-#moreTools input[type=number]{width:64px}
 #heard{min-width:100px;max-width:240px}
-#speakerNote{position:absolute;top:38px;left:50%;transform:translateX(-50%);z-index:5;border:1px solid #645931;background:#292514ed;color:#f6dc91;padding:9px 16px;border-radius:10px;font-size:14px;max-width:90vw;max-height:48px;overflow:auto;white-space:pre-wrap}
 #autosaveState{font-size:11px;color:var(--muted)}
 .tool-dialog{background:#161e2a;color:var(--text);border:1px solid #3c4e64;border-radius:20px;padding:24px;width:min(640px,calc(100vw - 24px));max-height:85dvh;overflow:auto;box-shadow:0 30px 100px #0009}
 .tool-dialog::backdrop{background:#000a;backdrop-filter:blur(4px)}
@@ -77,10 +73,20 @@ button:hover{filter:brightness(1.12)}
 .tool-dialog textarea{height:130px;resize:vertical;margin:0}
 .dialog-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
 .tool-dialog .primary{background:#99beff;color:#101c30;border-color:#99beff;font-weight:700}
-#linePickHint{color:#f6dc91;font-size:13px}
-#view.picking .ln{cursor:crosshair}
-#view.picking .ln:hover{background:#ffffff18;outline:1px dashed #89b6ff}
 #setpanel{z-index:30;max-height:70dvh;overflow:auto}
 #toast{z-index:80;top:60px;max-width:90vw;line-height:1.6;pointer-events:none}
-@media(max-width:600px){#setup{padding:24px 16px 40px}.brandrow{margin-bottom:26px}.setup-card{padding:16px;border-radius:18px}#bar{padding:8px;gap:6px}#bar>button{padding:9px;font-size:13px}#bar #mic{flex:1}#bar #pg{min-width:42px}#bar #fs{display:none}#moreTools{gap:8px}#moreTools button{flex:1;white-space:nowrap}#resumeCard{align-items:flex-start;flex-direction:column}#statusbar{padding:10px 12px}#sessionTitle{max-width:23vw}#speakerNote{top:44px;font-size:12px}.tool-dialog{padding:18px}#autosaveState{display:none}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+#statusbar label{display:flex;align-items:center;gap:8px;pointer-events:auto;font-size:14px}
+#statusbar select{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit}
+#pageNote{position:absolute;left:4%;right:4%;bottom:4%;max-height:20%;overflow:auto;color:#ff3434;white-space:pre-wrap;text-align:left;font:clamp(16px,2vw,28px)/1.5 'Malgun Gothic',sans-serif;padding:8px 12px}
+#pageNote.edit{outline:2px dashed #ff5555;background:#7e1d1d22;min-height:3em;caret-color:#ff3434}
+#pageNote.edit:empty::before{content:attr(data-placeholder);opacity:.6;pointer-events:none}
+#page.has-note #lines{bottom:26%!important}
+#view.presenting #stage{inset:0}
+#view.presenting #statusbar,#view.presenting #bar,#view.presenting #voiceFeedback,#view.presenting #toast,#view.presenting #cap,#view.presenting #pageNote,#view.presenting #fontPanel,#view.presenting #ttsPanel,#view.presenting #setpanel{display:none!important}
+#view.presenting .ln.current::before{display:none!important}
+#view.presenting.controls-open #bar,#view.presenting.controls-open #statusbar{display:flex!important;opacity:1!important;pointer-events:auto!important}
+@media(max-width:600px){#statusbar{padding:8px 12px;gap:8px}#statusbar label{font-size:12px;gap:4px}#statusbar select{max-width:120px;padding:6px}#sessionTitle{max-width:24vw}#pageNote{font-size:16px}}
+
+@media(max-width:600px){#setup{padding:24px 16px 40px}.brandrow{margin-bottom:26px}.setup-card{padding:16px;border-radius:18px}#bar{padding:8px;gap:6px}#bar>button{padding:9px;font-size:13px}#bar #mic{flex:1}#bar #pg{min-width:42px}#bar #fs{display:none}#moreTools{gap:8px}#moreTools button{flex:1;white-space:nowrap}#resumeCard{align-items:flex-start;flex-direction:column}.tool-dialog{padding:18px}#autosaveState{display:none}}
