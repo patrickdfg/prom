@@ -180,7 +180,6 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <div class="pr"><b>마이크</b><span id="micname">크롬 기본 마이크</span><select id="micsel" hidden><option value="">기본 마이크</option></select><button id="micrefresh" hidden>목록 새로고침</button></div>
     <div class="pr" style="margin-top:8px"><button id="copyset">크롬 마이크 설정 주소 복사</button></div>
     <div class="pr" style="margin-top:10px"><span>소리 크기</span><div id="meter"><i id="meterbar"></i></div><span id="metertxt">-</span></div>
-    <div class="pr" id="trackRow" style="margin-top:10px" hidden><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="trackOpt">폰 '띵' 소리 없애기 (실험)</label></div>
     <div id="micnote">음성인식은 크롬 기본 마이크로 듣습니다. 말할 때 막대가 움직이면 소리가 들어오는 것입니다. 마이크를 바꾸려면 위 버튼으로 주소를 복사해 새 탭 주소창에 붙여 넣고 Enter, 마이크를 고른 뒤 이 화면을 새로고침하세요. (크롬은 웹 페이지에서 설정 화면을 바로 열지 못하게 막습니다.)</div>
   </div>
   <div id="bar">
@@ -1260,24 +1259,9 @@ async function holdMic(){
   }
 }
 // 고른 마이크가 있으면 그 트랙을 음성인식에 넘긴다. 크롬이 트랙 지정을 지원하지 않으면 기본 마이크로 듣는다
-/* 폰 '띵' 소리 없애기 (실험, 안드로이드만)
-   보통은 크롬 음성인식이 안드로이드 마이크를 직접 열고, 그때마다 안드로이드가 '띵' 소리를 낸다.
-   이 칸을 켜면 프로그램이 마이크를 한 번 열어 두고 그 소리를 음성인식에 넘긴다(start(오디오 트랙)).
-   안드로이드가 마이크를 새로 열지 않으니 띵이 안 날 수 있다. 크롬 버전에 따라 안 될 수 있어 켜고 끌 수 있게 둔다. */
-let trackMode=false, trackStream=null, trackFails=0, trackDog=null;
-try{trackMode=ANDROID&&localStorage.getItem('prompterTrackMode')==='1'}catch(_){}
-async function openTrack(){
-  if(trackStream&&trackStream.getAudioTracks()[0]?.readyState==='live')return true;
-  try{trackStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});return true}
-  catch(_){trackStream=null;return false}
-}
-function closeTrack(){if(trackStream){trackStream.getTracks().forEach(t=>t.stop());trackStream=null}}
 function startRec(){
-  const tr=trackMode&&trackStream?trackStream.getAudioTracks()[0]:null;
-  if(tr&&tr.readyState==='live'){
-    try{rec.start(tr);return}
-    catch(_){ if(++trackFails>=2){trackMode=false; toast('이 크롬에서는 띵 없애기가 안 됩니다. 보통 방식으로 듣습니다.',6000); closeTrack()} }
-  }
+  const tr=null&&micStream?micStream.getAudioTracks()[0]:null;
+  if(tr&&tr.readyState==='live'){try{rec.start(tr);return}catch(_){}}
   rec.start();
 }
 /* ---------- 안드로이드: 조용할 때는 음성인식을 끄고 기다린다 ----------
@@ -1346,17 +1330,14 @@ async function startMic(){
   // 크롬은 침묵이 길거나 1분쯤 지나면 스스로 멈춘다. 켜 둔 동안은 바로 다시 시작한다.
   rec.onend=()=>{
     heardCarry=(heardCarry+sessionText).slice(-60); sessionText=''; spLast=0;
-    if(listening&&ANDROID&&!trackMode&&Date.now()-lastResultAt>3000){setDot('');androidWait();return}
+    if(listening&&ANDROID&&Date.now()-lastResultAt>3000){setDot('');androidWait();return}
     if(listening){setDot('');try{startRec()}catch(_){setTimeout(()=>{if(listening)try{startRec()}catch(__){}},300)}}
     else setDot('');
   };
   rec.onstart=()=>{setDot('live'); cap('음성인식 연결됨 · 현재 화면의 글을 읽어 주세요.')};
   rec.onaudiostart=()=>cap('마이크 소리가 들어옵니다 · 말씀해 보세요');
   rec.onspeechstart=()=>cap('말소리 감지 · 글자로 바꾸는 중');
-  if(ANDROID){makeWaitAC()} lastResultAt=Date.now()
-  if(trackMode){trackFails=0; if(!await openTrack()){trackMode=false; toast('마이크를 열지 못해 보통 방식으로 듣습니다.',5000)}
-    else{const t0=Date.now(); clearTimeout(trackDog); trackDog=setTimeout(()=>{      // 15초 동안 글자가 하나도 안 들어오면 이 방식이 안 되는 것으로 본다
-      if(listening&&trackMode&&lastResultAt<=t0){trackMode=false; closeTrack(); try{rec.abort()}catch(_){} toast('띵 없애기로는 글자가 안 들어와 보통 방식으로 바꿨습니다.',7000)}},15000)}}
+  if(ANDROID){makeWaitAC(); lastResultAt=Date.now()}
   if(ANDROID&&panelOpen())closePanel();      // 소리 막대가 마이크를 같이 잡지 않게
   cursor=pStart[page]||0; heardCarry=''; sessionText=''; lastTail='';     // 켤 때 보고 있는 쪽부터 찾는다
   listening=true; $('view').classList.add('presenting');notifyUI('presentation');
@@ -1366,7 +1347,7 @@ async function startMic(){
   $('mic').classList.add('on'); $('mic').textContent='마이크 끄기 (M)';
   keepAwake(); speedStart();
 }
-function stopMic(){ speedStop(); endWait(); closeTrack(); try{trackMode=ANDROID&&localStorage.getItem('prompterTrackMode')==='1'}catch(_){}
+function stopMic(){ speedStop(); endWait();
   listening=false;$('view').classList.remove('presenting','controls-open');fit();render();showBar();
   if(micFullscreen){micFullscreen=false;if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});}
   cap(''); releaseMic(); if(rec)try{rec.stop()}catch(_){}
@@ -1396,8 +1377,6 @@ function speedTick(){
   if(!spHeardAt||now-spHeardAt>8000||span<4||spTotal===c0){v.textContent='—';return}
   v.textContent=Math.round((spTotal-c0)/span/HYUNSU_CPS*100);
 }
-if(ANDROID){$('trackRow').hidden=false; $('trackOpt').checked=trackMode;
-  $('trackOpt').onchange=()=>{trackMode=$('trackOpt').checked; try{localStorage.setItem('prompterTrackMode',trackMode?'1':'0')}catch(_){} toast(trackMode?'다음에 마이크를 켤 때부터 적용됩니다. 띵이 사라지고 글자가 잘 넘어가는지 봐 주세요.':'보통 방식으로 듣습니다.',6000)}}
 let showSpeed=true; try{showSpeed=localStorage.getItem('prompterShowSpeed')!=='0'}catch(_){}
 $('speedOpt').checked=showSpeed;
 $('speedOpt').onchange=()=>{showSpeed=$('speedOpt').checked; try{localStorage.setItem('prompterShowSpeed',showSpeed?'1':'0')}catch(_){} if(spTimer)$('speedLayer').hidden=!showSpeed};
