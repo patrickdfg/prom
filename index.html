@@ -1258,11 +1258,50 @@ async function holdMic(){
     if(micId){toast('고른 마이크를 열지 못해 기본 마이크로 듣습니다.',5000); try{micStream=await navigator.mediaDevices.getUserMedia({audio:true})}catch(__){}}
   }
 }
-// 고른 마이크가 있으면 그 트랙을 음성인식에 넘긴다. 크롬이 트랙 지정을 지원하지 않으면 기본 마이크로 듣는다
+// 브라우저 음성인식은 기본 마이크를 사용한다.
 function startRec(){
-  const tr=null&&micStream?micStream.getAudioTracks()[0]:null;
-  if(tr&&tr.readyState==='live'){try{rec.start(tr);return}catch(_){}}
   rec.start();
+}
+/* ---------- 안드로이드: 조용할 때는 음성인식을 끄고 기다린다 ----------
+   폰 크롬은 음성인식을 켤 때마다 '띵' 소리를 낸다(웹에서 못 끈다). 말이 없으면 몇 초마다 꺼져서
+   바로 다시 켜면 띵이 계속 난다. 그래서 폰에서는 말이 없어 꺼졌을 때 다시 켜지 않고,
+   마이크 소리 크기만 지켜보다가 말소리가 나면 그때 다시 켠다. PC는 예전처럼 바로 다시 켠다. */
+let lastResultAt=0, waitAC=null, waitStream=null, waitIv=null, waitGeneration=0, restartTimer=null, waitPending=false;
+function makeWaitAC(){try{if(!waitAC){const AC=window.AudioContext||window.webkitAudioContext; if(AC)waitAC=new AC()} waitAC&&waitAC.resume().catch(()=>{})}catch(_){waitAC=null}}
+function endWait(){
+  waitGeneration++;waitPending=false;clearTimeout(restartTimer);restartTimer=null;
+  clearInterval(waitIv); waitIv=null;
+  if(waitStream){waitStream.getTracks().forEach(t=>t.stop()); waitStream=null}
+  if(waitAC&&waitAC.state==='running')waitAC.suspend().catch(()=>{});
+}
+// 지켜보던 마이크를 놓고 잠깐 뒤에 켠다(폰은 마이크를 둘이 같이 못 잡는다)
+function waitFailed(){stopMic();toast('마이크 입력을 확인할 수 없어 자동 재연결을 멈췄습니다. 마이크를 확인한 뒤 다시 켜 주세요.',7000);}
+function wakeRec(){endWait(); if(!listening)return; const generation=waitGeneration;restartTimer=setTimeout(()=>{restartTimer=null;if(!listening||generation!==waitGeneration)return;try{startRec()}catch(_){waitFailed()}},200)}
+let emptySessions=0;
+async function androidWait(){
+  if(waitIv||waitStream||waitPending||!listening)return;
+  const generation=waitGeneration;waitPending=true;
+  const md=navigator.mediaDevices;
+  if(!waitAC||!md||!md.getUserMedia){waitFailed();return}
+  let stream;
+  try{stream=await md.getUserMedia({audio:true})}catch(_){if(generation===waitGeneration&&listening)waitFailed();return}
+  if(!listening||generation!==waitGeneration){stream.getTracks().forEach(t=>t.stop());return}
+  waitStream=stream;waitPending=false;
+  let an;
+  try{await waitAC.resume();if(!listening||generation!==waitGeneration)return;an=waitAC.createAnalyser();an.fftSize=1024;waitAC.createMediaStreamSource(waitStream).connect(an)}catch(_){if(generation===waitGeneration)waitFailed();return}
+  const buf=new Float32Array(an.fftSize), t0=Date.now(); let floor=0, hits=0;
+  $('micStatus').textContent='말소리 대기 중';
+  waitIv=setInterval(()=>{
+    if(!listening){endWait();return}
+    an.getFloatTimeDomainData(buf); let sum=0; for(let i=0;i<buf.length;i++)sum+=buf[i]*buf[i];
+    const rms=Math.sqrt(sum/buf.length), now=Date.now();
+    // 0은 디지털 무음일 수도 있다. 무음만으로 재시작하면 시작음이 끝없이 반복된다.
+    if(now-t0<500){floor=Math.max(floor,rms);return}           // 종료음이 섞이는 첫 0.5초는 재연결하지 않는다
+    if(Date.now()-lastResultAt<4000)floor=Math.min(floor,0.008); // 계속 말하는 중 끊긴 경우, 말소리를 바닥 소음으로 고정하지 않는다
+    floor=rms<floor?floor*0.8+rms*0.2:floor*0.998+rms*0.002;    // 조용한 쪽으로는 빨리, 큰 쪽으로는 아주 천천히 따라간다
+    hits=rms>Math.max(floor*2.5,0.012)?hits+1:0;
+    if(now-t0>=1500&&hits>=4)wakeRec(); // 종료음은 무시하고, 지속된 입력이 있을 때만 다시 듣는다
+  },50);
 }
 function releaseMic(){if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null}}
 async function startMic(){
@@ -1275,11 +1314,14 @@ async function startMic(){
   }
   await holdMic();
   rec=new SR(); rec.lang='ko-KR'; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
+  const activeRec=rec;
   rec.onresult=e=>{
+    if(!listening||rec!==activeRec)return;
     let t=''; for(let i=0;i<e.results.length;i++) t+=e.results[i][0].transcript;
-    sessionText=t; onHeard(t); speedFeed(e.results);
+    sessionText=t; onHeard(t); speedFeed(e.results); lastResultAt=Date.now();emptySessions=0;
   };
   rec.onerror=e=>{
+    if(!listening||rec!==activeRec)return;
     if(e.error==='no-speech'){cap('말소리가 인식되지 않습니다 · 마이크 입력을 확인해 주세요.');return}
     if(e.error==='aborted')return;
 
@@ -1288,18 +1330,22 @@ async function startMic(){
       'network':'음성인식 서버에 연결할 수 없습니다. 인터넷 연결을 확인해 주세요.',
       'audio-capture':'마이크를 찾을 수 없습니다.'}[e.error]||('음성인식 오류: '+e.error);
     toast(msg,6000);
-    if(e.error==='not-allowed'||e.error==='audio-capture')stopMic();
+    if(e.error==='not-allowed'||e.error==='audio-capture'||(ANDROID&&e.error==='network'))stopMic();
     cap('오류('+e.error+') '+msg,true);
   };
-  // 크롬은 침묵이 길거나 1분쯤 지나면 스스로 멈춘다. 켜 둔 동안은 바로 다시 시작한다.
+  // 폰에서는 종료마다 즉시 다시 켜지 않고 입력을 기다린다. PC는 바로 재연결한다.
   rec.onend=()=>{
+    if(rec!==activeRec||!listening)return;
+    if(ANDROID){emptySessions=sessionText.trim()?0:emptySessions+1;if(emptySessions>=3){stopMic();toast('말소리를 인식하지 못해 반복 연결을 멈췄습니다. 마이크를 확인한 뒤 다시 켜 주세요.',7000);return}}
     heardCarry=(heardCarry+sessionText).slice(-60); sessionText=''; spLast=0;
+    if(listening&&ANDROID){setDot('');androidWait();return}
     if(listening){setDot('');try{startRec()}catch(_){setTimeout(()=>{if(listening)try{startRec()}catch(__){}},300)}}
     else setDot('');
   };
   rec.onstart=()=>{setDot('live'); cap('음성인식 연결됨 · 현재 화면의 글을 읽어 주세요.')};
   rec.onaudiostart=()=>cap('마이크 소리가 들어옵니다 · 말씀해 보세요');
   rec.onspeechstart=()=>cap('말소리 감지 · 글자로 바꾸는 중');
+  if(ANDROID){makeWaitAC(); lastResultAt=0;emptySessions=0;}
   if(ANDROID&&panelOpen())closePanel();      // 소리 막대가 마이크를 같이 잡지 않게
   cursor=pStart[page]||0; heardCarry=''; sessionText=''; lastTail='';     // 켤 때 보고 있는 쪽부터 찾는다
   listening=true; $('view').classList.add('presenting');notifyUI('presentation');
@@ -1309,7 +1355,7 @@ async function startMic(){
   $('mic').classList.add('on'); $('mic').textContent='마이크 끄기 (M)';
   keepAwake(); speedStart();
 }
-function stopMic(){ speedStop();
+function stopMic(){ speedStop(); endWait();
   listening=false;$('view').classList.remove('presenting','controls-open');fit();render();showBar();
   if(micFullscreen){micFullscreen=false;if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});}
   cap(''); releaseMic(); if(rec)try{rec.stop()}catch(_){}
