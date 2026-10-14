@@ -41,6 +41,10 @@ button{font:inherit;cursor:pointer}
 #drop b{display:block;margin-bottom:8px}
 .btn{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 18px}
 .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+#speedLayer{position:fixed;top:10px;right:12px;z-index:30;pointer-events:none;display:flex;align-items:baseline;gap:6px;padding:4px 12px;border-radius:10px;background:rgba(0,0,0,.45);color:#cfd8e3;font:600 15px/1.3 system-ui,sans-serif}
+#speedLayer[hidden]{display:none}
+#speedLayer b{font-size:26px;color:#fff;min-width:2.2em;text-align:right;font-variant-numeric:tabular-nums}
+#speedLayer small{font-size:13px;opacity:.8}
 #demo{position:fixed;right:16px;bottom:16px;z-index:10;box-shadow:0 4px 14px rgba(0,0,0,.35)}
 textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px;line-height:1.5;font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif}
 .row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
@@ -155,6 +159,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
   <div id="voiceFeedback" hidden></div>
   <div id="stage"><div id="page"><div id="lines"></div><div id="pageNote" role="textbox" aria-label="발표 메모" aria-multiline="true" contenteditable="false" data-placeholder="여기에 발표 메모를 입력하세요 · Esc로 끝내기" hidden></div></div></div>
   <div id="toast"></div>
+  <div id="speedLayer" hidden title="말하는 속도 · 현수 목소리 보통 속도 = 100"><small>속도</small><b id="speedVal">—</b></div>
   <div id="cap"></div>
   <div id="fontPanel">
     <div class="ctl"><button id="fSmall" title="글자 작게">가-</button><span id="fVal"></span><button id="fBig" title="글자 크게">가+</button></div>
@@ -1268,7 +1273,7 @@ async function startMic(){
   rec=new SR(); rec.lang='ko-KR'; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
   rec.onresult=e=>{
     let t=''; for(let i=0;i<e.results.length;i++) t+=e.results[i][0].transcript;
-    sessionText=t; onHeard(t);
+    sessionText=t; onHeard(t); speedFeed(t);
   };
   rec.onerror=e=>{
     if(e.error==='no-speech'){cap('말소리가 인식되지 않습니다 · 마이크 입력을 확인해 주세요.');return}
@@ -1283,7 +1288,7 @@ async function startMic(){
   };
   // 크롬은 침묵이 길거나 1분쯤 지나면 스스로 멈춘다. 켜 둔 동안은 바로 다시 시작한다.
   rec.onend=()=>{
-    heardCarry=(heardCarry+sessionText).slice(-60); sessionText='';
+    heardCarry=(heardCarry+sessionText).slice(-60); sessionText=''; spLast=0;
     if(listening){setDot('');try{startRec()}catch(_){setTimeout(()=>{if(listening)try{startRec()}catch(__){}},300)}}
     else setDot('');
   };
@@ -1297,14 +1302,34 @@ async function startMic(){
   document.activeElement?.blur();fit();render();
   setDot(''); cap('마이크 여는 중…'); startRec();
   $('mic').classList.add('on'); $('mic').textContent='마이크 끄기 (M)';
-  keepAwake();
+  keepAwake(); speedStart();
 }
-function stopMic(){
+function stopMic(){ speedStop();
   listening=false;$('view').classList.remove('presenting','controls-open');fit();render();showBar();
   if(micFullscreen){micFullscreen=false;if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});}
   cap(''); releaseMic(); if(rec)try{rec.stop()}catch(_){}
   $('mic').classList.remove('on'); $('mic').textContent='마이크 켜기 (M)'; setDot('');
 }
+/* ---------- 말하는 속도 (오른쪽 위) ----------
+   알아들은 글자 수(띄어쓰기·문장부호 뺀 글자)를 최근 20초 동안 세어 1초에 몇 자인지 구한다.
+   현수 목소리(ko-KR-HyunsuMultilingualNeural, 기본 속도)를 문단 쉼까지 넣어 재 보니 1초에 4.7자였다.
+   그 빠르기를 100으로 놓고 보여 준다. 120이면 현수보다 20% 빠르다. */
+const HYUNSU_CPS=4.7, SP_WIN=20000;
+let spTotal=0, spLast=0, spHist=[], spHeardAt=0, spTimer=null;
+function speedFeed(t){
+  const L=normStr(t).length;
+  if(L>spLast){spTotal+=L-spLast; spHeardAt=Date.now()}
+  spLast=Math.max(spLast,L);
+}
+function speedTick(){
+  const now=Date.now(); spHist.push([now,spTotal]);
+  while(spHist.length&&now-spHist[0][0]>SP_WIN)spHist.shift();
+  const [t0,c0]=spHist[0], span=(now-t0)/1000, v=$('speedVal');
+  if(!spHeardAt||now-spHeardAt>8000||span<4||spTotal===c0){v.textContent='—';return}
+  v.textContent=Math.round((spTotal-c0)/span/HYUNSU_CPS*100);
+}
+function speedStart(){speedStop(); spTotal=0; spLast=0; spHist=[]; spHeardAt=0; $('speedVal').textContent='—'; $('speedLayer').hidden=false; spTimer=setInterval(speedTick,1000)}
+function speedStop(){clearInterval(spTimer); spTimer=null; $('speedLayer').hidden=true}
 let wake=null;
 async function keepAwake(){try{if('wakeLock' in navigator&&!wake){wake=await navigator.wakeLock.request('screen');wake.addEventListener('release',()=>wake=null)}}catch(_){}}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&listening)keepAwake()});
