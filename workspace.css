@@ -20,6 +20,8 @@ button:hover{filter:brightness(1.12)}
 .format-note{color:var(--muted);font-size:12px;line-height:1.7;margin:12px 0 0}
 .btn{padding:13px 22px;border-radius:11px;background:#99beff;color:#101c30;font-weight:700}
 .btn:disabled{opacity:.4;cursor:default}
+.setup-footer a.btn{text-decoration:none;font-size:14px}
+#voiceFeedback{position:absolute;bottom:86px;left:16px;right:16px;z-index:8;text-align:center;color:#b8d4f6;background:#10151de8;border-radius:8px;padding:7px 12px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
 #paste{height:200px;margin:0;padding:16px;background:#101722;border-radius:14px;resize:vertical}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
 .mode-row{display:flex;gap:10px;align-items:center;margin-top:22px;font-size:14px}
