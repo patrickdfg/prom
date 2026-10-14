@@ -119,7 +119,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
-<link rel="stylesheet" href="workspace.css?v=20261015-2">
+<link rel="stylesheet" href="workspace.css?v=20261015-4">
 </head>
 <body>
 <div id="setup">
@@ -183,23 +183,22 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <div id="micnote">음성인식은 크롬 기본 마이크로 듣습니다. 말할 때 막대가 움직이면 소리가 들어오는 것입니다. 마이크를 바꾸려면 위 버튼으로 주소를 복사해 새 탭 주소창에 붙여 넣고 Enter, 마이크를 고른 뒤 이 화면을 새로고침하세요. (크롬은 웹 페이지에서 설정 화면을 바로 열지 못하게 막습니다.)</div>
   </div>
   <div id="bar">
-    <button id="mic" title="원고만 전체화면으로 표시합니다. Esc 또는 M으로 끝냅니다.">마이크 켜기 (M)</button>
-    <button id="prev" aria-label="이전 쪽">◀</button><span id="pg">1 / 1</span><button id="next" aria-label="다음 쪽">▶</button>
+    <div class="control-group"><button id="mic" title="원고만 전체화면으로 표시합니다. Esc 또는 M으로 끝냅니다.">마이크 켜기 (M)</button><button id="tts">읽어주기</button></div>
+    <div class="control-group"><button id="prev" aria-label="이전 쪽">◀</button><span id="pg">1 / 1</span><button id="find">검색</button><button id="next" aria-label="다음 쪽">▶</button></div>
     <button id="fs">전체화면 (F)</button>
-    <label id="speedOptWrap" title="마이크를 켰을 때 오른쪽 위에 말하는 속도(현수 목소리=100)를 띄웁니다"><input type="checkbox" id="speedOpt" checked>속도<span class="wide"> 표시</span></label>
+    <div class="control-group"><label id="speedOptWrap" title="마이크를 켰을 때 오른쪽 위에 말하는 속도(현수 목소리=100)를 띄웁니다"><input type="checkbox" id="speedOpt" checked>속도<span class="wide"> 표시</span></label><label id="dimOptWrap"><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label></div>
+    <div class="control-group"><button id="note">발표 메모</button><button id="edit">편집 (E)</button><button id="save">저장</button><button id="openf">열기</button></div>
     <button id="more" aria-expanded="false" aria-controls="moreTools">더보기</button>
     <span id="autosaveState" role="status">기기에 저장됨</span>
     <div id="moreTools" hidden>
-      <button id="find">검색 · 쪽 목록</button><button id="note">발표 메모</button>
-      <button id="set">마이크 설정</button><button id="tts">읽어주기</button>
+      <button id="set">마이크 설정</button>
       <label>넘김 <select id="lead"><option value="6">빠르게</option><option value="3" selected>보통</option><option value="1">늦게</option></select></label>
       <label>강조 <select id="focusColor"><option value="#ffff00">노랑</option><option value="#b6f36a">연두</option></select></label>
-      <label><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label>
-      <button id="edit">편집 (E)</button><button id="save">저장</button><button id="openf">열기</button><button id="audience">별도 원고 화면 ↗</button><button id="back">다른 원고</button>
+      <button id="audience">별도 원고 화면 ↗</button><button id="back">다른 원고</button>
       <span id="heard"></span>
     </div>
   </div>
-  <dialog id="searchDialog" class="tool-dialog" aria-labelledby="searchTitle"><div class="dialog-head"><h2 id="searchTitle">검색 · 쪽 목록</h2><button data-close="searchDialog" aria-label="검색 닫기">닫기</button></div>
+  <dialog id="searchDialog" class="tool-dialog" aria-labelledby="searchTitle"><div class="dialog-head"><h2 id="searchTitle">검색</h2><button data-close="searchDialog" aria-label="검색 닫기">닫기</button></div>
     <label class="sr-only" for="searchQuery">원고에서 찾을 말</label><input type="search" id="searchQuery" placeholder="성구나 문장을 입력하세요"><p id="searchCount" role="status"></p><div id="searchResults"></div>
   </dialog>
 </div>

@@ -47,7 +47,7 @@ button:hover{filter:brightness(1.12)}
 .mic-state{display:flex;align-items:center;gap:8px}
 #sessionTitle{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:30vw}
 #bar{padding:12px 18px;gap:10px;border-top:1px solid #ffffff16;background:#111823ed;z-index:12;justify-content:center;max-height:50dvh;overflow-y:auto}
-#bar>button{min-height:44px;padding:10px 14px;border-radius:10px}
+#bar>button,#bar>.control-group>button{min-height:44px;padding:10px 14px;border-radius:10px}
 #bar #mic{background:#244366;border-color:#426f9e;color:#fff;font-weight:700}
 #bar #mic.on{background:#a0e6bf;color:#112c1d;border-color:#a0e6bf}
 #bar #prev,#bar #next{min-width:48px}
@@ -84,7 +84,7 @@ button:hover{filter:brightness(1.12)}
 #view.presenting.controls-open #bar,#view.presenting.controls-open #statusbar{display:flex!important;opacity:1!important;pointer-events:auto!important}
 @media(max-width:600px){#statusbar{padding:8px 12px;gap:8px}#statusbar label{font-size:12px;gap:4px}#statusbar select{max-width:120px;padding:6px}#sessionTitle{max-width:24vw}#pageNote{font-size:16px}}
 
-@media(max-width:600px){#setup{padding:24px 16px 40px}.brandrow{margin-bottom:26px}.setup-card{padding:16px;border-radius:18px}#bar{padding:8px;gap:6px}#bar>button{padding:9px;font-size:13px}#bar #mic{flex:1}#bar #pg{min-width:42px}#bar #fs{display:none}#moreTools{gap:8px}#moreTools button{flex:1;white-space:nowrap}#resumeCard{align-items:flex-start;flex-direction:column}.tool-dialog{padding:18px}#autosaveState{display:none}}
+@media(max-width:600px){#setup{padding:24px 16px 40px}.brandrow{margin-bottom:26px}.setup-card{padding:16px;border-radius:18px}#bar{padding:8px;gap:6px}#bar>button,#bar>.control-group>button{padding:9px;font-size:13px}#bar #mic{flex:1}#bar #pg{min-width:42px}#bar #fs{display:none}#moreTools{gap:8px}#moreTools button{flex:1;white-space:nowrap}#resumeCard{align-items:flex-start;flex-direction:column}.tool-dialog{padding:18px}#autosaveState{display:none}}
 
 .theme-choices{display:flex;gap:6px;pointer-events:auto;flex-shrink:0}
 .theme-choices button{padding:8px 12px;border:1px solid #52647c;border-radius:8px;background:#202b3a;color:#dce8f8;font:inherit;cursor:pointer;min-height:36px}
@@ -101,3 +101,8 @@ button:hover{filter:brightness(1.12)}
 #noteTools button,#noteTools input{min-height:34px;background:#2b3b50;color:#fff;border:1px solid #64778f;border-radius:6px;padding:4px 9px;font:inherit}
 #noteTools button{cursor:pointer;white-space:nowrap}#noteSize{width:58px}#noteDone{background:#5a2930!important}#noteTools[hidden],#noteLayer[hidden]{display:none!important}
 @media(max-width:600px){#noteTools{gap:4px;padding:6px;font-size:12px}#noteTools button{padding:4px 7px}#noteTools>span:first-child{display:none}}
+
+#bar>.control-group{display:flex;align-items:center;gap:6px;flex-shrink:0}
+#dimOptWrap{display:inline-flex;align-items:center;gap:5px;font-size:14px;white-space:nowrap;cursor:pointer}
+#dimOptWrap input{width:18px;height:18px;margin:0}
+@media(max-width:600px){#bar>.control-group{gap:4px}#bar>.control-group>button{padding:8px;font-size:13px;min-height:40px}#bar #prev,#bar #next{min-width:34px}#bar #pg{min-width:38px}#dimOptWrap{font-size:13px}}
