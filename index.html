@@ -117,33 +117,41 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
+<link rel="stylesheet" href="workspace.css?v=20261014-1">
 </head>
 <body>
 <div id="setup">
-  <h1>음성 설교 프롬프터</h1>
-  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-14 20:20 · <a href="read.html" style="color:var(--accent)">원고 읽어주기로 가기</a></div>
-  <p>한글(.hwp, .hwpx), 워드(.doc, .docx), 파워포인트(.ppt, .pptx), PDF, 글(.txt), html 원고나 이 프로그램에서 저장한 파일(.json)을 불러오세요.</p>
-  <div id="drop">
-    <b>파일을 여기로 끌어 놓거나</b>
-    <button class="btn" id="pick">파일 선택</button>
-    <input type="file" id="file" accept=".hwp,.hwpx,.doc,.docx,.ppt,.pptx,.pdf,.txt,.html,.htm,.json" hidden>
-  </div>
-  <div class="row" id="optrow"><b>한 화면 줄 수</b>
-    <label><input type="radio" name="lines" value="5" checked> 5줄</label>
-    <label><input type="radio" name="lines" value="6"> 6줄</label>
-    <label><input type="radio" name="lines" value="7"> 7줄</label>
-    <label><input type="radio" name="lines" value="m"> 모바일</label>
-    <span id="optnote">줄 수가 많을수록 글자가 작아집니다.</span></div>
-  <div class="row"><button class="btn" id="start" disabled>시작</button><span id="fname"></span></div>
-  <textarea id="paste" placeholder="또는 대본 글을 붙여 넣으세요. 쪽 구분은 --- 한 줄입니다. 구분이 없으면 고른 줄 수대로 나눕니다."></textarea>
-  <div class="row" style="align-items:center"><b>한 화면 줄 수</b>
-    <label><input type="radio" name="lines2" value="5" checked> 5줄</label>
-    <label><input type="radio" name="lines2" value="6"> 6줄</label>
-    <label><input type="radio" name="lines2" value="7"> 7줄</label>
-    <label><input type="radio" name="lines2" value="m"> 모바일</label></div>
-  <div class="row"><button class="btn ghost" id="usePaste">붙여 넣은 글로 시작</button></div>
-  <button class="btn" id="demo">설교 프롬프터 테스트</button>
-  <div class="row" id="installRow"><button class="btn ghost" id="install">바탕화면에 설치</button><span id="installNote" style="color:var(--muted);font-size:13px"></span></div>
+  <header class="brandrow"><span class="brandmark">SERMON PROMPTER</span><a href="read.html">원고 읽어주기 ↗</a></header>
+  <h1>읽는 흐름에 맞춰,<br>원고가 따라옵니다.</h1>
+  <p class="intro">음성 설교 프롬프터 · 원고를 불러오고 편하게 말씀하세요.</p>
+  <div id="resumeCard" hidden><div><b id="resumeTitle"></b><p id="resumeInfo"></p></div><button class="btn" id="resume">이어서 시작</button></div>
+  <section class="setup-card" aria-label="설교 준비">
+    <div class="input-tabs" role="tablist" aria-label="원고 가져오기">
+      <button id="fileTab" role="tab" aria-selected="true" aria-controls="fileInputPanel">파일 불러오기</button>
+      <button id="pasteTab" role="tab" aria-selected="false" aria-controls="pasteInputPanel">글 붙여넣기</button>
+    </div>
+    <div id="fileInputPanel" role="tabpanel" aria-labelledby="fileTab"><div id="drop">
+      <b>원고 파일을 여기에 놓으세요</b><button class="btn" id="pick">파일 선택</button>
+      <input type="file" id="file" accept=".hwp,.hwpx,.doc,.docx,.ppt,.pptx,.pdf,.txt,.html,.htm,.json" hidden>
+      <div class="format-note">한글 · 워드 · 파워포인트 · PDF · TXT · HTML · 저장한 JSON</div>
+    </div></div>
+    <div id="pasteInputPanel" role="tabpanel" aria-labelledby="pasteTab" hidden>
+      <label class="sr-only" for="paste">설교 원고</label><textarea id="paste" placeholder="원고를 여기에 붙여 넣으세요.
+쪽을 직접 나누려면 --- 를 한 줄로 넣으세요."></textarea>
+    </div>
+    <div class="mode-row"><label for="layoutMode">화면 구성</label><select id="layoutMode"><option value="desktop">PC · 큰 화면</option><option value="mobile">모바일 · 세로 화면</option></select></div>
+    <div id="optrow"><div class="row" id="desktopLines"><b>한 화면 줄 수</b>
+      <label><input type="radio" name="lines" value="5" checked> 5줄</label>
+      <label><input type="radio" name="lines" value="6"> 6줄</label>
+      <label><input type="radio" name="lines" value="7"> 7줄</label></div>
+      <input type="radio" name="lines" value="m" aria-label="모바일 자동 줄 수" hidden>
+      <span id="optnote">PC는 줄 수가 적을수록 글자가 커집니다. 모바일은 화면 크기에 맞춥니다.</span>
+    </div>
+    <div class="row startrow"><span id="fname">원고를 고른 뒤 시작하세요.</span><button class="btn" id="start" disabled>프롬프터 시작 →</button></div>
+    <button id="usePaste" hidden>붙여 넣은 글로 시작</button>
+  </section>
+  <div class="setup-footer"><button class="btn" id="demo">예시 원고로 체험</button><div class="row" id="installRow"><button class="btn ghost" id="install">앱으로 설치</button><span id="installNote" style="color:var(--muted);font-size:13px"></span></div></div>
+  <p class="format-note" style="margin-top:16px">최근 원고와 메모는 이 기기의 브라우저에 자동 저장됩니다. 공용 기기에서는 사용 후 사이트 데이터를 지워 주세요.</p>
   <details id="obsHelp"><summary>방송 장비(캡처보드·마이크)와 함께 쓸 때 설정법</summary>
     <div>
       <p>프롬프터는 크롬이 고른 마이크 소리를 듣고 쪽을 넘깁니다. 방송 소리를 쓰려면 크롬 마이크만 알맞게 고르면 됩니다. 크롬 마이크는 프롬프터 화면의 설정 → "크롬 마이크 설정 주소 복사"로 열어 고르고, 고른 뒤 프롬프터를 새로고침합니다.</p>
@@ -163,6 +171,8 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 </div>
 
 <div id="view">
+  <div id="statusbar"><div class="mic-state"><span id="dot"></span><span id="micStatus" role="status">마이크 꺼짐</span></div><span id="sessionTitle"></span><span id="sessionClock">00:00 / 30분</span></div>
+  <div id="speakerNote" hidden></div>
   <div id="stage"><div id="page"><div id="lines"></div></div></div>
   <div id="toast"></div>
   <div id="cap"></div>
@@ -185,21 +195,35 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <div id="micnote">음성인식은 크롬 기본 마이크로 듣습니다. 말할 때 막대가 움직이면 소리가 들어오는 것입니다. 마이크를 바꾸려면 위 버튼으로 주소를 복사해 새 탭 주소창에 붙여 넣고 Enter, 마이크를 고른 뒤 이 화면을 새로고침하세요. (크롬은 웹 페이지에서 설정 화면을 바로 열지 못하게 막습니다.)</div>
   </div>
   <div id="bar">
-    <span id="dot"></span>
     <button id="mic">마이크 켜기 (M)</button>
-    <button id="set">설정</button>
-    <button id="tts">읽어주기</button>
-    <button id="prev">◀</button><span id="pg">1 / 1</span><button id="next">▶</button>
-    <label>넘김 <select id="lead"><option value="6">빠르게</option><option value="3" selected>보통</option><option value="1">늦게</option></select></label>
-    <label>화면 <select id="theme"><option value="dark" selected>검정화면</option><option value="cloud">구름 배경</option></select></label>
-    <label><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label>
-    <span id="heard"></span>
-    <button id="edit">편집 (E)</button>
-    <button id="save">저장</button>
-    <button id="openf">열기</button>
+    <button id="prev" aria-label="이전 쪽">◀</button><span id="pg">1 / 1</span><button id="next" aria-label="다음 쪽">▶</button>
     <button id="fs">전체화면 (F)</button>
-    <button id="back">다른 원고</button>
+    <button id="more" aria-expanded="false" aria-controls="moreTools">더보기</button>
+    <span id="autosaveState" role="status">기기에 저장됨</span>
+    <div id="moreTools" hidden>
+      <button id="find">검색 · 쪽 목록</button><button id="pickLine">여기부터 읽기</button><button id="note">발표 메모</button><button id="check">설교 전 점검</button>
+      <button id="set">마이크 설정</button><button id="tts">읽어주기</button>
+      <label>넘김 <select id="lead"><option value="6">빠르게</option><option value="3" selected>보통</option><option value="1">늦게</option></select></label>
+      <label>화면 <select id="theme"><option value="dark" selected>검정화면</option><option value="cloud">구름 배경</option></select></label>
+      <label>강조 <select id="focusColor"><option value="#ffff00">노랑</option><option value="#b6f36a">연두</option></select></label>
+      <label><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label>
+      <label>목표 <input type="number" id="targetMinutes" min="1" max="240" value="30" aria-label="목표 설교 시간 (분)">분</label>
+      <button id="timerToggle">시간 시작</button><button id="timerReset">시간 초기화</button>
+      <button id="edit">편집 (E)</button><button id="save">저장</button><button id="openf">열기</button><button id="audience">별도 원고 화면 ↗</button><button id="back">다른 원고</button>
+      <span id="heard"></span><span id="linePickHint" hidden>다시 읽을 줄을 누르세요 · Esc 취소</span>
+    </div>
   </div>
+  <dialog id="searchDialog" class="tool-dialog" aria-labelledby="searchTitle"><div class="dialog-head"><h2 id="searchTitle">검색 · 쪽 목록</h2><button data-close="searchDialog" aria-label="검색 닫기">닫기</button></div>
+    <label class="sr-only" for="searchQuery">원고에서 찾을 말</label><input type="search" id="searchQuery" placeholder="성구나 문장을 입력하세요"><p id="searchCount" role="status"></p><div id="searchResults"></div>
+  </dialog>
+  <dialog id="noteDialog" class="tool-dialog" aria-labelledby="noteTitle"><div class="dialog-head"><h2 id="noteTitle">이 쪽의 발표 메모</h2><button data-close="noteDialog">닫기</button></div>
+    <p>잠시 멈춤 · 강조 · 회중 보기처럼 적어 두세요. 조작 화면에만 표시되며 읽어주기와 별도 원고 화면에는 포함되지 않습니다. 이 쪽의 본문을 바꾸면 메모를 다시 확인하세요.</p>
+    <label for="noteText">메모 (지우고 저장하면 삭제됩니다)</label><textarea id="noteText" maxlength="2000" placeholder="예: 잠시 멈추고 회중 보기"></textarea><div class="dialog-actions"><button id="saveNote" class="primary">메모 저장</button></div>
+  </dialog>
+  <dialog id="checkDialog" class="tool-dialog" aria-labelledby="checkTitle"><div class="dialog-head"><h2 id="checkTitle">설교 전, 잠깐 확인하세요</h2><button data-close="checkDialog">닫기</button></div>
+    <p id="checkSummary"></p><p id="checkSupport"></p><p>① 마이크 확인을 눌러 말할 때 소리 막대가 움직이는지 보세요.<br>② 전체화면에서 글자가 편하게 읽히는지 보세요.<br>③ 마이크 켜기와 시간 시작을 누르면 준비 완료입니다.</p>
+    <div class="dialog-actions"><button id="checkMic" class="primary">마이크 확인</button><button id="checkFull">전체화면 확인</button></div>
+  </dialog>
 </div>
 
 <script>window.PRELOAD_PAGES=null;</script>
@@ -742,7 +766,7 @@ function render(){
   let html='';
   if(editing){
     for(let i=0;i<Math.max(LINES,pg.length);i++)html+=`<div class="ln">${(pg[i]||[]).map(r=>r.c==='k'?esc(r.t):`<span class="${r.c}">${esc(r.t)}</span>`).join('')}</div>`;
-    $('lines').innerHTML=html; $('pg').textContent=`${page+1} / ${P.length}`; return;
+    $('lines').innerHTML=html; $('pg').textContent=`${page+1} / ${P.length}`; window.PromUI?.render(); return;
   }
   for(let i=0;i<LINES;i++){
     const runs=pg[i]||[];
@@ -758,9 +782,10 @@ function render(){
     if(w>max&&max>0)sp.style.cssText+=';transform:scale('+(max/w)+')';
   });
   $('pg').textContent=`${page+1} / ${P.length}`;
+  window.PromUI?.render();
 }
 function fit(){
-  const W=innerWidth,H=innerHeight,ratio=210/118, L=$('lines'), el=$('page');
+  const W=$('stage').clientWidth||innerWidth,H=$('stage').clientHeight||innerHeight,ratio=210/118, L=$('lines'), el=$('page');
   el.classList.toggle('mobile',MOBILE);
   // 세로 화면(폰): 화면 전체를 쓰고, 한 줄 폭 17.5자가 화면 폭에 들어가게 글자 크기를 정한 뒤 줄 묶음을 세로 가운데에 둔다
   if(MOBILE||H>W*1.05){
@@ -828,7 +853,7 @@ const MFS_MIN=14, MFS_MAX=40; let MFS=17;
 try{const v=+localStorage.getItem('mobileFs'); if(v>=MFS_MIN&&v<=MFS_MAX)MFS=v}catch(_){}
 let MAXW=17.5, TARGET=12.5, MOBILE=false, MOBILE_LINES=10;
 function setMode(m){MOBILE=!!m; MAXW=m?Math.max(6,Math.floor(innerWidth*0.94/MFS*2)/2):17.5; TARGET=MAXW*12.5/17.5; if(m)MOBILE_LINES=mobileLines()}
-function mobileLines(){return Math.max(4,Math.min(60,Math.floor(innerHeight*0.92/(MFS*1.55))))}
+function mobileLines(){return Math.max(4,Math.min(60,Math.floor(Math.max(120,innerHeight-174)*0.92/(MFS*1.55))))}
 const R_SENT=/[.?!][”’)\]」』"']*$/, R_CLAUSE=/[,;:]$/;
 // 문단 하나를 (색 구간, 원고 쪽 바뀜 위치)로 바꾼다. 괄호로 감싼 주황 연출 메모와 ◎ ◯ 는 뺀다
 function paraSegs(p){
@@ -1021,13 +1046,13 @@ function startWith(pages,bg){
   const mode=chosenMode(); try{localStorage.setItem('prompterLines',mode)}catch(_){}
   setMode(mode==='m'); const n=chosenLines();
   LINES=n;
-  if(MOBILE&&!pages.ms){const out=buildPrompter(pagesToMs(pages),n); if(out.length){open(out,bg);return}}
-  if(pages.lines&&!MOBILE){open(paginateLines(pages.lines,n),bg);return}          // 덩어리 정보가 있는 프롬프터 대본
+  if(MOBILE&&!pages.ms){const out=buildPrompter(pagesToMs(pages),n); if(out.length){openPrompter(out,bg);return}}
+  if(pages.lines&&!MOBILE){openPrompter(paginateLines(pages.lines,n),bg);return}          // 덩어리 정보가 있는 프롬프터 대본
   if(pages.ms){
     const out=buildPrompter(pages.ms,n);
-    if(out.length){open(out,bg);toast('프롬프터 규칙으로 '+(MOBILE?'모바일 ':'')+n+'줄 '+P.length+'쪽을 만들었습니다.',6000);return}
+    if(out.length){openPrompter(out,bg);toast('프롬프터 규칙으로 '+(MOBILE?'모바일 ':'')+n+'줄 '+P.length+'쪽을 만들었습니다.',6000);return}
   }
-  open(reflow(pages,n),bg);
+  openPrompter(reflow(pages,n),bg);
 }
 /* ---------- 화면에서 바로 고치기 ---------- */
 // Enter=줄 나누기, Backspace=지우기·줄 합치기(쪽 맨 앞이면 앞 쪽과 합침), Ctrl+Enter=그 자리부터 다음 쪽, Esc=편집 끝
@@ -1124,7 +1149,7 @@ function snapshotPages(){
 async function savePages(){
   if(!P.length)return;
   const q=snapshotPages();
-  const body='{"app":"sermon-prompter","v":1,"lines":'+LINES+(MOBILE?',"mobile":'+MFS:'')+',"pages":[\n'+q.map(p=>JSON.stringify(p)).join(',\n')+'\n]}\n';
+  const body='{"app":"sermon-prompter","v":1,"lines":'+LINES+(MOBILE?',"mobile":'+MFS:'')+',"pages":[\n'+q.map(p=>JSON.stringify(p)).join(',\n')+'\n],"meta":'+JSON.stringify(window.PromUI?.metadata()||{})+'}\n';
   const name=baseName+'_프롬프터.json', blob=new Blob([body],{type:'application/json'});
   if(window.showSaveFilePicker){      // 크롬: 내 컴퓨터에서 저장할 폴더·이름을 고른다
     try{
@@ -1144,7 +1169,7 @@ function parseSaved(text){
     .map(r=>({t:cleanText(r.t,true),c:['k','b','r','n'].includes(r.c)?r.c:'k'})).filter(r=>r.t)));
   const lines=Math.min(o.mobile?60:16,Math.max(o.mobile?4:5,+o.lines||5,...pages.map(p=>p.length)));      // 모바일은 화면 높이에 따라 4~16줄
   if(!pages.some(hasText))throw new Error('읽을 내용이 없습니다.');
-  return {pages,lines,mobile:o.mobile||false};
+  return {pages,lines,mobile:o.mobile||false,meta:o.meta||{}};
 }
 $('save').onclick=savePages;
 $('openf').onclick=()=>{
@@ -1199,7 +1224,7 @@ function go(p,manual){
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 let rec=null, listening=false, heardCarry='', sessionText='', lastTail='';
 function toast(msg,ms=3000){const t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',ms)}
-function setDot(cls){$('dot').className=cls||''}
+function setDot(cls){$('dot').className=cls||''; window.PromUI?.mic(cls)}
 // 화면 왼쪽 위에 지금 어디까지 되고 있는지 보여 준다 (소리가 들어오는지, 글자로 바뀌는지, 원고에서 찾았는지)
 function cap(msg,force){const c=$('cap'); clearTimeout(c._h); c.style.display='none'; return;      // 상태 표시는 끔 (진단 때만 이 줄을 지운다)
   if(!msg||(!listening&&!force)){c.style.display='none';return} c.style.display='block'; c.textContent=msg; if(force)c._h=setTimeout(()=>c.style.display='none',20000)}
@@ -1279,7 +1304,7 @@ async function startMic(){
   // 크롬은 침묵이 길거나 1분쯤 지나면 스스로 멈춘다. 켜 둔 동안은 바로 다시 시작한다.
   rec.onend=()=>{
     heardCarry=(heardCarry+sessionText).slice(-60); sessionText='';
-    if(listening){try{startRec()}catch(_){setTimeout(()=>{if(listening)try{startRec()}catch(__){}},300)}}
+    if(listening){setDot('');try{startRec()}catch(_){setTimeout(()=>{if(listening)try{startRec()}catch(__){}},300)}}
     else setDot('');
   };
   rec.onstart=()=>{setDot('live'); cap('듣는 중 · 말씀해 보세요')};
@@ -1287,7 +1312,7 @@ async function startMic(){
   rec.onspeechstart=()=>cap('말소리 감지 · 글자로 바꾸는 중');
   if(ANDROID&&panelOpen())closePanel();      // 소리 막대가 마이크를 같이 잡지 않게
   cursor=pStart[page]||0; heardCarry=''; sessionText=''; lastTail='';     // 켤 때 보고 있는 쪽부터 찾는다
-  listening=true; cap('마이크 여는 중…'); startRec();
+  listening=true; setDot(''); cap('마이크 여는 중…'); startRec();
   $('mic').classList.add('on'); $('mic').textContent='마이크 끄기 (M)';
   keepAwake();
 }
@@ -1467,7 +1492,7 @@ $('fBig').onclick=()=>fStep(1); $('fSmall').onclick=()=>fStep(-1);
 $('fClose').onclick=()=>$('fontPanel').classList.remove('open');
 
 /* ---------- 시작·조작 ---------- */
-function open(pages,bg){
+function openPrompter(pages,bg){
   P=pages.filter(p=>p.some(l=>l.some(r=>r.t.trim()))).map(p=>p.slice(0,LINES));
   if(!P.length){$('loadmsg').textContent='읽을 내용이 없습니다.';return}
   index(); page=0; cursor=0;
@@ -1475,7 +1500,7 @@ function open(pages,bg){
   applyTheme();
   $('setup').style.display='none'; $('view').style.display='block';
   document.fonts.ready.then(()=>{ if(!document.fonts.check('20px PFont','가')) $('page').classList.add('fallback') });
-  fit(); render(); showBar();
+  fit(); render(); showBar(); window.PromUI?.opened(bg);
   document.fonts.ready.then(()=>{document.fonts.load('48px PFont','가').catch(()=>{}).finally(()=>scrubTofu())});
 }
 // html 원고. 글자 색과 쪽나눔·줄바꿈을 화면에 그려진 대로 읽는다 (한글의 'HTML로 저장' 파일 포함)
@@ -1579,13 +1604,13 @@ async function loadFile(f){
       // 이 프로그램에서 저장한 파일은 다시 변환하지 않고 그대로 연다
       const s=parseSaved(await f.text());
       if(listening)stopMic(); if(editing)endEdit();
-      if(+s.mobile>=MFS_MIN&&+s.mobile<=MFS_MAX)MFS=+s.mobile; setMode(s.mobile); LINES=s.lines; open(s.pages); lastSrc={pages:P.map(p=>p.slice())}; dirty=false; $('loadmsg').textContent='';
+      if(+s.mobile>=MFS_MIN&&+s.mobile<=MFS_MAX)MFS=+s.mobile; setMode(s.mobile); LINES=s.lines; openPrompter(s.pages); window.PromUI?.applyMetadata(s.meta); render(); lastSrc={pages:P.map(p=>p.slice())}; dirty=false; $('loadmsg').textContent='';
       toast('저장한 파일을 열었습니다 · '+P.length+'쪽 · '+LINES+'줄',5000); return;
     }else if(/\.html?$/i.test(f.name)){
       // html 은 이미 쪽이 나뉘어 있으니 줄 수 선택 없이 그대로 바로 연다
       r=await parseHtml(await f.arrayBuffer());
       if(!r.pages.some(p=>p.some(l=>l.some(x=>x.t.trim()))))throw new Error('읽을 내용이 없습니다.');
-      setMode(false); LINES=Math.max(5,...r.pages.map(p=>p.length)); open(r.pages,r.bg);
+      setMode(false); LINES=Math.max(5,...r.pages.map(p=>p.length)); openPrompter(r.pages,r.bg);
       $('loadmsg').textContent=''; const rr=remReport(); if(rr)toast(rr,10000); return;
     }
     else if(/\.txt$/i.test(f.name)) r={pages:parseTxt(await f.text()),bg:null};
@@ -1596,6 +1621,7 @@ async function loadFile(f){
     else if(/\.pdf$/i.test(f.name)) r=await parsePdf(await f.arrayBuffer());
     else throw new Error('hwp, hwpx, doc, docx, ppt, pptx, pdf, txt, html 파일만 열 수 있습니다.');
     if(!r.pages.some(p=>p.some(l=>l.some(x=>x.t.trim()))))throw new Error('읽을 내용이 없습니다.');
+    if($('view').style.display==='block'){if(editing)endEdit();stopMic();tStop();startWith(r.pages,r.bg);$('loadmsg').textContent='';return}
     pending=r; $('start').disabled=false; $('fname').textContent=f.name+' 을(를) 읽었습니다. 줄 수를 고르고 시작을 누르세요.';
     $('loadmsg').textContent=''; const rr=remReport(); if(rr)toast(rr,10000);
   }catch(e){$('loadmsg').textContent=e.message; if($('view').style.display==='block')toast(e.message,6000)}
@@ -1653,16 +1679,17 @@ function applyTheme(){$('page').classList.toggle('dark',$('theme').value==='dark
 try{const t=localStorage.getItem('prompterTheme');if(t)$('theme').value=t}catch(_){}
 try{const n=localStorage.getItem('prompterLines');['lines','lines2'].forEach(nm=>{const r=n&&document.querySelector('input[name='+nm+'][value="'+n+'"]');if(r)r.checked=true})}catch(_){}
 $('theme').onchange=applyTheme;
-$('fs').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
+$('fs').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();else toast('이 브라우저에서는 메뉴에서 전체화면으로 열어 주세요.')}catch(_){toast('전체화면으로 바꾸지 못했습니다. 다시 눌러 주세요.')}};
 $('back').onclick=()=>{endEdit();stopMic();closePanel();tStop();$('fontPanel').classList.remove('open');$('view').style.display='none';$('setup').style.display='block'};
 addEventListener('resize',()=>{fit(); if(panelOpen())placePanel()});
 addEventListener('keydown',e=>{
   if(e.key==='Escape'&&panelOpen()){closePanel(); showBar(); return}
   if(e.key==='Escape'&&$('ttsPanel').classList.contains('open')){$('ttsPanel').classList.remove('open'); return}
   if(e.key==='Escape'&&$('fontPanel').classList.contains('open')){$('fontPanel').classList.remove('open'); return}
-  if($('view').style.display!=='block'||e.target.tagName==='SELECT')return;
+  if($('view').style.display!=='block'||['SELECT','INPUT','TEXTAREA'].includes(e.target.tagName)||e.target.isContentEditable&&!editing)return;
   if(editing){editKey(e);showBar();return}
   const k=e.key;
+  if(e.target.tagName==='BUTTON'&&[' ','Enter'].includes(k))return;
   if(['ArrowRight','ArrowDown','PageDown',' '].includes(k)){e.preventDefault();go(page+1,true)}
   else if(['ArrowLeft','ArrowUp','PageUp'].includes(k)){e.preventDefault();go(page-1,true)}
   else if(k==='Home')go(0,true);
@@ -1676,7 +1703,7 @@ addEventListener('keydown',e=>{
   showBar();
 });
 let barT;
-function showBar(){$('bar').classList.remove('hide');clearTimeout(barT);barT=setTimeout(()=>{if(!panelOpen())$('bar').classList.add('hide')},4000)}
+function showBar(){$('bar').classList.remove('hide');clearTimeout(barT);barT=setTimeout(()=>{if(!panelOpen()&&!window.PromUI?.holdControls())$('bar').classList.add('hide')},4000)}
 addEventListener('mousemove',showBar);
 // 시험용: 콘솔에서 __feed('들은 말')로 음성인식 결과를 흉내 낼 수 있다
 /* ---------- 바탕화면·홈 화면에 설치 ---------- */
@@ -1706,7 +1733,8 @@ window.__state=()=>({page,cursor,total:P.length});
   remClear();
   if(d.ms){const pg=[]; pg.ms=d.ms; startWith(pg)} else startWith(d.pages);
 })();
-if(window.PRELOAD_PAGES)open(window.PRELOAD_PAGES);
+if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 </script>
+<script src="workspace.js?v=20261014-1"></script>
 </body>
 </html>
