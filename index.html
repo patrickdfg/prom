@@ -45,11 +45,6 @@ button{font:inherit;cursor:pointer}
 textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px;line-height:1.5;font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif}
 .row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 #loadmsg{margin-top:12px;color:var(--warn);min-height:1.4em}
-#obsHelp{margin-top:20px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
-#obsHelp summary{cursor:pointer;padding:12px 14px;font-weight:700}
-#obsHelp div{padding:0 16px 14px;line-height:1.7;color:var(--muted);font-size:14px}
-#obsHelp ol{margin:6px 0 10px;padding-left:20px}
-#obsHelp a{color:var(--accent)}
 /* 프롬프터 화면 */
 #view{display:none;position:fixed;inset:0;background:#000}
 #stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
@@ -152,21 +147,6 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
   </section>
   <div class="setup-footer"><a class="btn ghost" href="classic.html">이전 화면으로 열기</a><button class="btn" id="demo">예시 원고로 체험</button><div class="row" id="installRow"><button class="btn ghost" id="install">앱으로 설치</button><span id="installNote" style="color:var(--muted);font-size:13px"></span></div></div>
   <p class="format-note" style="margin-top:16px">최근 원고와 메모는 이 기기의 브라우저에 자동 저장됩니다. 공용 기기에서는 사용 후 사이트 데이터를 지워 주세요.</p>
-  <details id="obsHelp"><summary>방송 장비(캡처보드·마이크)와 함께 쓸 때 설정법</summary>
-    <div>
-      <p>프롬프터는 크롬이 고른 마이크 소리를 듣고 쪽을 넘깁니다. 방송 소리를 쓰려면 크롬 마이크만 알맞게 고르면 됩니다. 크롬 마이크는 프롬프터 화면의 설정 → "크롬 마이크 설정 주소 복사"로 열어 고르고, 고른 뒤 프롬프터를 새로고침합니다.</p>
-      <b>1. 캡처보드가 있을 때 (가장 간단)</b>
-      <ol>
-        <li>크롬 마이크를 캡처보드(예: ATEM)로 고릅니다.</li>
-        <li>OBS가 같은 캡처보드를 쓰고 있어도 상관없습니다. 윈도우는 한 입력 장치를 여러 프로그램이 함께 쓰게 해 줍니다. OBS 설정은 따로 필요 없습니다.</li>
-      </ol>
-      <b>2. 설교자 마이크가 이 PC에 바로 꽂혀 있을 때</b>
-      <ol>
-        <li>크롬 마이크를 그 마이크로 고르면 됩니다. OBS를 켜지 않아도 됩니다.</li>
-      </ol>
-      <p>소리가 들어오는지는 프롬프터 화면의 설정 창에 있는 소리 크기 막대로 확인합니다.</p>
-    </div>
-  </details>
   <div id="loadmsg"></div>
 </div>
 

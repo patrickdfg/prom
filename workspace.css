@@ -35,7 +35,6 @@ button:hover{filter:brightness(1.12)}
 .setup-footer{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:20px}
 #demo{position:static;background:transparent;box-shadow:none;border:1px solid var(--line);color:var(--text)}
 #installRow{margin:0}
-#obsHelp{background:transparent;font-size:13px;border-radius:14px}
 #resumeCard{padding:18px;border:1px solid #44624f;border-radius:16px;margin-bottom:20px;background:#16251e;display:flex;align-items:center;justify-content:space-between;gap:16px}
 #resumeCard p{margin:5px 0 0;font-size:13px}
 #resumeCard button{white-space:nowrap}
