@@ -119,7 +119,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
-<link rel="stylesheet" href="workspace.css?v=20261015-1">
+<link rel="stylesheet" href="workspace.css?v=20261015-2">
 </head>
 <body>
 <div id="setup">
@@ -1537,7 +1537,7 @@ $('tPitch').oninput=e=>{TS.pitch=+e.target.value;tShow();tSave()}; $('tPitch').o
 $('tVoice').onchange=e=>{TS.voice=e.target.value;tSave();tRestartCur()};
 // 읽어주는 중에는 화면을 누르면 조절 창을 열고 닫는다
 $('stage').addEventListener('click',e=>{
-  if(editing||listening||e.target.closest('.line-note,.note-insert'))return;
+  if(editing||listening||e.target.closest('.note-object'))return;
   if(ttsOn){$('ttsPanel').classList.toggle('open');return}
   if(MOBILE){$('fontPanel').classList.toggle('open'); fShow()}       // 폰 화면: 누르면 글자 크기 창
 });
@@ -1808,6 +1808,6 @@ window.__state=()=>({page,cursor,total:P.length});
 })();
 if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 </script>
-<script src="workspace.js?v=20261015-1"></script>
+<script src="workspace.js?v=20261015-2"></script>
 </body>
 </html>

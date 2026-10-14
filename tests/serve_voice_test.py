@@ -31,18 +31,26 @@ document.getElementById('runVoiceRegression').onclick=async()=>{
   if(newUI){
    ok('불필요한 기능 삭제',['check','timerToggle','timerReset','targetMinutes','pickLine','sessionClock','noteDialog'].every(id=>!document.getElementById(id)));
    ok('화면 선택 상단 배치',document.getElementById('statusbar').contains(document.getElementById('theme')));
+   const bodyBefore=JSON.stringify(P),rowsBefore=document.getElementById('lines').getBoundingClientRect().toJSON();
    document.getElementById('note').click();
-   const memo=document.querySelector('.line-note.edit');memo.textContent='잠시 멈추고 회중 보기';memo.dispatchEvent(new Event('input',{bubbles:true}));
-   ok('메모 직접 편집',memo.isContentEditable&&!document.querySelector('dialog[open]'));
-   document.getElementById('note').click();
-   await Promise.resolve();ok('메모 빨간색 표시',getComputedStyle(document.querySelector('.line-note')).color==='rgb(255, 52, 52)');
-   document.querySelectorAll('.note-insert')[1].click();const second=document.querySelector('.line-note.edit');second.textContent='두 번째 줄에서 강조';second.dispatchEvent(new Event('input',{bubbles:true}));PromUI.finishNote();await Promise.resolve();
-   ok('모든 줄에 메모 버튼',document.querySelectorAll('.note-insert').length===LINES);
-   ok('각 줄 앞에 메모 저장',document.querySelectorAll('.line-note').length===2&&document.querySelectorAll('#lines>.ln')[1].querySelector('.line-note').textContent==='두 번째 줄에서 강조');
-   const roundTrip=JSON.parse(JSON.stringify(PromUI.metadata()));PromUI.applyMetadata(roundTrip);render();await Promise.resolve();ok('줄별 메모 저장 파일 복구',document.querySelectorAll('.line-note').length===2);
+   const memo=document.querySelector('.note-object.selected .note-text');memo.textContent='잠시 멈추고 회중 보기';memo.dispatchEvent(new Event('input',{bubbles:true}));
+   ok('버튼으로 메모 레이어 바로 입력',memo.isContentEditable&&!document.querySelector('dialog[open]'));
+   document.getElementById('noteSize').value='40';document.getElementById('noteSize').dispatchEvent(new Event('input'));
+   ok('메모 글자 크기 조절',getComputedStyle(memo.parentElement).fontSize==='40px');
+   const handle=document.querySelector('.note-move');handle.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:7,clientX:100,clientY:100}));handle.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerId:7,clientX:180,clientY:160}));handle.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:7}));
+   const moved=Object.values(PromUI.metadata().noteLayers).flat()[0];ok('메모 레이어 자유 이동',moved.x>0.08&&moved.y>0.12);
+   document.getElementById('noteDone').click();
+   await Promise.resolve();ok('메모 빨간색 표시',getComputedStyle(document.querySelector('.note-text')).color==='rgb(255, 52, 52)');
+   document.getElementById('note').click();const second=document.querySelector('.note-object.selected .note-text');second.textContent='두 번째 메모';second.dispatchEvent(new Event('input',{bubbles:true}));PromUI.finishNote();await Promise.resolve();
+   ok('왼쪽 더하기 버튼 제거',document.querySelectorAll('.note-insert').length===0);
+   ok('독립된 메모 레이어 두 개',document.querySelectorAll('.note-object').length===2);
+   ok('메모가 원고와 줄 배치에 영향 없음',JSON.stringify(P)===bodyBefore&&Math.abs(document.getElementById('lines').getBoundingClientRect().height-rowsBefore.height)<1);
+   const roundTrip=JSON.parse(JSON.stringify(PromUI.metadata()));PromUI.applyMetadata(roundTrip);render();await Promise.resolve();ok('위치와 글자 크기 저장 복구',Object.values(PromUI.metadata().noteLayers).flat()[0].size===40&&Object.values(PromUI.metadata().noteLayers).flat()[0].x===moved.x);
+   const key=PromUI.noteKey(P[page]);PromUI.applyMetadata({lineNotes:{[key]:['옛 첫 줄 메모','옛 둘째 줄 메모']}});render();await Promise.resolve();ok('기존 줄 메모 보존',document.querySelectorAll('.note-object').length===2&&Object.values(PromUI.metadata().noteLayers).flat()[1].text==='옛 둘째 줄 메모');
+   PromUI.applyMetadata(roundTrip);render();await Promise.resolve();document.querySelector('.note-text').click();document.getElementById('noteDelete').click();ok('선택한 레이어만 삭제',document.querySelectorAll('.note-object').length===1);PromUI.applyMetadata(roundTrip);render();await Promise.resolve();
    document.getElementById('theme-cloud').click();ok('하늘 구름 배경 선택',!document.getElementById('page').classList.contains('dark'));document.getElementById('theme-dark').click();ok('검정 배경 선택',document.getElementById('page').classList.contains('dark'));
    ok('메모 읽어주기 제외',!pageSay(page).includes('잠시 멈추고'));
-   ok('메모 저장',Object.values(PromUI.metadata().lineNotes).flat().includes('잠시 멈추고 회중 보기'));
+   ok('메모 저장',Object.values(PromUI.metadata().noteLayers).flat().some(n=>n.text==='잠시 멈추고 회중 보기'));
    go(1,true);go(0,true);await Promise.resolve();
    ok('페이지 이동 후 맨 위부터 시작',cursor===pStart[page]);
   }
@@ -56,7 +64,7 @@ document.getElementById('runVoiceRegression').onclick=async()=>{
   ok('마이크 시작',listening);
   if(newUI){
    const hidden=id=>getComputedStyle(document.getElementById(id)).display==='none';
-   ok('마이크 중 원고 외 화면 숨김',['statusbar','bar','voiceFeedback','toast'].every(hidden)&&!document.querySelector('.line-note,.note-insert'));
+   ok('마이크 중 원고 외 화면 숨김',['statusbar','bar','voiceFeedback','toast'].every(hidden)&&hidden('noteLayer')&&hidden('noteTools'));
    ok('마이크 중 원고가 전체 공간 사용',Math.abs(document.getElementById('stage').getBoundingClientRect().height-innerHeight)<1);
    document.dispatchEvent(new MouseEvent('mousemove',{bubbles:true}));
    ok('화면 가운데에서는 조작부 안 보임',hidden('bar'));

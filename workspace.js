@@ -63,56 +63,83 @@
     $('searchCount').textContent = q ? `${count}개 쪽에서 찾았습니다.` : `전체 ${P.length}쪽 · 쪽을 누르면 이동합니다.`;
   }
   $('searchQuery').oninput = search;
-  let noteBox=null, noteLine=0;
+  let noteBox=null, activeNote=null, drag=null;
+  const noteLayer=document.createElement('div');noteLayer.id='noteLayer';$('stage').append(noteLayer);
+  const noteTools=document.createElement('div');noteTools.id='noteTools';noteTools.hidden=true;
+  noteTools.setAttribute('role','toolbar');noteTools.setAttribute('aria-label','발표 메모 편집');
+  noteTools.innerHTML='<span>메모 글자</span><button type="button" id="noteSmaller" aria-label="메모 글자 줄이기">−</button><input id="noteSize" type="number" min="12" max="96" step="1" value="24" aria-label="메모 글자 크기"><span>px</span><button type="button" id="noteLarger" aria-label="메모 글자 키우기">＋</button><button type="button" id="noteDelete">삭제</button><button type="button" id="noteDone">완료</button>';
+  $('view').append(noteTools);
+  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
   function storeNote() {
-    if(noteAnchor === null || !noteBox)return;
-    const value=noteBox.innerText.replace(/\r/g,'').slice(0,2000).trim();
-    const rows=notes[noteAnchor]||(notes[noteAnchor]=[]); rows[noteLine]=value;
-    if(!rows.some(Boolean))delete notes[noteAnchor];
+    if(!activeNote||!noteBox)return;
+    activeNote.text=noteBox.innerText.replace(/\r/g,'').slice(0,2000);
   }
-  function finishNote(repaint=true) {
+  function finishNote() {
     if(!noteEditing)return;
-    storeNote(); noteEditing=false; noteAnchor=null;
-    noteBox.contentEditable='false'; noteBox.classList.remove('edit');noteBox.blur();
-    noteBox=null;$('note').textContent='발표 메모';dirty=true;if(repaint)render();saveNow();
+    storeNote();
+    if(activeNote&&!activeNote.text.trim())notes[noteAnchor]=(notes[noteAnchor]||[]).filter(n=>n!==activeNote);
+    noteEditing=false;noteAnchor=null;activeNote=null;drag=null;noteBox?.blur();noteBox=null;
+    noteTools.hidden=true;dirty=true;showNote();saveNow();
+  }
+  function placeObject(el,n){
+    el.style.left=(n.x*100)+'%';el.style.top=(n.y*100)+'%';
+    el.style.fontSize=n.size+'px';el.style.maxWidth=((1-n.x)*100)+'%';
   }
   function showNote() {
     const visible=!listening&&!ttsOn&&!editing;
-    $('lines').classList.toggle('notes-visible',visible);
-    const values=notes[noteKey(P[page])]||[];
-    [...$('lines').children].forEach((row,i)=>{
-      row.querySelectorAll('.note-insert,.line-note').forEach(el=>{if(el!==noteBox)el.remove();});
-      row.classList.toggle('notes-available',visible);
-      row.classList.toggle('has-line-note',visible&&!!(values[i]||(noteEditing&&noteLine===i)));
-      if(!visible)return;
-      const button=document.createElement('button');button.className='note-insert';button.textContent='+';
-      button.type='button';button.dataset.line=i;button.setAttribute('aria-label',`${i+1}번째 줄 발표 메모`);button.title='이 줄 앞에 발표 메모 넣기';
-      row.prepend(button);
-      if(values[i]||(noteEditing&&noteLine===i)){
-        let box=noteEditing&&noteLine===i?noteBox:null;
-        if(!box){box=document.createElement('div');box.className='line-note';box.textContent=values[i]||'';}
-        box.dataset.line=i;box.setAttribute('role','textbox');box.setAttribute('aria-label',`${i+1}번째 줄 메모 내용`);
-        box.setAttribute('aria-multiline','true');box.dataset.placeholder='발표 메모 입력 · Esc로 저장';
-        row.insertBefore(box,row.querySelector('span'));
-      }
-      const body=row.querySelector(':scope > span');
-      if(body){body.style.transform='';const w=body.getBoundingClientRect().width,max=row.clientWidth-36;if(w>max&&max>0)body.style.transform=`scale(${max/w})`;}
+    noteLayer.hidden=!visible;noteTools.hidden=!visible||!noteEditing;
+    if(noteEditing&&noteBox?.isConnected){placeObject(noteBox.parentElement,activeNote);return;}
+    noteLayer.replaceChildren();
+    if(!visible)return;
+    (notes[noteKey(P[page])]||[]).forEach((n,i)=>{
+      const object=document.createElement('div');object.className='note-object';object.dataset.note=i;placeObject(object,n);
+      const box=document.createElement('div');box.className='note-text';box.textContent=n.text;box.contentEditable='false';
+      box.setAttribute('role','textbox');box.setAttribute('aria-label',`발표 메모 ${i+1}`);box.setAttribute('aria-multiline','true');
+      object.append(box);noteLayer.append(object);
     });
   }
-  function beginNote(line) {
-    finishNote(false);
-    if(editing)endEdit();if(listening)stopMic();if(ttsOn)tStop();
-    noteAnchor=noteKey(P[page]);noteLine=line;noteEditing=true;
-    noteBox=document.createElement('div');noteBox.className='line-note';noteBox.textContent=notes[noteAnchor]?.[line]||'';
-    noteBox.contentEditable='true';noteBox.classList.add('edit');
-    $('note').textContent='메모 끝내기 (Esc)';showNote();noteBox.focus();
-    const range=document.createRange();range.selectNodeContents(noteBox);range.collapse(false);
-    const selection=getSelection();selection.removeAllRanges();selection.addRange(range);
+  function selectNote(n){
+    finishNote();noteAnchor=noteKey(P[page]);activeNote=n;noteEditing=true;
+    showNote();
+    const i=notes[noteAnchor].indexOf(n),object=noteLayer.children[i];
+    object.classList.add('selected');noteBox=object.querySelector('.note-text');noteBox.contentEditable='true';noteBox.dataset.placeholder='여기에 메모 입력';
+    const handle=document.createElement('button');handle.type='button';handle.className='note-move';handle.textContent='이동';handle.setAttribute('aria-label','메모 레이어 이동');handle.title='끌어서 이동 · 방향키로 미세 이동';object.prepend(handle);
+    $('noteSize').value=n.size;noteTools.hidden=false;noteBox.focus();
+    const range=document.createRange();range.selectNodeContents(noteBox);range.collapse(false);const selection=getSelection();selection.removeAllRanges();selection.addRange(range);
   }
-  $('note').onclick=()=>noteEditing?finishNote():beginNote(0);
-  $('lines').addEventListener('click',e=>{const target=e.target.closest('.note-insert,.line-note');if(target&&target!==noteBox){e.stopPropagation();beginNote(+target.dataset.line);}});
-  $('lines').addEventListener('input',e=>{if(e.target===noteBox){storeNote();dirty=true;scheduleSave();}});
-  $('lines').addEventListener('paste',e=>{if(e.target===noteBox){e.preventDefault();document.execCommand('insertText',false,(e.clipboardData.getData('text/plain')||'').slice(0,2000));}});
+  $('note').onclick=()=>{
+    finishNote();if(editing)endEdit();if(listening)stopMic();if(ttsOn)tStop();
+    const key=noteKey(P[page]),items=notes[key]||(notes[key]=[]);
+    const offset=(items.length%6)*0.04,n={text:'',x:0.08+offset,y:0.12+offset,size:innerWidth<600?20:28};items.push(n);
+    menu.hidden=true;$('more').setAttribute('aria-expanded','false');selectNote(n);
+  };
+  noteLayer.addEventListener('click',e=>{e.stopPropagation();const object=e.target.closest('.note-object');if(object&&!object.classList.contains('selected'))selectNote(notes[noteKey(P[page])][+object.dataset.note]);});
+  noteLayer.addEventListener('input',e=>{if(e.target===noteBox){storeNote();dirty=true;scheduleSave();}});
+  noteLayer.addEventListener('paste',e=>{if(e.target===noteBox){e.preventDefault();document.execCommand('insertText',false,(e.clipboardData.getData('text/plain')||'').slice(0,2000));}});
+  function moveNote(x,y){
+    if(!activeNote||!noteBox)return;
+    const bounds=noteLayer.getBoundingClientRect(),object=noteBox.parentElement;
+    activeNote.x=clamp(x,0,Math.max(0,1-Math.min(object.offsetWidth,bounds.width)/bounds.width));
+    activeNote.y=clamp(y,0.04,Math.max(0.04,1-Math.min(object.offsetHeight,bounds.height)/bounds.height));
+    placeObject(object,activeNote);dirty=true;scheduleSave();
+  }
+  noteLayer.addEventListener('pointerdown',e=>{
+    if(!e.target.closest('.note-move'))return;e.preventDefault();
+    const rect=noteLayer.getBoundingClientRect();drag={id:e.pointerId,cx:e.clientX,cy:e.clientY,x:activeNote.x,y:activeNote.y,w:rect.width,h:rect.height};
+    try{e.target.setPointerCapture(e.pointerId)}catch(_){}
+  });
+  noteLayer.addEventListener('pointermove',e=>{if(drag&&drag.id===e.pointerId)moveNote(drag.x+(e.clientX-drag.cx)/drag.w,drag.y+(e.clientY-drag.cy)/drag.h);});
+  for(const event of ['pointerup','pointercancel','lostpointercapture'])noteLayer.addEventListener(event,()=>{if(drag){drag=null;saveNow();}});
+  noteLayer.addEventListener('keydown',e=>{
+    if(!e.target.closest('.note-move')||!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;
+    e.preventDefault();e.stopPropagation();const step=e.shiftKey?10:1,rect=noteLayer.getBoundingClientRect();
+    moveNote(activeNote.x+({'ArrowLeft':-step,'ArrowRight':step}[e.key]||0)/rect.width,activeNote.y+({'ArrowUp':-step,'ArrowDown':step}[e.key]||0)/rect.height);
+  });
+  function resizeNote(value){if(!activeNote)return;activeNote.size=clamp(Number(value)||24,12,96);$('noteSize').value=activeNote.size;placeObject(noteBox.parentElement,activeNote);dirty=true;scheduleSave();}
+  $('noteSize').oninput=e=>resizeNote(e.target.value);
+  $('noteSmaller').onclick=()=>resizeNote(activeNote.size-2);$('noteLarger').onclick=()=>resizeNote(activeNote.size+2);
+  $('noteDone').onclick=finishNote;
+  $('noteDelete').onclick=()=>{if(!activeNote)return;notes[noteAnchor]=notes[noteAnchor].filter(n=>n!==activeNote);activeNote=null;finishNote();};
   $('focusColor').onchange = () => { $('view').style.setProperty('--focus',$('focusColor').value); saveNow(); publish(); };
   function syncTheme(){for(const value of ['dark','cloud'])$('theme-'+value).setAttribute('aria-pressed',String($('theme').value===value));}
   for(const value of ['dark','cloud'])$('theme-'+value).onclick=()=>{$('theme').value=value;$('theme').dispatchEvent(new Event('change'));};
@@ -135,11 +162,13 @@
     toast('새 원고 창을 외부 모니터로 옮겨 전체화면으로 보세요.',6000);
   };
   addEventListener('message',e=>{if(e.origin===location.origin && e.source===audience && e.data?.type==='ready')publish(true);});
-  function metadata() { if(noteEditing)storeNote();return {lineNotes:notes,focus:$('focusColor').value}; }
+  function metadata() { if(noteEditing)storeNote();return {noteLayers:notes,focus:$('focusColor').value}; }
   function applyMetadata(data={}) {
     notes=Object.create(null);
-    if(data.notes && typeof data.notes==='object')for(const [k,v] of Object.entries(data.notes))if(typeof v==='string')notes[k]=[v.slice(0,2000)];
-    if(data.lineNotes && typeof data.lineNotes==='object')for(const [k,v] of Object.entries(data.lineNotes))if(Array.isArray(v))notes[k]=v.slice(0,500).map(s=>typeof s==='string'?s.slice(0,2000):'');
+    const fromLegacy=(text,i=0,count=LINES)=>({text:text.slice(0,2000),x:0.06,y:clamp(0.05+(i+0.3)*0.9/Math.max(1,count),0.04,0.9),size:20});
+    if(data.notes&&typeof data.notes==='object')for(const [k,v]of Object.entries(data.notes))if(typeof v==='string'&&v.trim())notes[k]=[fromLegacy(v)];
+    if(data.lineNotes&&typeof data.lineNotes==='object')for(const [k,v]of Object.entries(data.lineNotes))if(Array.isArray(v))notes[k]=v.slice(0,500).map((text,i)=>typeof text==='string'&&text.trim()?fromLegacy(text,i):null).filter(Boolean);
+    if(data.noteLayers&&typeof data.noteLayers==='object')for(const [k,v]of Object.entries(data.noteLayers))if(Array.isArray(v))notes[k]=v.slice(0,500).filter(n=>n&&typeof n.text==='string').map(n=>({text:n.text.slice(0,2000),x:clamp(Number(n.x)||0,0,0.95),y:clamp(Number(n.y)||0.04,0.04,0.95),size:clamp(Number(n.size)||24,12,96)}));
     $('focusColor').value=data.focus==='#b6f36a'?'#b6f36a':'#ffff00';
     $('view').style.setProperty('--focus',$('focusColor').value);
   }
@@ -189,7 +218,7 @@
     reading(){finishNote();showNote();},
     opened(bg) {
       background=bg||null; if(restoring)return;
-      applyMetadata();noteEditing=false;noteAnchor=null;noteBox=null;$('note').textContent='발표 메모';syncTheme();
+      applyMetadata();noteEditing=false;noteAnchor=null;noteBox=null;activeNote=null;$('note').textContent='발표 메모';syncTheme();
       menu.hidden=true; $('more').setAttribute('aria-expanded','false');
       dirty=false; render(); scheduleSave();
     },

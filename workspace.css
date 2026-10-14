@@ -79,7 +79,7 @@ button:hover{filter:brightness(1.12)}
 #statusbar label{display:flex;align-items:center;gap:8px;pointer-events:auto;font-size:14px}
 #statusbar select{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit}
 #view.presenting #stage{inset:0}
-#view.presenting #statusbar,#view.presenting #bar,#view.presenting #voiceFeedback,#view.presenting #toast,#view.presenting #cap,#view.presenting .line-note,#view.presenting .note-insert,#view.presenting #fontPanel,#view.presenting #ttsPanel,#view.presenting #setpanel{display:none!important}
+#view.presenting #statusbar,#view.presenting #bar,#view.presenting #voiceFeedback,#view.presenting #toast,#view.presenting #cap,#view.presenting #noteLayer,#view.presenting #noteTools,#view.presenting #fontPanel,#view.presenting #ttsPanel,#view.presenting #setpanel{display:none!important}
 #view.presenting .ln.current::before{display:none!important}
 #view.presenting.controls-open #bar,#view.presenting.controls-open #statusbar{display:flex!important;opacity:1!important;pointer-events:auto!important}
 @media(max-width:600px){#statusbar{padding:8px 12px;gap:8px}#statusbar label{font-size:12px;gap:4px}#statusbar select{max-width:120px;padding:6px}#sessionTitle{max-width:24vw}#pageNote{font-size:16px}}
@@ -89,12 +89,15 @@ button:hover{filter:brightness(1.12)}
 .theme-choices{display:flex;gap:6px;pointer-events:auto;flex-shrink:0}
 .theme-choices button{padding:8px 12px;border:1px solid #52647c;border-radius:8px;background:#202b3a;color:#dce8f8;font:inherit;cursor:pointer;min-height:36px}
 .theme-choices button[aria-pressed=true]{background:#bad3ff;color:#13243c;border-color:#bad3ff}
-.ln.notes-available{position:relative;padding-left:36px;min-height:0;box-sizing:border-box}
-.note-insert{position:absolute;left:0;top:50%;transform:translateY(-50%);width:30px;height:30px;padding:0;border:1px solid #b54c4c;border-radius:7px;background:#321c1ce6;color:#ff9999;font:20px/1 sans-serif;cursor:pointer}
-.ln.has-line-note{flex-direction:column}
-.ln.has-line-note>span{font-size:.78em;flex-shrink:0}
-.line-note{color:#ff3434!important;white-space:pre-wrap;text-align:left;align-self:stretch;font:clamp(12px,1.5vw,22px)/1.3 'Malgun Gothic',sans-serif;max-height:40%;overflow:auto;padding:2px 6px;cursor:text;flex-shrink:1}
-.line-note.edit{outline:1px dashed #ff5555;background:#7e1d1d22;min-height:1.3em;caret-color:#ff3434}
-.line-note.edit:empty::before{content:attr(data-placeholder);opacity:.6;pointer-events:none}
-@media(max-width:600px){#sessionTitle{display:none}.theme-choices{gap:4px}.theme-choices button{padding:7px;font-size:11px}#statusbar{gap:4px}.mic-state{font-size:11px;gap:4px}.note-insert{width:28px;height:28px}}
-@media(max-width:600px){#lines.notes-visible{overflow-y:auto;overflow-x:hidden}.ln.notes-available{flex:0 0 auto;min-height:max(30px,var(--lh))}.ln.has-line-note{min-height:calc(var(--lh) + 22px)}.ln.has-line-note>span{font-size:1em}.line-note{max-height:60px;flex-shrink:0;font-size:13px;min-height:17px}}
+@media(max-width:600px){#sessionTitle{display:none}.theme-choices{gap:4px}.theme-choices button{padding:7px;font-size:11px}#statusbar{gap:4px}.mic-state{font-size:11px;gap:4px}}
+
+#noteLayer{position:absolute;inset:0;z-index:5;pointer-events:none;overflow:hidden}
+.note-object{position:absolute;pointer-events:auto;width:max-content;min-width:1em;color:#ff3434!important;text-align:left;font-family:'Malgun Gothic',sans-serif;line-height:1.4;font-weight:400;box-sizing:border-box}
+.note-text{color:inherit;white-space:pre-wrap;overflow-wrap:anywhere;min-width:1em;min-height:1.4em;max-height:60vh;overflow:auto;padding:2px 6px;outline:none;cursor:text}
+.note-object.selected{outline:1px dashed #ff7777;background:#1d121266;min-width:min(240px,70vw)}
+.note-text[contenteditable=true]:empty::before{content:attr(data-placeholder);opacity:.65;pointer-events:none}
+.note-move{position:absolute;left:0;bottom:100%;border:0;border-radius:5px 5px 0 0;padding:4px 12px;background:#7e2626;color:#fff;font:12px/1.4 sans-serif;cursor:move;touch-action:none;user-select:none}
+#noteTools{position:absolute;top:58px;left:50%;transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:6px;max-width:calc(100% - 16px);padding:8px;background:#202b3af5;color:#fff;border:1px solid #52647c;border-radius:10px;font:13px sans-serif;box-sizing:border-box}
+#noteTools button,#noteTools input{min-height:34px;background:#2b3b50;color:#fff;border:1px solid #64778f;border-radius:6px;padding:4px 9px;font:inherit}
+#noteTools button{cursor:pointer;white-space:nowrap}#noteSize{width:58px}#noteDone{background:#5a2930!important}#noteTools[hidden],#noteLayer[hidden]{display:none!important}
+@media(max-width:600px){#noteTools{gap:4px;padding:6px;font-size:12px}#noteTools button{padding:4px 7px}#noteTools>span:first-child{display:none}}
