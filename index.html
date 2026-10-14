@@ -121,7 +121,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 <body>
 <div id="setup">
   <h1>음성 설교 프롬프터</h1>
-  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-14 15:10 · <a href="read.html" style="color:var(--accent)">원고 읽어주기로 가기</a></div>
+  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-14 20:15 · <a href="read.html" style="color:var(--accent)">원고 읽어주기로 가기</a></div>
   <p>한글(.hwp, .hwpx), 워드(.doc, .docx), 파워포인트(.ppt, .pptx), PDF, 글(.txt), html 원고나 이 프로그램에서 저장한 파일(.json)을 불러오세요.</p>
   <div id="drop">
     <b>파일을 여기로 끌어 놓거나</b>
@@ -1261,7 +1261,9 @@ async function startMic(){
   if(!SR){toast('이 브라우저는 음성인식을 지원하지 않습니다. 크롬으로 열어 주세요.',6000);return}
   await holdMic();
   rec=new SR(); rec.lang='ko-KR'; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
+  let gotSpeech=false, quiet=0, restartT=null;
   rec.onresult=e=>{
+    gotSpeech=true;
     let t=''; for(let i=0;i<e.results.length;i++) t+=e.results[i][0].transcript;
     sessionText=t; onHeard(t);
   };
@@ -1279,10 +1281,15 @@ async function startMic(){
   // 크롬은 침묵이 길거나 1분쯤 지나면 스스로 멈춘다. 켜 둔 동안은 바로 다시 시작한다.
   rec.onend=()=>{
     heardCarry=(heardCarry+sessionText).slice(-60); sessionText='';
-    if(listening){try{startRec()}catch(_){setTimeout(()=>{if(listening)try{startRec()}catch(__){}},300)}}
-    else setDot('');
+    if(!listening){setDot('');return}
+    // 안드로이드는 인식을 켤 때마다 '띵' 소리가 난다. 말이 없던 회차가 이어지면 다시 켜는 간격을 0.5→1→2→3초로 늘린다
+    quiet=gotSpeech?0:quiet+1; gotSpeech=false;
+    const wait=ANDROID?[0,500,1000,2000,3000][Math.min(quiet,4)]:0;
+    clearTimeout(restartT);
+    const go=()=>{if(listening)try{startRec()}catch(_){setTimeout(()=>{if(listening)try{startRec()}catch(__){}},300)}};
+    if(wait){setDot('');restartT=setTimeout(go,wait)} else go();
   };
-  rec.onstart=()=>{setDot('live'); cap('듣는 중 · 말씀해 보세요')};
+  rec.onstart=()=>{setDot('live'); clearTimeout(restartT); cap('듣는 중 · 말씀해 보세요')};
   rec.onaudiostart=()=>cap('마이크 소리가 들어옵니다 · 말씀해 보세요');
   rec.onspeechstart=()=>cap('말소리 감지 · 글자로 바꾸는 중');
   if(ANDROID&&panelOpen())closePanel();      // 소리 막대가 마이크를 같이 잡지 않게
