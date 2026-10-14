@@ -63,6 +63,16 @@ document.getElementById('runVoiceRegression').onclick=async()=>{
   if(window.PromUI)ok('점검용 마이크 점유 해제',meterStopped&&!panelOpen()&&meter===null);
   ok('마이크 시작',listening);
   if(newUI){
+   const speed=document.getElementById('speedLayer'),r=speed.getBoundingClientRect();
+   ok('속도 레이어 기본 크기 100px',getComputedStyle(document.getElementById('speedVal')).fontSize==='100px');
+   ok('속도 레이어 오른쪽 배치',Math.abs(innerWidth-r.right-16)<2);
+   speed.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:8,button:0,clientX:r.left+10,clientY:r.top+10}));
+   speed.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerId:8,clientX:r.left-40,clientY:r.top+60}));speed.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:8}));
+   ok('속도 레이어 독립 이동과 위치 저장',speed.getBoundingClientRect().left<r.left&&!!localStorage.getItem('promSpeedLayerPosition'));
+   const opt=document.getElementById('speedOpt');opt.checked=false;opt.dispatchEvent(new Event('change'));ok('속도 표시 끄기',speed.hidden);opt.checked=true;opt.dispatchEvent(new Event('change'));
+  }
+
+  if(newUI){
    const hidden=id=>getComputedStyle(document.getElementById(id)).display==='none';
    ok('마이크 중 원고 외 화면 숨김',['statusbar','bar','voiceFeedback','toast'].every(hidden)&&hidden('noteLayer')&&hidden('noteTools'));
    ok('마이크 중 원고가 전체 공간 사용',Math.abs(document.getElementById('stage').getBoundingClientRect().height-innerHeight)<1);

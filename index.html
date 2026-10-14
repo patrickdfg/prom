@@ -41,13 +41,14 @@ button{font:inherit;cursor:pointer}
 #drop b{display:block;margin-bottom:8px}
 .btn{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 18px}
 .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
-#speedLayer{position:fixed;top:10px;right:12px;z-index:30;pointer-events:none;display:flex;align-items:baseline;gap:6px;padding:4px 12px;border-radius:10px;background:rgba(0,0,0,.45);color:#cfd8e3;font:600 15px/1.3 system-ui,sans-serif}
+#speedLayer{position:fixed;top:76px;right:16px;z-index:30;display:flex;flex-direction:column;align-items:flex-end;gap:2px;padding:8px 12px;border-radius:10px;background:rgba(0,0,0,.45);color:#cfd8e3;font:600 15px/1.3 system-ui,sans-serif;cursor:grab;touch-action:none;user-select:none;max-width:calc(100vw - 24px);box-sizing:border-box}
 #speedLayer[hidden]{display:none}
 #speedOptWrap{display:inline-flex;align-items:center;gap:5px;font-size:14px;white-space:nowrap;cursor:pointer}
 #speedOptWrap input{width:18px;height:18px;margin:0}
 @media(max-width:600px){#speedOptWrap .wide{display:none}#speedOptWrap{font-size:13px;gap:3px}}
-#speedLayer b{font-size:26px;color:#fff;min-width:2.2em;text-align:right;font-variant-numeric:tabular-nums}
-#speedLayer small{font-size:13px;opacity:.8}
+#speedLayer b{font-size:100px;line-height:1;color:#fff;min-width:3ch;text-align:right;font-variant-numeric:tabular-nums}
+#speedLayer:active{cursor:grabbing}#speedLayer:focus-visible{outline:2px dashed #8bbaff;outline-offset:2px}
+#speedLayer small{font-size:16px;opacity:.8}
 #demo{position:fixed;right:16px;bottom:16px;z-index:10;box-shadow:0 4px 14px rgba(0,0,0,.35)}
 textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px;line-height:1.5;font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif}
 .row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
@@ -162,7 +163,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
   <div id="voiceFeedback" hidden></div>
   <div id="stage"><div id="page"><div id="lines"></div></div></div>
   <div id="toast"></div>
-  <div id="speedLayer" hidden title="말하는 속도 · 현수 목소리 보통 속도 = 100"><small>속도</small><b id="speedVal">—</b></div>
+  <div id="speedLayer" hidden tabindex="0" role="group" aria-label="말하기 속도 레이어" title="말하는 속도 · 현수 목소리 보통 속도 = 100 · 끌어서 이동"><small>속도</small><b id="speedVal">—</b></div>
   <div id="cap"></div>
   <div id="fontPanel">
     <div class="ctl"><button id="fSmall" title="글자 작게">가-</button><span id="fVal"></span><button id="fBig" title="글자 크게">가+</button></div>
@@ -1386,8 +1387,8 @@ function speedTick(){
 }
 let showSpeed=true; try{showSpeed=localStorage.getItem('prompterShowSpeed')!=='0'}catch(_){}
 $('speedOpt').checked=showSpeed;
-$('speedOpt').onchange=()=>{showSpeed=$('speedOpt').checked; try{localStorage.setItem('prompterShowSpeed',showSpeed?'1':'0')}catch(_){} if(spTimer)$('speedLayer').hidden=!showSpeed};
-function speedStart(){speedStop(); spTotal=0; spLast=0; spHist=[]; spHeardAt=0; $('speedVal').textContent='—'; $('speedLayer').hidden=!showSpeed; spTimer=setInterval(speedTick,1000)}
+$('speedOpt').onchange=()=>{showSpeed=$('speedOpt').checked; try{localStorage.setItem('prompterShowSpeed',showSpeed?'1':'0')}catch(_){} if(spTimer)$('speedLayer').hidden=!showSpeed;notifyUI('speedLayer');};
+function speedStart(){speedStop(); spTotal=0; spLast=0; spHist=[]; spHeardAt=0; $('speedVal').textContent='—'; $('speedLayer').hidden=!showSpeed;notifyUI('speedLayer'); spTimer=setInterval(speedTick,1000)}
 function speedStop(){clearInterval(spTimer); spTimer=null; $('speedLayer').hidden=true}
 let wake=null;
 async function keepAwake(){try{if('wakeLock' in navigator&&!wake){wake=await navigator.wakeLock.request('screen');wake.addEventListener('release',()=>wake=null)}}catch(_){}}
@@ -1807,6 +1808,6 @@ window.__state=()=>({page,cursor,total:P.length});
 })();
 if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 </script>
-<script src="workspace.js?v=20261015-5"></script>
+<script src="workspace.js?v=20261015-6"></script>
 </body>
 </html>

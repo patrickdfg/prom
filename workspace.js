@@ -148,6 +148,28 @@
   $('noteSmaller').onclick=()=>resizeNote(activeNote.size-2);$('noteLarger').onclick=()=>resizeNote(activeNote.size+2);
   $('noteDone').onclick=finishNote;
   $('noteDelete').onclick=()=>{if(!activeNote)return;notes[noteAnchor]=notes[noteAnchor].filter(n=>n!==activeNote);activeNote=null;finishNote();};
+  const speedLayer=$('speedLayer'),SPEED_POSITION_STORAGE='promSpeedLayerPosition';
+  let speedPosition=null,speedDrag=null;
+  try{const p=JSON.parse(localStorage.getItem(SPEED_POSITION_STORAGE));if(p&&Number.isFinite(p.x)&&Number.isFinite(p.y))speedPosition={x:clamp(p.x,0,1),y:clamp(p.y,0,1)};}catch(_){}
+  function placeSpeed(){
+    if(!speedPosition||speedLayer.hidden)return;
+    const box=speedLayer.getBoundingClientRect();
+    speedLayer.style.left=clamp(speedPosition.x*innerWidth,0,Math.max(0,innerWidth-box.width))+'px';
+    speedLayer.style.top=clamp(speedPosition.y*innerHeight,0,Math.max(0,innerHeight-box.height))+'px';speedLayer.style.right='auto';
+  }
+  function saveSpeedPosition(){try{localStorage.setItem(SPEED_POSITION_STORAGE,JSON.stringify(speedPosition));}catch(_){} }
+  function moveSpeed(x,y){speedPosition={x:clamp(x/innerWidth,0,1),y:clamp(y/innerHeight,0,1)};placeSpeed();}
+  speedLayer.addEventListener('pointerdown',e=>{
+    if(e.button!==0)return;e.preventDefault();e.stopPropagation();const r=speedLayer.getBoundingClientRect();
+    speedDrag={id:e.pointerId,x:e.clientX-r.left,y:e.clientY-r.top};try{speedLayer.setPointerCapture(e.pointerId)}catch(_){}
+  });
+  speedLayer.addEventListener('pointermove',e=>{if(speedDrag&&speedDrag.id===e.pointerId)moveSpeed(e.clientX-speedDrag.x,e.clientY-speedDrag.y);});
+  for(const event of ['pointerup','pointercancel','lostpointercapture'])speedLayer.addEventListener(event,()=>{if(speedDrag){speedDrag=null;saveSpeedPosition();}});
+  speedLayer.addEventListener('keydown',e=>{
+    if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();e.stopPropagation();const step=e.shiftKey?10:1,r=speedLayer.getBoundingClientRect();
+    moveSpeed(r.left+({'ArrowLeft':-step,'ArrowRight':step}[e.key]||0),r.top+({'ArrowUp':-step,'ArrowDown':step}[e.key]||0));saveSpeedPosition();
+  });
+  addEventListener('resize',placeSpeed);
   $('focusColor').onchange = () => { $('view').style.setProperty('--focus',$('focusColor').value); saveNow(); publish(); };
   function syncTheme(){for(const value of ['dark','cloud'])$('theme-'+value).setAttribute('aria-pressed',String($('theme').value===value));}
   for(const value of ['dark','cloud'])$('theme-'+value).onclick=()=>{$('theme').value=value;$('theme').dispatchEvent(new Event('change'));};
@@ -220,6 +242,7 @@
   $('bar').addEventListener('focusin',showBar);
   window.PromUI = {
     metadata, applyMetadata, finishNote,
+    speedLayer:placeSpeed,
     presentation(){hideControls();showNote();},
     beforeBodyEdit(){finishNote();bodyNoteAnchor=noteKey(P[page]);},
     afterBodyEdit(){const key=noteKey(P[page]);if(bodyNoteAnchor&&bodyNoteAnchor!==key&&notes[bodyNoteAnchor]){notes[key]=notes[bodyNoteAnchor];delete notes[bodyNoteAnchor];}bodyNoteAnchor=null;showNote();},
