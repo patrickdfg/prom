@@ -13,6 +13,6 @@ async def main():
     for i,t in enumerate(T):
         f=f'h{i}.mp3'; await edge_tts.Communicate(t,V,rate='+0%').save(f)
         d=MP3(f).info.length; c=n(t); tc+=c; td+=d
-        print(f'sample{i}: chars={c} sec={d:.2f} cps={c/d:.3f}')
-    print(f'TOTAL chars={tc} sec={td:.2f} cps={tc/td:.3f} cpm={tc/td*60:.1f}')
+        print(f'::notice::sample{i}: chars={c} sec={d:.2f} cps={c/d:.3f}')
+    print(f'::notice::TOTAL chars={tc} sec={td:.2f} cps={tc/td:.3f} cpm={tc/td*60:.1f}')
 asyncio.run(main())
