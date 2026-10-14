@@ -90,6 +90,7 @@
   $('timerReset').onclick = () => { elapsed=0; runningSince=null; updateClock(); saveNow(); };
   $('targetMinutes').onchange = () => { target=Math.max(1,Math.min(240,Number($('targetMinutes').value)||30)); $('targetMinutes').value=target; updateClock(); saveNow(); };
   $('focusColor').onchange = () => { $('view').style.setProperty('--focus',$('focusColor').value); saveNow(); publish(); };
+  $('theme').addEventListener('change',()=>{publish();saveNow();});
   $('check').onclick = () => {
     $('checkSupport').textContent = SR ? '음성 따라가기 지원 · 마이크 버튼으로 연결을 확인하세요.' : '이 브라우저는 음성 따라가기를 지원하지 않습니다. 크롬으로 열어 주세요.';
     $('checkSummary').textContent = `${P.length}쪽 · ${MOBILE ? '모바일' : LINES+'줄'} · 방향키 또는 발표 리모컨의 Page Up / Page Down으로 넘길 수 있습니다.`;
