@@ -41,7 +41,7 @@ document.getElementById('runVoiceRegression').onclick=async()=>{
    const moved=Object.values(PromUI.metadata().noteLayers).flat()[0];ok('메모 레이어 자유 이동',moved.x>0.08&&moved.y>0.12);
    document.getElementById('noteDone').click();
    await Promise.resolve();ok('메모 빨간색 표시',getComputedStyle(document.querySelector('.note-text')).color==='rgb(255, 52, 52)');
-   document.getElementById('note').click();const second=document.querySelector('.note-object.selected .note-text');second.textContent='두 번째 메모';second.dispatchEvent(new Event('input',{bubbles:true}));PromUI.finishNote();await Promise.resolve();
+   document.getElementById('note').click();const second=document.querySelector('.note-object.selected .note-text');ok('새 메모는 마지막 글자 크기 사용',getComputedStyle(second.parentElement).fontSize==='40px'&&document.getElementById('noteSize').value==='40');ok('메모 글자 크기 기기 저장',localStorage.getItem('promNoteFontSize')==='40');second.textContent='두 번째 메모';second.dispatchEvent(new Event('input',{bubbles:true}));PromUI.finishNote();await Promise.resolve();
    ok('왼쪽 더하기 버튼 제거',document.querySelectorAll('.note-insert').length===0);
    ok('독립된 메모 레이어 두 개',document.querySelectorAll('.note-object').length===2);
    ok('메모가 원고와 줄 배치에 영향 없음',JSON.stringify(P)===bodyBefore&&Math.abs(document.getElementById('lines').getBoundingClientRect().height-rowsBefore.height)<1);

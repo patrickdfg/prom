@@ -64,6 +64,9 @@
   }
   $('searchQuery').oninput = search;
   let noteBox=null, activeNote=null, drag=null;
+  const NOTE_SIZE_STORAGE='promNoteFontSize';
+  let lastNoteSize=null;
+  try{const saved=Number(localStorage.getItem(NOTE_SIZE_STORAGE));if(Number.isFinite(saved)&&saved>=12&&saved<=96)lastNoteSize=saved;}catch(_){}
   const noteLayer=document.createElement('div');noteLayer.id='noteLayer';$('stage').append(noteLayer);
   const noteTools=document.createElement('div');noteTools.id='noteTools';noteTools.hidden=true;
   noteTools.setAttribute('role','toolbar');noteTools.setAttribute('aria-label','발표 메모 편집');
@@ -110,7 +113,7 @@
   $('note').onclick=()=>{
     finishNote();if(editing)endEdit();if(listening)stopMic();if(ttsOn)tStop();
     const key=noteKey(P[page]),items=notes[key]||(notes[key]=[]);
-    const offset=(items.length%6)*0.04,n={text:'',x:0.08+offset,y:0.12+offset,size:innerWidth<600?20:28};items.push(n);
+    const offset=(items.length%6)*0.04,n={text:'',x:0.08+offset,y:0.12+offset,size:lastNoteSize??(innerWidth<600?20:28)};items.push(n);
     menu.hidden=true;$('more').setAttribute('aria-expanded','false');selectNote(n);
   };
   noteLayer.addEventListener('click',e=>{e.stopPropagation();const object=e.target.closest('.note-object');if(object&&!object.classList.contains('selected'))selectNote(notes[noteKey(P[page])][+object.dataset.note]);});
@@ -135,7 +138,12 @@
     e.preventDefault();e.stopPropagation();const step=e.shiftKey?10:1,rect=noteLayer.getBoundingClientRect();
     moveNote(activeNote.x+({'ArrowLeft':-step,'ArrowRight':step}[e.key]||0)/rect.width,activeNote.y+({'ArrowUp':-step,'ArrowDown':step}[e.key]||0)/rect.height);
   });
-  function resizeNote(value){if(!activeNote)return;activeNote.size=clamp(Number(value)||24,12,96);$('noteSize').value=activeNote.size;placeObject(noteBox.parentElement,activeNote);dirty=true;scheduleSave();}
+  function resizeNote(value){
+    if(!activeNote)return;
+    activeNote.size=clamp(Number(value)||24,12,96);lastNoteSize=activeNote.size;
+    try{localStorage.setItem(NOTE_SIZE_STORAGE,String(lastNoteSize));}catch(_){}
+    $('noteSize').value=activeNote.size;placeObject(noteBox.parentElement,activeNote);dirty=true;scheduleSave();
+  }
   $('noteSize').oninput=e=>resizeNote(e.target.value);
   $('noteSmaller').onclick=()=>resizeNote(activeNote.size-2);$('noteLarger').onclick=()=>resizeNote(activeNote.size+2);
   $('noteDone').onclick=finishNote;
