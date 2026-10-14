@@ -1264,41 +1264,6 @@ function startRec(){
   if(tr&&tr.readyState==='live'){try{rec.start(tr);return}catch(_){}}
   rec.start();
 }
-/* ---------- 안드로이드: 조용할 때는 음성인식을 끄고 기다린다 ----------
-   폰 크롬은 음성인식을 켤 때마다 '띵' 소리를 낸다(웹에서 못 끈다). 말이 없으면 몇 초마다 꺼져서
-   바로 다시 켜면 띵이 계속 난다. 그래서 폰에서는 말이 없어 꺼졌을 때 다시 켜지 않고,
-   마이크 소리 크기만 지켜보다가 말소리가 나면 그때 다시 켠다. PC는 예전처럼 바로 다시 켠다. */
-let lastResultAt=0, waitAC=null, waitStream=null, waitIv=null;
-function makeWaitAC(){try{if(!waitAC){const AC=window.AudioContext||window.webkitAudioContext; if(AC)waitAC=new AC()} waitAC&&waitAC.resume().catch(()=>{})}catch(_){waitAC=null}}
-function endWait(){
-  clearInterval(waitIv); waitIv=null;
-  if(waitStream){waitStream.getTracks().forEach(t=>t.stop()); waitStream=null}
-  if(waitAC&&waitAC.state==='running')waitAC.suspend().catch(()=>{});
-}
-// 지켜보던 마이크를 놓고 잠깐 뒤에 켠다(폰은 마이크를 둘이 같이 못 잡는다)
-function wakeRec(){endWait(); if(!listening)return; lastResultAt=Date.now(); setTimeout(()=>{if(listening)try{startRec()}catch(_){setTimeout(()=>{if(listening)try{startRec()}catch(__){}},300)}},150)}
-let capFails=0;
-async function androidWait(){
-  if(waitIv||waitStream)return;
-  const md=navigator.mediaDevices;
-  if(!waitAC||!md||!md.getUserMedia){setTimeout(()=>{if(listening)wakeRec()},3000);return}
-  try{waitStream=await md.getUserMedia({audio:true})}catch(_){waitStream=null; setTimeout(()=>{if(listening)wakeRec()},3000); return}
-  if(!listening){endWait();return}
-  try{await waitAC.resume()}catch(_){}
-  const an=waitAC.createAnalyser(); an.fftSize=1024; waitAC.createMediaStreamSource(waitStream).connect(an);
-  const buf=new Float32Array(an.fftSize), t0=Date.now(); let floor=0, hits=0, deadSince=t0;
-  waitIv=setInterval(()=>{
-    if(!listening){endWait();return}
-    an.getFloatTimeDomainData(buf); let sum=0; for(let i=0;i<buf.length;i++)sum+=buf[i]*buf[i];
-    const rms=Math.sqrt(sum/buf.length), now=Date.now();
-    // 소리가 아예 안 들어오면(값이 0) 지켜볼 수 없으니 예전처럼 다시 켠다
-    if(rms>1e-5)deadSince=now; else if(now-deadSince>2500){wakeRec();return}
-    if(now-t0<500){floor=Math.max(floor,rms);return}           // 처음 0.5초는 끝날 때 소리가 섞일 수 있어 주변 소음 크기만 잰다
-    floor=rms<floor?floor*0.8+rms*0.2:floor*0.998+rms*0.002;    // 조용한 쪽으로는 빨리, 큰 쪽으로는 아주 천천히 따라간다
-    hits=rms>Math.max(floor*2.5,0.012)?hits+1:0;
-    if(hits>=3)wakeRec();                                       // 0.15초 넘게 말소리 크기가 이어지면 다시 듣는다
-  },50);
-}
 function releaseMic(){if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null}}
 async function startMic(){
   if(ttsOn)tStop();
@@ -1312,12 +1277,11 @@ async function startMic(){
   rec=new SR(); rec.lang='ko-KR'; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
   rec.onresult=e=>{
     let t=''; for(let i=0;i<e.results.length;i++) t+=e.results[i][0].transcript;
-    sessionText=t; onHeard(t); speedFeed(e.results); lastResultAt=Date.now(); capFails=0;
+    sessionText=t; onHeard(t); speedFeed(e.results);
   };
   rec.onerror=e=>{
     if(e.error==='no-speech'){cap('말소리가 인식되지 않습니다 · 마이크 입력을 확인해 주세요.');return}
     if(e.error==='aborted')return;
-    if(ANDROID&&e.error==='audio-capture'&&listening&&++capFails<4)return;   // 마이크를 넘겨받는 순간 잠깐 못 잡을 수 있다. 다시 켜 본다
 
     setDot('err');
     const msg={'not-allowed':'마이크 권한이 막혔습니다. 주소창 왼쪽 아이콘에서 마이크를 허용해 주세요.',
@@ -1330,14 +1294,12 @@ async function startMic(){
   // 크롬은 침묵이 길거나 1분쯤 지나면 스스로 멈춘다. 켜 둔 동안은 바로 다시 시작한다.
   rec.onend=()=>{
     heardCarry=(heardCarry+sessionText).slice(-60); sessionText=''; spLast=0;
-    if(listening&&ANDROID&&Date.now()-lastResultAt>3000){setDot('');androidWait();return}
     if(listening){setDot('');try{startRec()}catch(_){setTimeout(()=>{if(listening)try{startRec()}catch(__){}},300)}}
     else setDot('');
   };
   rec.onstart=()=>{setDot('live'); cap('음성인식 연결됨 · 현재 화면의 글을 읽어 주세요.')};
   rec.onaudiostart=()=>cap('마이크 소리가 들어옵니다 · 말씀해 보세요');
   rec.onspeechstart=()=>cap('말소리 감지 · 글자로 바꾸는 중');
-  if(ANDROID){makeWaitAC(); lastResultAt=Date.now()}
   if(ANDROID&&panelOpen())closePanel();      // 소리 막대가 마이크를 같이 잡지 않게
   cursor=pStart[page]||0; heardCarry=''; sessionText=''; lastTail='';     // 켤 때 보고 있는 쪽부터 찾는다
   listening=true; $('view').classList.add('presenting');notifyUI('presentation');
@@ -1347,7 +1309,7 @@ async function startMic(){
   $('mic').classList.add('on'); $('mic').textContent='마이크 끄기 (M)';
   keepAwake(); speedStart();
 }
-function stopMic(){ speedStop(); endWait();
+function stopMic(){ speedStop();
   listening=false;$('view').classList.remove('presenting','controls-open');fit();render();showBar();
   if(micFullscreen){micFullscreen=false;if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});}
   cap(''); releaseMic(); if(rec)try{rec.stop()}catch(_){}
