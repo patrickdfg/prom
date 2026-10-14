@@ -1,0 +1,9 @@
+name: measure-hyunsu
+on: push
+jobs:
+  m:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install edge-tts mutagen
+      - run: python measure.py
