@@ -121,12 +121,12 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 <body>
 <div id="setup">
   <h1>음성 설교 프롬프터</h1>
-  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-13 19:45 · <a href="read.html" style="color:var(--accent)">원고 읽어주기로 가기</a></div>
-  <p>프롬프터 파일(.hwp, .hwpx)이나 대본(.txt), html 원고(.html), 이 프로그램에서 저장한 파일(.json)을 불러오세요.</p>
+  <div style="font-size:12px;color:var(--muted);margin:-2px 0 8px">버전 10-14 15:10 · <a href="read.html" style="color:var(--accent)">원고 읽어주기로 가기</a></div>
+  <p>한글(.hwp, .hwpx), 워드(.doc, .docx), 파워포인트(.ppt, .pptx), PDF, 글(.txt), html 원고나 이 프로그램에서 저장한 파일(.json)을 불러오세요.</p>
   <div id="drop">
     <b>파일을 여기로 끌어 놓거나</b>
     <button class="btn" id="pick">파일 선택</button>
-    <input type="file" id="file" accept=".hwp,.hwpx,.txt,.html,.htm,.json" hidden>
+    <input type="file" id="file" accept=".hwp,.hwpx,.doc,.docx,.ppt,.pptx,.pdf,.txt,.html,.htm,.json" hidden>
   </div>
   <div class="row" id="optrow"><b>한 화면 줄 수</b>
     <label><input type="radio" name="lines" value="5" checked> 5줄</label>
@@ -488,6 +488,182 @@ async function parseHwp(buf){
   return {pages:paginate(out),bg:null};
 }
 
+/* ---------- 워드·파워포인트·PDF 원고 읽기 ---------- */
+// 모두 한글 원고와 같은 문단 꼴 {runs:[{t,hex}], pb, marks, num} 으로 바꾼 뒤 paginate 로 넘긴다
+const XW='http://schemas.openxmlformats.org/wordprocessingml/2006/main', XA='http://schemas.openxmlformats.org/drawingml/2006/main';
+function pushRun(runs,t,hex){ if(!t)return; const l=runs[runs.length-1]; if(l&&l.hex===hex)l.t+=t; else runs.push({t,hex}) }
+// docx: word/document.xml 의 문단(w:p)과 글자색(w:color), 줄바꿈(w:br), 쪽나눔(w:br type=page)
+async function parseDocx(buf){
+  if(!window.JSZip)throw new Error('docx 를 읽는 도구를 불러오지 못했습니다.');
+  const zip=await JSZip.loadAsync(buf), f=zip.file('word/document.xml');
+  if(!f)throw new Error('docx 안에서 본문을 찾지 못했습니다.');
+  const doc=new DOMParser().parseFromString(await f.async('string'),'application/xml');
+  const out=[]; let nextPb=false;
+  for(const p of doc.getElementsByTagNameNS(XW,'p')){
+    const runs=[]; let pb=nextPb; nextPb=false;
+    if(p.getElementsByTagNameNS(XW,'pageBreakBefore').length)pb=true;
+    for(const r of p.getElementsByTagNameNS(XW,'r')){
+      const c=r.getElementsByTagNameNS(XW,'color')[0], v=c&&c.getAttributeNS(XW,'val');
+      const hex=v&&/^[0-9a-f]{6}$/i.test(v)?v.toUpperCase():'000000';
+      for(const n of r.childNodes){
+        if(n.namespaceURI!==XW)continue;
+        if(n.localName==='t')pushRun(runs,n.textContent,hex);
+        else if(n.localName==='tab')pushRun(runs,' ',hex);
+        else if(n.localName==='br'){ if(n.getAttributeNS(XW,'type')==='page'){ if(runs.length)nextPb=true; else pb=true } else pushRun(runs,'\n',hex) }
+      }
+    }
+    out.push({runs,pb,marks:[],num:null});
+  }
+  return {pages:paginate(out),bg:null};
+}
+// pptx: 슬라이드 순서대로, 슬라이드마다 새 쪽. 글자색은 a:solidFill/a:srgbClr
+async function parsePptx(buf){
+  if(!window.JSZip)throw new Error('pptx 를 읽는 도구를 불러오지 못했습니다.');
+  const zip=await JSZip.loadAsync(buf);
+  const names=Object.keys(zip.files).filter(n=>/^ppt\/slides\/slide\d+\.xml$/.test(n)).sort((a,b)=>+a.match(/\d+/)[0]-+b.match(/\d+/)[0]);
+  if(!names.length)throw new Error('pptx 안에서 슬라이드를 찾지 못했습니다.');
+  const out=[];
+  for(let si=0;si<names.length;si++){
+    const doc=new DOMParser().parseFromString(await zip.file(names[si]).async('string'),'application/xml');
+    let first=true;
+    for(const p of doc.getElementsByTagNameNS(XA,'p')){
+      const runs=[];
+      for(const n of p.childNodes){
+        if(n.namespaceURI!==XA)continue;
+        if(n.localName==='br'){pushRun(runs,'\n','000000');continue}
+        if(n.localName!=='r'&&n.localName!=='fld')continue;
+        const pr=n.getElementsByTagNameNS(XA,'rPr')[0], clr=pr&&pr.getElementsByTagNameNS(XA,'srgbClr')[0];
+        const v=clr&&clr.getAttribute('val'), hex=v&&/^[0-9a-f]{6}$/i.test(v)?v.toUpperCase():'000000';
+        const t=n.getElementsByTagNameNS(XA,'t')[0]; if(t)pushRun(runs,t.textContent,hex);
+      }
+      if(!runs.length)continue;
+      out.push({runs,pb:false,marks:[],num:null}); first=false;
+    }
+    out.push({runs:[],pb:false,marks:[],num:null});
+  }
+  return slidesResult(out);
+}
+// 슬라이드 글은 원고처럼 다룬다: 슬라이드 하나가 한 덩어리, 줄 나누기·쪽 나누기는 프롬프터 규칙으로
+function slidesResult(out){const pages=paginate(out); if(!pages.ms){const pg=[]; pg.ms=out; return {pages:pg,bg:null}} return {pages,bg:null}}
+// doc(워드 97~2003): WordDocument 스트림의 조각표(piece table)로 본문 글자만 꺼낸다 (글자색은 읽지 않음)
+async function parseDoc(buf){
+  let ole; try{ole=CFB.read(new Uint8Array(buf),{type:'array'})}catch(_){throw new Error('doc 파일을 열 수 없습니다.')}
+  const get=n=>{const i=ole.FullPaths.findIndex(p=>p.toLowerCase().endsWith('/'+n.toLowerCase())); const e=i<0?null:ole.FileIndex[i]; return e&&e.content&&e.content.length?new Uint8Array(e.content):null};
+  const wd=get('WordDocument'); if(!wd)throw new Error('워드 97~2003(doc) 파일이 아닙니다.');
+  const dv=new DataView(wd.buffer,wd.byteOffset,wd.byteLength);
+  if(dv.getUint16(0,true)!==0xA5EC)throw new Error('워드 97~2003(doc) 파일이 아닙니다.');
+  const flags=dv.getUint16(0x0A,true); if(flags&0x0100)throw new Error('암호가 걸린 doc 파일입니다.');
+  const tbl=get(flags&0x0200?'1Table':'0Table'); if(!tbl)throw new Error('doc 파일의 표 스트림을 찾지 못했습니다.');
+  const ccpText=dv.getUint32(0x4C,true), fcClx=dv.getUint32(0x1A2,true), lcbClx=dv.getUint32(0x1A6,true);
+  const tv=new DataView(tbl.buffer,tbl.byteOffset,tbl.byteLength);
+  let i=fcClx; const end=fcClx+lcbClx;
+  while(i<end&&tbl[i]===1){ i+=3+tv.getInt16(i+1,true) }        // Prc 건너뛰기
+  if(tbl[i]!==2)throw new Error('doc 파일의 글자 위치표를 읽지 못했습니다.');
+  const lcb=tv.getUint32(i+1,true), base=i+5, n=(lcb-4)/12;
+  let text='';
+  for(let k=0;k<n&&text.length<ccpText;k++){
+    const cp0=tv.getUint32(base+k*4,true), cp1=tv.getUint32(base+(k+1)*4,true);
+    const pcd=base+(n+1)*4+k*8, fcRaw=tv.getUint32(pcd+2,true), comp=(fcRaw&0x40000000)!==0, fc=fcRaw&0x3FFFFFFF, len=cp1-cp0;
+    if(comp){const s=wd.subarray(fc/2,fc/2+len); text+=new TextDecoder('windows-1252').decode(s)}
+    else{const s=wd.subarray(fc,fc+len*2); text+=new TextDecoder('utf-16le').decode(s)}
+  }
+  text=text.slice(0,ccpText);
+  // 필드(목차·쪽번호 등)는 결과 글자만 남기고, 표 칸 표시와 개체 자리표시는 지운다
+  let clean='', depth=[], skip=false;
+  for(const ch of text){
+    const c=ch.charCodeAt(0);
+    if(c===0x13){depth.push(true);continue} if(c===0x14){if(depth.length)depth[depth.length-1]=false;continue} if(c===0x15){depth.pop();continue}
+    if(depth.some(x=>x))continue;
+    if(c===0x07){clean+='\r';continue} if(c===0x01||c===0x08)continue;
+    clean+=ch;
+  }
+  const out=[]; let pb=false;
+  for(const part of clean.split('\r')){
+    const segs=part.split('\x0C');
+    segs.forEach((s,j)=>{ if(j>0)pb=true; if(j<segs.length-1&&!s)return; out.push({runs:s?[{t:s.replace(/\x0B/g,'\n'),hex:'000000'}]:[],pb,marks:[],num:null}); pb=false; });
+  }
+  return {pages:paginate(out),bg:null};
+}
+// ppt(파워포인트 97~2003): 'PowerPoint Document' 스트림의 글자 레코드를 슬라이드별로 모은다
+async function parsePpt(buf){
+  let ole; try{ole=CFB.read(new Uint8Array(buf),{type:'array'})}catch(_){throw new Error('ppt 파일을 열 수 없습니다.')}
+  const i0=ole.FullPaths.findIndex(p=>/\/powerpoint document$/i.test(p)); const e=i0<0?null:ole.FileIndex[i0];
+  if(!e||!e.content)throw new Error('파워포인트 97~2003(ppt) 파일이 아닙니다.');
+  const d=new Uint8Array(e.content), dv=new DataView(d.buffer,d.byteOffset,d.byteLength);
+  const slwt=[], slides=[]; let curS=null, curSlide=null;
+  const txt=(type,off,len)=>type===0x0FA0?new TextDecoder('utf-16le').decode(d.subarray(off,off+len)):new TextDecoder('windows-1252').decode(d.subarray(off,off+len));
+  const walk=(off,endOff,ctx)=>{
+    while(off+8<=endOff){
+      const vi=dv.getUint16(off,true), type=dv.getUint16(off+2,true), len=dv.getUint32(off+4,true), body=off+8;
+      if(body+len>endOff)break;
+      if((vi&0x0F)===0x0F){
+        if(type===0x0FF0&&(vi>>4)===0){walk(body,body+len,'slwt')}
+        else if(type===0x03EE){curSlide=[];slides.push(curSlide);walk(body,body+len,'slide');curSlide=null}
+        else if(type===0x03F8||type===0x03F0||type===0x0FF0){/* 마스터·노트·다른 목록은 건너뜀 */}
+        else walk(body,body+len,ctx);
+      }else if(ctx==='slwt'&&type===0x03F3){curS=[];slwt.push(curS)}
+      else if(type===0x0FA0||type===0x0FA8){
+        const t=txt(type,body,len);
+        if(ctx==='slwt'&&curS)curS.push(t); else if(ctx==='slide'&&curSlide)curSlide.push(t);
+      }
+      off=body+len;
+    }
+  };
+  walk(0,d.length,'');
+  const groups=slwt.some(g=>g.length)?slwt:slides;
+  const out=[];
+  groups.forEach(g=>{
+    for(const t of g)for(const line of t.split('\r')){ if(line.trim())out.push({runs:[{t:line.replace(/\x0B/g,'\n'),hex:'000000'}],pb:false,marks:[],num:null}) }
+    out.push({runs:[],pb:false,marks:[],num:null});
+  });
+  if(!out.some(p=>p.runs.length))throw new Error('ppt 에서 글자를 찾지 못했습니다.');
+  return slidesResult(out);
+}
+// pdf: pdf.js 를 필요할 때만 받아 와 쪽마다 글줄을 모으고, 줄 간격이 넓은 곳에서 문단을 나눈다. 원래 쪽번호는 빨간 번호로 둔다
+const PDFJS='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/';
+async function loadPdfJs(){
+  if(window.pdfjsLib)return window.pdfjsLib;
+  await new Promise((res,rej)=>{const s=document.createElement('script'); s.src=PDFJS+'pdf.min.js'; s.onload=res; s.onerror=()=>rej(new Error('pdf 를 읽는 도구를 받지 못했습니다. 인터넷 연결을 확인해 주세요.')); document.head.appendChild(s)});
+  try{const w=await (await fetch(PDFJS+'pdf.worker.min.js')).text(); pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(new Blob([w],{type:'text/javascript'}))}
+  catch(_){pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS+'pdf.worker.min.js'}
+  return window.pdfjsLib;
+}
+async function parsePdf(buf){
+  const lib=await loadPdfJs();
+  let pdf; try{pdf=await lib.getDocument({data:new Uint8Array(buf)}).promise}catch(e){throw new Error(/password/i.test(e&&e.name||'')?'암호가 걸린 pdf 입니다.':'pdf 파일을 열 수 없습니다.')}
+  const out=[]; let cur=null, pendingMark=null;
+  const flush=blank=>{if(cur&&(cur.runs.length||cur.marks.length)){out.push(cur); if(blank)out.push({runs:[],pb:false,marks:[],num:null})} cur=null};
+  for(let pn=1;pn<=pdf.numPages;pn++){
+    const pg=await pdf.getPage(pn), tc=await pg.getTextContent();
+    const items=tc.items.filter(it=>it.str!==undefined&&(it.str.trim()||it.hasEOL));
+    const lines=[];
+    for(const it of items){
+      if(!it.str)continue;
+      const y=it.transform[5], x=it.transform[4], h=Math.abs(it.transform[3])||it.height||10;
+      let l=lines.find(l=>Math.abs(l.y-y)<h*0.5);
+      if(!l){l={y,h,parts:[]};lines.push(l)}
+      l.parts.push({x,w:it.width,s:it.str});
+    }
+    lines.sort((a,b)=>b.y-a.y);
+    const gaps=[]; for(let k=1;k<lines.length;k++)gaps.push(lines[k-1].y-lines[k].y);
+    const med=gaps.length?gaps.slice().sort((a,b)=>a-b)[gaps.length>>1]:0;
+    if(pn>1)pendingMark=pn;
+    lines.forEach((l,k)=>{
+      l.parts.sort((a,b)=>a.x-b.x);
+      let s=''; let px=null;
+      for(const p of l.parts){ if(px!==null&&p.x-px>l.h*0.2&&!/\s$/.test(s))s+=' '; s+=p.s; px=p.x+p.w }
+      s=s.replace(/\s+/g,' ').trim(); if(!s)return;
+      const wide=k>0&&med&&(lines[k-1].y-l.y)>med*1.5, ended=cur&&/[.?!…”"』」]$/.test(lineText(cur.runs));
+      if(!cur||wide||ended){flush(wide); cur={runs:[],pb:false,marks:[],num:null}}
+      if(pendingMark){const off=cur.runs.reduce((a,r)=>a+r.t.length,0); cur.marks.push({pos:0,off,page:pendingMark}); pendingMark=null}
+      if(cur.runs.length)pushRun(cur.runs,' ','000000');
+      pushRun(cur.runs,s,'000000');
+    });
+  }
+  flush(false);
+  if(!out.some(p=>p.runs.length))throw new Error('pdf 에서 글자를 찾지 못했습니다. 사진으로 된(스캔한) pdf 는 읽을 수 없습니다.');
+  return {pages:paginate(out),bg:null};
+}
 /* ---------- 말과 원고 맞추기 ---------- */
 const keep=ch=>/[가-힣a-zA-Z0-9]/.test(ch);
 const normStr=s=>[...s].filter(keep).join('').toLowerCase();
@@ -1413,7 +1589,12 @@ async function loadFile(f){
       $('loadmsg').textContent=''; const rr=remReport(); if(rr)toast(rr,10000); return;
     }
     else if(/\.txt$/i.test(f.name)) r={pages:parseTxt(await f.text()),bg:null};
-    else throw new Error('.hwp, .hwpx, .txt, .html 파일만 열 수 있습니다.');
+    else if(/\.docx$/i.test(f.name)) r=await parseDocx(await f.arrayBuffer());
+    else if(/\.doc$/i.test(f.name)) r=await parseDoc(await f.arrayBuffer());
+    else if(/\.pptx$/i.test(f.name)) r=await parsePptx(await f.arrayBuffer());
+    else if(/\.ppt$/i.test(f.name)) r=await parsePpt(await f.arrayBuffer());
+    else if(/\.pdf$/i.test(f.name)) r=await parsePdf(await f.arrayBuffer());
+    else throw new Error('hwp, hwpx, doc, docx, ppt, pptx, pdf, txt, html 파일만 열 수 있습니다.');
     if(!r.pages.some(p=>p.some(l=>l.some(x=>x.t.trim()))))throw new Error('읽을 내용이 없습니다.');
     pending=r; $('start').disabled=false; $('fname').textContent=f.name+' 을(를) 읽었습니다. 줄 수를 고르고 시작을 누르세요.';
     $('loadmsg').textContent=''; const rr=remReport(); if(rr)toast(rr,10000);
