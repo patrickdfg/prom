@@ -1326,7 +1326,7 @@ async function startMic(){
   // 크롬은 침묵이 길거나 1분쯤 지나면 스스로 멈춘다. 켜 둔 동안은 바로 다시 시작한다.
   rec.onend=()=>{
     heardCarry=(heardCarry+sessionText).slice(-60); sessionText=''; spLast=0;
-    if(listening&&ANDROID&&Date.now()-lastResultAt>1500){setDot('');androidWait();return}
+    if(listening&&ANDROID&&Date.now()-lastResultAt>3000){setDot('');androidWait();return}
     if(listening){setDot('');try{startRec()}catch(_){setTimeout(()=>{if(listening)try{startRec()}catch(__){}},300)}}
     else setDot('');
   };
