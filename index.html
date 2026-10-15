@@ -120,7 +120,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
-<link rel="stylesheet" href="workspace.css?v=20261015-8">
+<link rel="stylesheet" href="workspace.css?v=20261015-9">
 </head>
 <body>
 <div id="setup">
@@ -159,7 +159,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 </div>
 
 <div id="view">
-  <div id="statusbar"><div class="mic-state"><span id="dot"></span><span id="micStatus" role="status">마이크 꺼짐</span></div><span id="sessionTitle"></span><div class="theme-choices" role="group" aria-label="배경 선택"><button id="theme-dark" type="button" aria-pressed="true">검정 배경</button><button id="theme-cloud" type="button" aria-pressed="false">하늘·구름 배경</button><select id="theme" aria-label="배경" hidden><option value="dark" selected>검정화면</option><option value="cloud">구름 배경</option></select></div></div>
+  <div id="statusbar"><div class="mic-state"><span id="dot"></span><span id="micStatus" role="status">마이크 꺼짐</span></div><span id="sessionTitle"></span><div class="theme-choices" role="group" aria-label="화면 도구"><button id="audience" type="button">별도 원고 화면 ↗</button><button id="back" type="button" title="처음 화면으로 돌아가기">⌂ 홈</button><button id="theme-dark" type="button" aria-pressed="true">검정 배경</button><button id="theme-cloud" type="button" aria-pressed="false">하늘·구름 배경</button><select id="theme" aria-label="배경" hidden><option value="dark" selected>검정화면</option><option value="cloud">구름 배경</option></select></div></div>
   <div id="voiceFeedback" hidden></div>
   <div id="stage"><div id="page"><div id="lines"></div><div id="nextCue" hidden aria-label="다음 장 첫 줄"></div></div></div>
   <div id="overviewToolbar" hidden>
@@ -202,7 +202,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
       <button id="set">마이크 설정</button>
       <label>넘김 <select id="lead"><option value="6">빠르게</option><option value="3" selected>보통</option><option value="1">늦게</option></select></label>
       <label>강조 <select id="focusColor"><option value="#ffff00">노랑</option><option value="#b6f36a">연두</option></select></label>
-      <button id="audience">별도 원고 화면 ↗</button><button id="back">다른 원고</button>
+
       <span id="heard"></span>
     </div>
   </div>

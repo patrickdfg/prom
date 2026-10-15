@@ -1,6 +1,6 @@
 (() => {
   const id=location.hash.slice(1), display=document.getElementById('display');
-  if(!/^[a-f0-9-]{36}$/.test(id) || !('BroadcastChannel' in window)){display.textContent='조작 화면의 더보기 → 별도 원고 화면으로 열어 주세요.';return;}
+  if(!/^[a-f0-9-]{36}$/.test(id) || !('BroadcastChannel' in window)){display.textContent='조작 화면 상단의 별도 원고 화면 버튼으로 열어 주세요.';return;}
   const channel=new BroadcastChannel('prom-display-'+id); let current=null,lastSeen=Date.now();
   function fit(){
     if(!current)return;
@@ -27,6 +27,12 @@
   addEventListener('message',e=>{if(e.origin===location.origin && e.source===window.opener)receive(e.data);});
   channel.postMessage({type:'ready'});window.opener?.postMessage({type:'ready'},location.origin);addEventListener('resize',fit);
   setInterval(()=>{if(Date.now()-lastSeen>10000){document.body.classList.remove('connected');document.getElementById('connection').textContent='조작 화면 연결 확인 · 마지막 원고를 표시하고 있습니다.';}},3000);
-  document.getElementById('fullscreen').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
-  let hide;document.addEventListener('pointermove',()=>{const b=document.getElementById('fullscreen');b.hidden=false;clearTimeout(hide);hide=setTimeout(()=>{if(document.activeElement!==b)b.hidden=true;},2500);});
+  const fullButton=document.getElementById('fullscreen');
+  function syncFullscreen(){fullButton.hidden=!!document.fullscreenElement;}
+  fullButton.onclick=async()=>{
+    try{await document.documentElement.requestFullscreen();syncFullscreen();}
+    catch(_){fullButton.hidden=false;}
+  };
+  document.addEventListener('fullscreenchange',syncFullscreen);
+  syncFullscreen();
 })();
