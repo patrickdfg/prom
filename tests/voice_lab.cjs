@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict'),v=require('../voice-lab.js');
+const n=s=>v.mapped(s).text;
+assert.equal(n('요 3:16'),n('요한복음 삼장 십육절'));
+assert.equal(n('창 1:1'),n('창세기 일장 일절'));
+assert.equal(n('고전 13:4'),n('고린도전서 십삼장 사절'));
+assert.equal(n('15절'),n('십오절'));assert.equal(n('열다섯 절'),n('15절'));
+assert.equal(n('한 사람에게'),n('한 사람에게'),'ordinary 한 must not be replaced');
+const src='오늘 말씀은 요 3:16에서 시작하여 모든 사람들에게 사랑을 전합니다.';
+const m=v.mapped(src,20);assert(m.map.every((p,i)=>!i||p>=m.map[i-1]));assert.equal(m.map.at(-1),20+src.replace(/[^가-힣a-zA-Z0-9]/g,'').length);
+let hit=v.match(n('요한복음 삼장 십육절'),m.text,m.map,20);assert(hit,'scripture expansion aligns back to raw cursor');
+const text=v.mapped('하나님께서는 모든 사람에게 사랑을 전하십니다');
+hit=v.match(n('모든 사람에게 사랑을 전하십니다'),text.text,text.map,0);assert(hit);
+hit=v.match(n('모든 사람에게 사랑을 전하십니디'),text.text,text.map,0);assert(hit,'one-jamo error tolerated');
+assert.equal(v.match(n('아까 주차장에서 자동차 열쇠를 잃어버렸습니다'),text.text,text.map,0),null,'adlib holds');
+assert.equal(v.match(n('사랑'),text.text,text.map,0),null,'short phrase holds');
+const repeated=v.mapped('모든 사람에게 사랑을 전합니다 긴 내용이 이어집니다 잠깐 멈추고 모든 사람에게 사랑을 전합니다');assert.equal(v.match(n('모든 사람에게 사랑을 전합니다'),repeated.text,repeated.map,0),null,'ambiguous repetition holds');
+assert.equal(n('😀 요 3:16'),n('요한복음 삼장 십육절'));
+console.log('PASS scripture/numeric normalization, native verse counts, unchanged ordinary words, position map, jamo tolerance, adlib/short/ambiguous guards');

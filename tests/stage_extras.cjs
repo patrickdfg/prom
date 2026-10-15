@@ -1,0 +1,10 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+class E{constructor(){this.style={setProperty(){}};this.children=[];this.classes=new Set();this.classList={add:k=>this.classes.add(k),remove:k=>this.classes.delete(k),toggle:(k,v)=>v?this.classes.add(k):this.classes.delete(k)};this.hidden=false;}replaceChildren(){this.children=[]}appendChild(e){this.children.push(e)}querySelectorAll(){return []}addEventListener(){}}
+const nodes=Object.fromEntries(['display','paper','stageNotice','connection','fullscreen'].map(id=>[id,new E()]));let channel,scrolled=0,fullscreen=0;
+const c={location:{hash:'#12345678-1234-1234-1234-123456789abc',origin:'https://example.com',search:''},document:{getElementById:id=>nodes[id],body:new E(),createElement:()=>new E(),documentElement:{requestFullscreen:async()=>{fullscreen++}},addEventListener(){}},window:{opener:null},innerHeight:900,innerWidth:1440,Date,Array,Math,URLSearchParams,setInterval(){},addEventListener(){},BroadcastChannel:class{constructor(){channel=this}postMessage(){}},PromScrollView:class{update(){scrolled++}}};c.window.BroadcastChannel=c.BroadcastChannel;
+vm.createContext(c);vm.runInContext(fs.readFileSync('audience.js','utf8'),c);
+const d={type:'frame',pages:[[{t:'본문',c:'k'}]],lines:1,page:0,total:1,cursor:0,range:[[0,2]],dark:true,extra:{mirrorX:true,mirrorY:false,message:'시간 5분 남음'}};
+channel.onmessage({data:d});assert.equal(nodes.paper.style.transform,'scale(-1,1)');assert.equal(nodes.stageNotice.textContent,'시간 5분 남음');assert(!nodes.stageNotice.hidden);assert.equal(nodes.display.children.length,1);
+channel.onmessage({data:{...d,document:[d.pages],ranges:[d.range],extra:{continuous:true,mirrorY:true,message:''}}});assert.equal(nodes.paper.style.transform,'scale(1,-1)');assert(nodes.stageNotice.hidden);assert.equal(scrolled,1);
+channel.onmessage({data:{...d,extra:{}}});assert.equal(nodes.paper.style.transform,'scale(1,1)');assert.equal(nodes.display.children.length,1);
+console.log('PASS slideshow mirror combinations, emergency visibility/clear, scroll transition and return to page rendering');

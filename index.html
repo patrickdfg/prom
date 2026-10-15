@@ -120,7 +120,8 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
-<link rel="stylesheet" href="workspace.css?v=20261015-11">
+<link rel="stylesheet" href="workspace.css?v=20261016-1">
+<link rel="stylesheet" href="extras.css?v=20261016-1">
 </head>
 <body>
 <div id="setup">
@@ -1540,6 +1541,7 @@ function tSplit(text,max=110){
 }
 function tGo(i){tInternal=true; go(i,true); tInternal=false}
 function tSpeakPage(i){
+  if(window.PromExtras)i=PromExtras.ttsPage(i);
   SYN.cancel(); const my=++tTok;
   while(i<P.length&&!/[가-힣A-Za-z0-9]/.test(pageSay(i)))i++;
   if(i>=P.length){tPause(); toast('끝까지 읽었습니다.',4000); return}
@@ -1851,7 +1853,10 @@ window.__state=()=>({page,cursor,total:P.length});
 })();
 if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 </script>
-<script src="workspace.js?v=20261015-11"></script>
+<script src="workspace.js?v=20261016-1"></script>
 <script src="overview.js?v=20261015-8"></script>
+<script src="voice-lab.js?v=20261016-1"></script>
+<script src="scroll-view.js?v=20261016-1"></script>
+<script src="extras.js?v=20261016-1"></script>
 </body>
 </html>
