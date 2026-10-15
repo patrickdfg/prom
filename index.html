@@ -159,12 +159,12 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 </div>
 
 <div id="view">
-  <div id="statusbar"><div class="mic-state"><span id="dot"></span><span id="micStatus" role="status">마이크 꺼짐</span></div><span id="sessionTitle"></span><div class="theme-choices" role="group" aria-label="화면 도구"><button id="audience" type="button">별도 원고 화면 ↗</button><button id="back" type="button" title="처음 화면으로 돌아가기">⌂ 홈</button><button id="theme-dark" type="button" aria-pressed="true">검정 배경</button><button id="theme-cloud" type="button" aria-pressed="false">하늘·구름 배경</button><select id="theme" aria-label="배경" hidden><option value="dark" selected>검정화면</option><option value="cloud">구름 배경</option></select></div></div>
+  <div id="statusbar"><div class="mic-state"><span id="dot"></span><span id="micStatus" role="status">마이크 꺼짐</span></div><span id="sessionTitle"></span><div class="theme-choices" role="group" aria-label="화면 도구"><button id="audience" type="button">슬라이드쇼 ↗</button><button id="back" type="button" title="처음 화면으로 돌아가기">⌂ 홈</button><button id="theme-dark" type="button" aria-pressed="true">검정 배경</button><button id="theme-cloud" type="button" aria-pressed="false">하늘·구름 배경</button><select id="theme" aria-label="배경" hidden><option value="dark" selected>검정화면</option><option value="cloud">구름 배경</option></select></div></div>
   <div id="voiceFeedback" hidden></div>
   <div id="stage"><div id="page"><div id="lines"></div><div id="nextCue" hidden aria-label="다음 장 첫 줄"></div></div></div>
   <div id="overviewToolbar" hidden>
     <div><b>여러 장 보기</b><span id="overviewCount"></span></div>
-    <div class="overview-actions"><button id="overviewCurrent">현재 장 찾기</button><button id="overviewAudience">별도 원고 화면 ↗</button><label>크기 <input id="overviewZoom" type="range" min="60" max="180" step="10" value="100"><output id="overviewZoomValue">100%</output></label></div>
+    <div class="overview-actions"><button id="overviewCurrent">현재 장 찾기</button><button id="overviewAudience">슬라이드쇼 ↗</button><label>크기 <input id="overviewZoom" type="range" min="60" max="180" step="10" value="100"><output id="overviewZoomValue">100%</output></label></div>
   </div>
   <section id="overview" hidden aria-label="전체 원고 여러 장 보기"><div id="slideGrid"></div></section>
   <div id="toast"></div>
@@ -1850,7 +1850,7 @@ window.__state=()=>({page,cursor,total:P.length});
 })();
 if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 </script>
-<script src="workspace.js?v=20261015-7"></script>
+<script src="workspace.js?v=20261015-10"></script>
 <script src="overview.js?v=20261015-8"></script>
 </body>
 </html>

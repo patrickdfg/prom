@@ -1,6 +1,6 @@
 (() => {
   const id=location.hash.slice(1), display=document.getElementById('display');
-  if(!/^[a-f0-9-]{36}$/.test(id) || !('BroadcastChannel' in window)){display.textContent='조작 화면 상단의 별도 원고 화면 버튼으로 열어 주세요.';return;}
+  if(!/^[a-f0-9-]{36}$/.test(id) || !('BroadcastChannel' in window)){display.textContent='조작 화면 상단의 슬라이드쇼 버튼으로 열어 주세요.';return;}
   const channel=new BroadcastChannel('prom-display-'+id); let current=null,lastSeen=Date.now();
   function fit(){
     if(!current)return;
@@ -21,7 +21,7 @@
       row.appendChild(wrap);display.appendChild(row);
     }
     if(d.nextCue){const row=document.createElement('div'),span=document.createElement('span');row.className='ln next-cue';row.style.color=d.dark?'#73d8ff':'#005b78';span.textContent=d.nextCue;row.appendChild(span);display.appendChild(row);}
-    document.title=`${d.page+1} / ${d.total} · 설교 원고`;fit();
+    document.title=`${d.page+1} / ${d.total} · 슬라이드쇼`;fit();
   };
   channel.onmessage=e=>receive(e.data);
   addEventListener('message',e=>{if(e.origin===location.origin && e.source===window.opener)receive(e.data);});

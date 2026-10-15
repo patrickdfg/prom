@@ -188,7 +188,7 @@
   }
   $('audience').onclick = () => {
     if(!channel) {
-      if(!('BroadcastChannel' in window)){toast('이 브라우저는 별도 원고 화면을 지원하지 않습니다.');return;}
+      if(!('BroadcastChannel' in window)){toast('이 브라우저는 슬라이드쇼을 지원하지 않습니다.');return;}
       channelId=crypto.randomUUID(); channel=new BroadcastChannel('prom-display-'+channelId);
       channel.onmessage=e=>{ if(e.data?.type==='ready')publish(true); };
     }
