@@ -4,7 +4,7 @@
   const channel=new BroadcastChannel('prom-display-'+id); let current=null,lastSeen=Date.now();
   function fit(){
     if(!current)return;
-    display.style.fontSize=Math.min(innerHeight*.76/(Math.max(current.lines,current.pages.length)*1.7),innerWidth*.052)+'px';
+    display.style.fontSize=Math.min(innerHeight*.76/((Math.max(current.lines,current.pages.length)+(current.nextCue?1:0))*1.7),innerWidth*.052)+'px';
     display.querySelectorAll('.ln>span').forEach(s=>{s.style.transform='';const w=s.scrollWidth,max=s.parentElement.clientWidth;if(w>max)s.style.transform=`scale(${max/w})`;});
   }
   const receive=d=>{
@@ -20,6 +20,7 @@
       for(const run of d.pages[i]||[]){const s=document.createElement('span');s.textContent=run.t;s.className=['b','r','n'].includes(run.c)?run.c:'';wrap.appendChild(s);}
       row.appendChild(wrap);display.appendChild(row);
     }
+    if(d.nextCue){const row=document.createElement('div'),span=document.createElement('span');row.className='ln next-cue';row.style.color=d.dark?'#73d8ff':'#005b78';span.textContent=d.nextCue;row.appendChild(span);display.appendChild(row);}
     document.title=`${d.page+1} / ${d.total} · 설교 원고`;fit();
   };
   channel.onmessage=e=>receive(e.data);

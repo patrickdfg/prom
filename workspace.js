@@ -1,6 +1,11 @@
 /* 프롬프터 준비·탐색·복구. 원고와 메모는 이 브라우저에만 보관한다. */
 (() => {
   'use strict';
+  try{$('labNextLine').checked=localStorage.getItem('promLabNextLine')==='true';}catch(_){}
+  $('labNextLine').onchange=()=>{
+    try{localStorage.setItem('promLabNextLine',String($('labNextLine').checked));}catch(_){}
+    render();
+  };
   const STORAGE = 'promWorkspaceV1';
   let inputTab = 'file', restoring = false, saveTimer, cached = null, background = null;
   let notes = {}, noteEditing = false, noteAnchor = null, bodyNoteAnchor = null;
@@ -175,7 +180,7 @@
   for(const value of ['dark','cloud'])$('theme-'+value).onclick=()=>{$('theme').value=value;$('theme').dispatchEvent(new Event('change'));};
   $('theme').addEventListener('change',()=>{syncTheme();publish();saveNow();});syncTheme();
   function payload() {
-    return {type:'frame',pages:P[page],page,total:P.length,lines:LINES,cursor,range:lineRange[page],dim:$('dim').checked,focus:$('focusColor').value,dark:$('theme').value==='dark',bg:$('theme').value==='dark'?null:background||BG_DEFAULT};
+    return {type:'frame',nextCue:nextCueLine()?.text||'',pages:P[page],page,total:P.length,lines:LINES,cursor,range:lineRange[page],dim:$('dim').checked,focus:$('focusColor').value,dark:$('theme').value==='dark',bg:$('theme').value==='dark'?null:background||BG_DEFAULT};
   }
   function publish(force=false) {
     if(!channel && !audience)return; const data=payload(), json=JSON.stringify(data);

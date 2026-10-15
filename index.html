@@ -120,7 +120,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
-<link rel="stylesheet" href="workspace.css?v=20261015-4">
+<link rel="stylesheet" href="workspace.css?v=20261015-7">
 </head>
 <body>
 <div id="setup">
@@ -161,7 +161,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 <div id="view">
   <div id="statusbar"><div class="mic-state"><span id="dot"></span><span id="micStatus" role="status">마이크 꺼짐</span></div><span id="sessionTitle"></span><div class="theme-choices" role="group" aria-label="배경 선택"><button id="theme-dark" type="button" aria-pressed="true">검정 배경</button><button id="theme-cloud" type="button" aria-pressed="false">하늘·구름 배경</button><select id="theme" aria-label="배경" hidden><option value="dark" selected>검정화면</option><option value="cloud">구름 배경</option></select></div></div>
   <div id="voiceFeedback" hidden></div>
-  <div id="stage"><div id="page"><div id="lines"></div></div></div>
+  <div id="stage"><div id="page"><div id="lines"></div><div id="nextCue" hidden aria-label="다음 장 첫 줄"></div></div></div>
   <div id="toast"></div>
   <div id="speedLayer" hidden tabindex="0" role="group" aria-label="말하기 속도 레이어" title="말하는 속도 · 현수 목소리 보통 속도 = 100 · 끌어서 이동"><small>속도</small><b id="speedVal">—</b></div>
   <div id="cap"></div>
@@ -189,6 +189,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <button id="fs">전체화면 (F)</button>
     <div class="control-group"><label id="speedOptWrap" title="마이크를 켰을 때 오른쪽 위에 말하는 속도(현수 목소리=100)를 띄웁니다"><input type="checkbox" id="speedOpt" checked>속도<span class="wide"> 표시</span></label><label id="dimOptWrap"><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label></div>
     <div class="control-group"><button id="note">발표 메모</button><button id="edit">편집 (E)</button><button id="save">저장</button><button id="openf">열기</button></div>
+    <label id="labOptWrap" title="줄 간격을 좁히고 다음 장 첫 줄을 하단에 표시합니다"><input type="checkbox" id="labNextLine"> 실험실 · 다음 장 첫 줄</label>
     <button id="more" aria-expanded="false" aria-controls="moreTools">더보기</button>
     <span id="autosaveState" role="status">기기에 저장됨</span>
     <div id="moreTools" hidden>
@@ -740,7 +741,37 @@ function locate(S, cursor){
 /* ---------- 화면 ---------- */
 let page=0, cursor=0;
 function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+// 미리보기는 별도 레이어: 원고 저장·편집·읽어주기에 중복 포함하지 않는다.
+function nextCueLine(){
+  if(!$('labNextLine').checked || editing || page+1>=P.length)return null;
+  const rows=P[page+1];
+  const i=rows.findIndex(runs=>runs.some(r=>r.c!=='r'&&r.c!=='n'&&normStr(r.t)));
+  if(i<0)return null;
+  return {text:rows[i].filter(r=>r.c!=='r'&&r.c!=='n').map(r=>r.t).join(''),range:lineRange[page+1]?.[i]};
+}
+function cueMatch(S){
+  const cue=nextCueLine();
+  if(!cue?.range || S.length<8)return null;
+  const [start,end]=cue.range;
+  const tail=S.slice(-Math.min(S.length,end-start));
+  // 현재 쪽에도 있는 상투적인 구절은 보조 넘김의 근거로 쓰지 않는다.
+  if(tail.length<8 || norm.slice(pStart[page],pEnd[page]).includes(tail))return null;
+  const at=norm.slice(start,end).indexOf(tail);
+  return at<0?null:Math.min(start+at+tail.length,pEnd[page+1]-1);
+}
+function renderCue(){
+  const cue=nextCueLine(), el=$('nextCue');
+  el.hidden=!cue; el.textContent=cue?.text||'';
+  $('page').classList.toggle('has-next-cue',!!cue);
+  fit();
+  if(cue){
+    el.style.fontSize='';
+    const width=el.scrollWidth;
+    if(width>el.clientWidth&&el.clientWidth>0)el.style.fontSize=(parseFloat(getComputedStyle(el).fontSize)*el.clientWidth/width)+'px';
+  }
+}
 function render(){
+  renderCue();
   const pg=P[page]||[];
   const dim=$('dim').checked;
   let html='';
@@ -767,13 +798,15 @@ function render(){
 function fit(){
   const W=$('stage').clientWidth||innerWidth,H=$('stage').clientHeight||innerHeight,ratio=210/118, L=$('lines'), el=$('page');
   el.classList.toggle('mobile',MOBILE);
+  const cueSpace=nextCueLine()?0.13:0;
   // 세로 화면(폰): 화면 전체를 쓰고, 한 줄 폭 17.5자가 화면 폭에 들어가게 글자 크기를 정한 뒤 줄 묶음을 세로 가운데에 둔다
   if(MOBILE||H>W*1.05){
     el.style.width=W+'px'; el.style.height=H+'px';
-    let fs=MOBILE?MFS:W*0.94/MAXW, pitch=fs*(MOBILE?1.55:1.9); if(pitch*LINES>H*0.94){pitch=H*0.94/LINES; fs=pitch/1.55}
-    const pad=Math.max(8,(H-pitch*LINES)/2);
+    let fs=MOBILE?MFS:W*0.94/MAXW, pitch=fs*(MOBILE?1.55:1.9); if(pitch*LINES>H*(0.94-cueSpace)){pitch=H*(0.94-cueSpace)/LINES; fs=pitch/1.55}
+    if(cueSpace)pitch*=0.9;
+    const pad=Math.max(8,(H*(1-cueSpace)-pitch*LINES)/2);
     el.style.fontSize=fs+'px';
-    L.classList.remove('g6','g7'); L.style.top=L.style.bottom=pad+'px'; L.style.left=L.style.right='3%';
+    L.classList.remove('g6','g7'); L.style.top=pad+'px'; L.style.bottom=(pad+H*cueSpace)+'px'; L.style.left=L.style.right='3%';
     L.style.setProperty('--lh',pitch+'px');
     return;
   }
@@ -783,6 +816,7 @@ function fit(){
   // 32pt 글자 / 118mm 높이 비율을 그대로 유지
   el.style.fontSize=(h*11.29/118*5/LINES)+'px';
   L.classList.toggle('g6',LINES===6); L.classList.toggle('g7',LINES===7);
+  if(cueSpace)L.style.bottom=((LINES===7?13.39:LINES===6?8.82:4.24)+cueSpace*100)+'%';
   L.style.setProperty('--lh',(h*(1-2*0.0424)/LINES*(LINES===7?0.8:LINES===6?0.9:1))+'px');   // 편집할 때 한 줄 높이
 }
 // 글꼴에 없어서 네모(□)로 그려지는 글자를 캔버스로 직접 알아내 지운다. 없는 글자(기준)와 똑같이 그려지면 네모다
@@ -1222,6 +1256,8 @@ function onHeard(text){
   if(S.length<5){cap(base+' · 너무 짧아 기다림');return}
   if(S===lastTail)return;
   lastTail=S;
+  const cuePos=cueMatch(S);
+  if(cuePos!==null){cursor=cuePos;pend=null;go(page+1);cap(base+' ✓ 다음 장 첫 줄 확인');return;}
   // 가까운 곳(지금 위치 앞뒤)을 먼저 본다. 이미 읽은 곳을 다시 읽으면(강조·다 같이 읽기) 그대로 두고,
   // 멀리 앞쪽과 맞으면 바로 넘기지 않고 이어서 더 읽어 같은 흐름이 확인될 때만 넘긴다 (부연 설명 중 우연히 맞는 것 막기)
   const h=locate3(S,cursor), lim=Math.floor(S.length*0.3);
@@ -1752,7 +1788,7 @@ try{const n=localStorage.getItem('prompterLines');['lines','lines2'].forEach(nm=
 $('theme').onchange=applyTheme;
 $('fs').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();else toast('이 브라우저에서는 메뉴에서 전체화면으로 열어 주세요.')}catch(_){toast('전체화면으로 바꾸지 못했습니다. 다시 눌러 주세요.')}};
 $('back').onclick=()=>{endEdit();stopMic();closePanel();tStop();$('fontPanel').classList.remove('open');$('view').style.display='none';$('setup').style.display='block'};
-addEventListener('resize',()=>{fit(); if(panelOpen())placePanel()});
+addEventListener('resize',()=>{fit(); if(!editing)render(); if(panelOpen())placePanel()});
 addEventListener('fullscreenchange',()=>{if(listening&&micFullscreen&&!document.fullscreenElement)stopMic();});
 addEventListener('keydown',e=>{
   if(e.key==='Escape'&&listening){e.preventDefault();stopMic();return;}
@@ -1808,6 +1844,6 @@ window.__state=()=>({page,cursor,total:P.length});
 })();
 if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 </script>
-<script src="workspace.js?v=20261015-6"></script>
+<script src="workspace.js?v=20261015-7"></script>
 </body>
 </html>
