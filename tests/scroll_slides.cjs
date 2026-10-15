@@ -14,6 +14,13 @@ for(const lines of [5,6,7]){
  for(const slide of view.slides){assert.equal(slide.el.style.height,'1080px');assert.equal(parseFloat(slide.el.style.fontSize),c.PromSlideLayout.measure(1920,1080,lines).font);}
  view.update({...frame,page:1,cursor:lines*10});assert.equal(view.position,'1:0');assert(host.lastScroll);
 }
+const cueDocument=[[[{t:'본문',c:'b'},{t:' >>',c:'k'}],[{t:'>>',c:'k'}],[{t:'앞 >> 중간',c:'k'}],[{t:'끝 >',c:'k'},{t:'>',c:'b'}]]];
+const original=JSON.stringify(cueDocument),cueView=new c.window.PromScrollView(new E());
+cueView.update({document:cueDocument,lines:5,page:0,cursor:0,ranges:[]});
+const rendered=cueView.rows.map(r=>r.wrap.children.map(s=>s.textContent).join(''));
+assert.deepEqual(Array.from(rendered).slice(0,4),['본문','','앞 >> 중간','끝']);
+assert.equal(JSON.stringify(cueDocument),original,'display filtering must preserve manuscript and speech indices');
+assert.equal(cueView.rows[0].wrap.children[0].className,'b');
 const source=fs.readFileSync('workspace.js','utf8');
 const block=source.slice(source.indexOf('  function openSlideshow('),source.indexOf("  addEventListener('message',e=>{if(e.origin===location.origin"));
 let opened=0,focused=0;const nodes={audience:{},scrollAudience:{}};

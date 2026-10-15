@@ -13,7 +13,10 @@ window.PromScrollView=class {
         for(let li=0;li<count;li++){
           const row=document.createElement('div');row.className='scroll-line';
           const wrap=document.createElement('span');
-          for(const r of pg[li]||[]){const span=document.createElement('span');span.textContent=r.t;if(['b','r','n'].includes(r.c))span.className=r.c;wrap.appendChild(span);}
+          const runs=pg[li]||[];
+          // 화면에 그릴 때만 쪽 넘김 기호를 제외한다. 원고와 음성 추적 인덱스는 유지한다.
+          let remaining=runs.map(r=>r.t).join('').replace(/\s*>>\s*$/,'').length;
+          for(const r of runs){const text=r.t.slice(0,remaining);remaining=Math.max(0,remaining-r.t.length);if(!text)continue;const span=document.createElement('span');span.textContent=text;if(['b','r','n'].includes(r.c))span.className=r.c;wrap.appendChild(span);}
           row.appendChild(wrap);body.appendChild(row);this.rows.push({el:row,wrap,pi,li});
         }
         const mark=document.createElement('div');mark.className='scroll-page-number';mark.textContent=`${pi+1}쪽`;slide.appendChild(mark);
