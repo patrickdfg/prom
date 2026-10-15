@@ -29,10 +29,18 @@
   setInterval(()=>{if(Date.now()-lastSeen>10000){document.body.classList.remove('connected');document.getElementById('connection').textContent='조작 화면 연결 확인 · 마지막 원고를 표시하고 있습니다.';}},3000);
   const fullButton=document.getElementById('fullscreen');
   function syncFullscreen(){fullButton.hidden=!!document.fullscreenElement;}
-  fullButton.onclick=async()=>{
+  let requestingFullscreen=false;
+  async function enterFullscreen(){
+    if(document.fullscreenElement||requestingFullscreen)return;
+    requestingFullscreen=true;
     try{await document.documentElement.requestFullscreen();syncFullscreen();}
-    catch(_){fullButton.hidden=false;}
-  };
+    catch(_){fullButton.hidden=false;fullButton.textContent='화면을 클릭하면 전체화면으로 시작';}
+    finally{requestingFullscreen=false;}
+  }
+  window.startSlideshowFullscreen=enterFullscreen;
+  fullButton.onclick=enterFullscreen;
+  document.getElementById('paper').addEventListener('click',()=>{if(!document.fullscreenElement)enterFullscreen();});
   document.addEventListener('fullscreenchange',syncFullscreen);
   syncFullscreen();
+  if(new URLSearchParams(location.search).get('fullscreen')==='1')enterFullscreen();
 })();

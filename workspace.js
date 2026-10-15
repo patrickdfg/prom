@@ -192,9 +192,14 @@
       channelId=crypto.randomUUID(); channel=new BroadcastChannel('prom-display-'+channelId);
       channel.onmessage=e=>{ if(e.data?.type==='ready')publish(true); };
     }
-    audience=window.open('audience.html#'+channelId,'promAudience');
+    if(audience&&!audience.closed){
+      audience.focus();
+      try{audience.startSlideshowFullscreen?.();}catch(_){}
+      publish(true);return;
+    }
+    audience=window.open('audience.html?fullscreen=1#'+channelId,'promAudience');
     if(!audience){toast('별도 화면이 차단되었습니다. 이 사이트의 팝업을 허용한 뒤 다시 눌러 주세요.',6000);return;}
-    toast('새 원고 창을 외부 모니터로 옮겨 전체화면으로 보세요.',6000);
+    toast('슬라이드쇼를 열었습니다. 자동 전체화면이 제한되면 슬라이드 화면을 한 번 클릭하세요.',6000);
   };
   addEventListener('message',e=>{if(e.origin===location.origin && e.source===audience && e.data?.type==='ready')publish(true);});
   function metadata() { if(noteEditing)storeNote();return {noteLayers:notes,focus:$('focusColor').value}; }
@@ -247,6 +252,7 @@
   $('bar').addEventListener('focusin',showBar);
   window.PromUI = {
     metadata, applyMetadata, finishNote,
+    hasSlideshow(){return !!audience&&!audience.closed;},
     speedLayer:placeSpeed,
     presentation(){hideControls();showNote();},
     beforeBodyEdit(){finishNote();bodyNoteAnchor=noteKey(P[page]);},

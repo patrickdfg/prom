@@ -120,7 +120,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
-<link rel="stylesheet" href="workspace.css?v=20261015-9">
+<link rel="stylesheet" href="workspace.css?v=20261015-11">
 </head>
 <body>
 <div id="setup">
@@ -1351,7 +1351,8 @@ async function startMic(){
   if(editing){toast('편집을 끝낸 뒤(Esc) 마이크를 켜세요.',4000);return}
   if(!SR){toast('이 브라우저는 음성인식을 지원하지 않습니다. 크롬으로 열어 주세요.',6000);return}
   notifyUI('finishNote');closePanel(); stopMeter();
-  if(!document.fullscreenElement&&document.documentElement.requestFullscreen){
+  const hasSlideshow=!!notifyUI('hasSlideshow');
+  if(!hasSlideshow&&!document.fullscreenElement&&document.documentElement.requestFullscreen){
     document.documentElement.requestFullscreen().then(()=>{micFullscreen=true}).catch(()=>{});
   }
   await holdMic();
@@ -1390,7 +1391,7 @@ async function startMic(){
   if(ANDROID){makeWaitAC(); lastResultAt=0;emptySessions=0;}
   if(ANDROID&&panelOpen())closePanel();      // 소리 막대가 마이크를 같이 잡지 않게
   cursor=pStart[page]||0; heardCarry=''; sessionText=''; lastTail='';     // 켤 때 보고 있는 쪽부터 찾는다
-  listening=true; $('view').classList.add('presenting');notifyUI('presentation');
+  listening=true; $('view').classList.toggle('presenting',!hasSlideshow);$('view').classList.toggle('operator-mode',hasSlideshow);notifyUI('presentation');
   $('fontPanel').classList.remove('open');$('ttsPanel').classList.remove('open');
   document.activeElement?.blur();fit();render();
   setDot(''); cap('마이크 여는 중…'); startRec();
@@ -1398,7 +1399,7 @@ async function startMic(){
   keepAwake(); speedStart();
 }
 function stopMic(){ speedStop(); endWait();
-  listening=false;$('view').classList.remove('presenting','controls-open');fit();render();showBar();
+  listening=false;$('view').classList.remove('presenting','controls-open','operator-mode');fit();render();showBar();
   if(micFullscreen){micFullscreen=false;if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});}
   cap(''); releaseMic(); if(rec)try{rec.stop()}catch(_){}
   $('mic').classList.remove('on'); $('mic').textContent='마이크 켜기 (M)'; setDot('');
@@ -1850,7 +1851,7 @@ window.__state=()=>({page,cursor,total:P.length});
 })();
 if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 </script>
-<script src="workspace.js?v=20261015-10"></script>
+<script src="workspace.js?v=20261015-11"></script>
 <script src="overview.js?v=20261015-8"></script>
 </body>
 </html>
