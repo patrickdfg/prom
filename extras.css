@@ -1,5 +1,5 @@
 #extrasDialog{width:min(680px,calc(100vw - 24px))}#extrasDialog fieldset{border:1px solid #425571;border-radius:12px;padding:12px 16px;margin:16px 0}#extrasDialog legend{font-weight:700;color:#d0e1ff;padding:0 8px}#extrasDialog label{margin:8px 0}#extrasDialog input[type=checkbox]{width:18px;height:18px;vertical-align:middle}#extrasDialog input[type=number]{width:80px}#extrasDialog input[type=text]{width:100%}#extrasDialog p{margin:10px 0;font-size:13px}.extras-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}#recordAudio{width:100%;margin-top:14px}#recordDownload{display:block;color:#b9dbff;padding:12px 0}#recordDownload[hidden],#recordAudio[hidden],#stageNotice[hidden]{display:none!important}
-.scroll-host{position:relative;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;text-align:center;color:#111;background:#fff;--focus:#1642c3;font-family:'Malgun Gothic',sans-serif}
+.scroll-host{position:relative;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;text-align:center;color:#111;background:#fff;--focus:#1642c3;font-family:inherit}
 .scroll-host.scroll-dark{background:#000;color:#fff;--focus:#ffff00}
 .scroll-content{position:relative;padding:0 0 70vh;width:100%;margin:0}
 .scroll-page{position:relative;height:100vh;display:flex;align-items:center;justify-content:center}

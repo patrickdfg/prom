@@ -5,7 +5,7 @@
   const channel=new BroadcastChannel('prom-display-'+id); let current=null,lastSeen=Date.now();
   function fit(){
     if(!current)return;
-    if(current.extra?.continuous){scrollRenderer.position='';scrollRenderer.update(current);return;}
+    if(current.extra?.continuous){scrollRenderer.position='';scrollRenderer.layout='';scrollRenderer.update(current);return;}
     const rows=Math.max(1,current.lines,current.pages.length);
     const base=Math.min(innerHeight*.76/(rows*1.7),innerWidth*.052);
     // 다음 줄은 기존 행 사이 여백으로 수용하고, 최소 행 높이가 부족할 때만 축소한다.
@@ -40,6 +40,8 @@
   addEventListener('message',e=>{if(e.origin===location.origin && e.source===window.opener)receive(e.data);});
   channel.postMessage({type:'ready'});window.opener?.postMessage({type:'ready'},location.origin);addEventListener('resize',fit);
   setInterval(()=>{if(Date.now()-lastSeen>10000){document.body.classList.remove('connected');document.getElementById('connection').textContent='조작 화면 연결 확인 · 마지막 원고를 표시하고 있습니다.';}},3000);
+  // 글꼴 로딩이 끝난 뒤 긴 줄의 폭과 스크롤 위치를 다시 맞춘다.
+  document.fonts?.ready.then(fit);
   const fullButton=document.getElementById('fullscreen');
   function syncFullscreen(){fullButton.hidden=!!document.fullscreenElement;}
   let requestingFullscreen=false;
