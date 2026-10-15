@@ -7,11 +7,9 @@
     if(!current)return;
     if(current.extra?.continuous){scrollRenderer.position='';scrollRenderer.layout='';scrollRenderer.update(current);return;}
     const rows=Math.max(1,current.lines,current.pages.length);
-    const base=Math.min(innerHeight*.76/(rows*1.7),innerWidth*.052);
-    // 다음 줄은 기존 행 사이 여백으로 수용하고, 최소 행 높이가 부족할 때만 축소한다.
-    const available=display.clientHeight||innerHeight*.82;
-    const minimumUnits=current.nextCue?rows*1.2+1.2:rows*1.2;
-    display.style.fontSize=Math.min(base,(available-2)/minimumUnits)+'px';
+    const metrics=PromSlideLayout.measure(innerWidth,innerHeight,rows);
+    display.style.width=metrics.width+'px';display.style.height=metrics.height+'px';
+    display.style.fontSize=metrics.font+'px';
     display.querySelectorAll('.ln>span').forEach(s=>{s.style.transform='';const w=s.scrollWidth,max=s.parentElement.clientWidth;if(w>max)s.style.transform=`scale(${max/w})`;});
   }
   const receive=d=>{
@@ -22,7 +20,7 @@
     document.getElementById('paper').style.transform=`scale(${extra.mirrorX?-1:1},${extra.mirrorY?-1:1})`;
     const notice=document.getElementById('stageNotice');notice.textContent=typeof extra.message==='string'?extra.message.slice(0,140):'';notice.hidden=!notice.textContent;
     display.classList.toggle('scroll-host',!!extra.continuous);
-    if(!extra.continuous){display.replaceChildren();scrollRenderer.key='';}else display.style.fontSize='';
+    if(!extra.continuous){display.replaceChildren();scrollRenderer.key='';}else {display.style.fontSize='';display.style.width=display.style.height='';}
     document.body.style.setProperty('--focus',d.dark?(d.focus==='#b6f36a'?'#b6f36a':'#ffff00'):'#0000ff');
     document.getElementById('paper').style.backgroundColor=d.dark?'#000':'#fff';display.style.color=d.dark?'#fff':'#000';
     document.getElementById('paper').style.backgroundImage=!d.dark && typeof d.bg==='string' && /^(data:image\/|blob:)/.test(d.bg)?`url("${d.bg.replace(/["\\\n\r]/g,'')}")`:'';

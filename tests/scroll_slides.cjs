@@ -3,15 +3,15 @@ class E {
  constructor(){this.children=[];this.style={};this.clientHeight=1080;this.clientWidth=1800;this.scrollWidth=1000;this.scrollTop=0;this.isConnected=true;this.classList={toggle(){}};}
  appendChild(e){this.children.push(e)}replaceChildren(){this.children=[]}getBoundingClientRect(){return {top:100}}scrollTo(value){this.lastScroll=value}
 }
-const c={window:{},document:{createElement:()=>new E()},innerHeight:1080,innerWidth:1920,requestAnimationFrame:fn=>fn(),matchMedia:()=>({matches:false})};
+const c={PromSlideLayout:require('../slide-layout.js'),window:{},document:{createElement:()=>new E()},innerHeight:1080,innerWidth:1920,requestAnimationFrame:fn=>fn(),matchMedia:()=>({matches:false})};
 vm.createContext(c);vm.runInContext(fs.readFileSync('scroll-view.js','utf8'),c);
 for(const lines of [5,6,7]){
  const host=new E(),view=new c.window.PromScrollView(host);
  const document=Array.from({length:3},()=>Array.from({length:lines},()=>[{t:'원고 본문',c:'k'}]));
  const ranges=document.map((pg,pi)=>pg.map((_,li)=>[(pi*lines+li)*10,(pi*lines+li+1)*10]));
  const frame={document,lines,page:0,cursor:0,ranges};view.update(frame);
- assert.equal(view.slides.length,3);assert.equal(view.rows.length,lines*3);
- for(const slide of view.slides){assert.equal(slide.el.style.height,'1080px');assert.equal(parseFloat(slide.el.style.fontSize),Math.min(1080*.76/(lines*1.7),1920*.052));}
+ assert.equal(view.slides[0].body.style.width,c.PromSlideLayout.measure(1920,1080,lines).width+'px');assert.equal(view.slides.length,3);assert.equal(view.rows.length,lines*3);
+ for(const slide of view.slides){assert.equal(slide.el.style.height,'1080px');assert.equal(parseFloat(slide.el.style.fontSize),c.PromSlideLayout.measure(1920,1080,lines).font);}
  view.update({...frame,page:1,cursor:lines*10});assert.equal(view.position,'1:0');assert(host.lastScroll);
 }
 const source=fs.readFileSync('workspace.js','utf8');

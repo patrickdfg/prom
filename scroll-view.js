@@ -17,7 +17,7 @@ window.PromScrollView=class {
           row.appendChild(wrap);body.appendChild(row);this.rows.push({el:row,wrap,pi,li});
         }
         const mark=document.createElement('div');mark.className='scroll-page-number';mark.textContent=`${pi+1}쪽`;slide.appendChild(mark);
-        content.appendChild(slide);this.slides.push({el:slide,count});
+        content.appendChild(slide);this.slides.push({el:slide,body,count});
       });
       this.host.appendChild(content);
     }
@@ -27,8 +27,9 @@ window.PromScrollView=class {
       this.layout=layout;this.position='';
       for(const slide of this.slides){
         slide.el.style.height=height+'px';
-        // 일반 슬라이드쇼와 같은 글자 크기 및 82% 본문 영역.
-        slide.el.style.fontSize=Math.min(innerHeight*.76/(slide.count*1.7),innerWidth*.052,(height*.82-2)/(slide.count*1.2))+'px';
+        const metrics=PromSlideLayout.measure(innerWidth,innerHeight,slide.count);
+        slide.body.style.width=metrics.width+'px';slide.body.style.height=metrics.height+'px';
+        slide.el.style.fontSize=metrics.font+'px';
       }
       for(const row of this.rows){row.wrap.style.transform='';const width=row.wrap.scrollWidth,max=row.el.clientWidth;if(width>max&&max>0)row.wrap.style.transform=`scale(${max/width})`;}
     }

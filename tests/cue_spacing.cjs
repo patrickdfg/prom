@@ -18,7 +18,7 @@ const audienceFit=source.slice(source.indexOf('  function fit(){'),source.indexO
 for(const rows of [5,6,7]){
  const display={style:{},clientHeight:885.6,querySelectorAll:()=>[]};
  const current={lines:rows,pages:Array(rows),nextCue:null};
- const context={display,current,innerHeight:1080,innerWidth:1920};
+ const context={PromSlideLayout:require('../slide-layout.js'),display,current,innerHeight:1080,innerWidth:1920};
  vm.runInNewContext(audienceFit+'fit()',context);const original=display.style.fontSize;
  current.nextCue='다음 쪽 첫 줄';vm.runInNewContext(audienceFit+'fit()',context);
  assert.equal(display.style.fontSize,original);
