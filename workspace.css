@@ -110,7 +110,7 @@ button:hover{filter:brightness(1.12)}
 /* 실험실: 다음 장 첫 줄을 본문 밖 하단에 표시 */
 #labOptWrap{display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-size:14px}
 #labOptWrap input{width:18px;height:18px}
-#nextCue{position:absolute;left:3%;right:3%;bottom:2%;height:11%;display:flex;align-items:center;justify-content:center;white-space:pre;font-size:.78em;color:#005b78;border-top:1px solid currentColor;overflow:hidden}
+#nextCue{position:absolute;left:3%;right:3%;bottom:2%;height:11%;display:flex;align-items:center;justify-content:center;white-space:pre;font-size:.9em;line-height:1.12;color:#005b78;border-top:1px solid currentColor;overflow:hidden}
 #nextCue[hidden]{display:none}
 #page.dark #nextCue{color:#73d8ff}
 

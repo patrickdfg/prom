@@ -6,7 +6,12 @@
   function fit(){
     if(!current)return;
     if(current.extra?.continuous){scrollRenderer.position='';scrollRenderer.update(current);return;}
-    display.style.fontSize=Math.min(innerHeight*.76/((Math.max(current.lines,current.pages.length)+(current.nextCue?1:0))*1.7),innerWidth*.052)+'px';
+    const rows=Math.max(1,current.lines,current.pages.length);
+    const base=Math.min(innerHeight*.76/(rows*1.7),innerWidth*.052);
+    // 다음 줄은 기존 행 사이 여백으로 수용하고, 최소 행 높이가 부족할 때만 축소한다.
+    const available=display.clientHeight||innerHeight*.82;
+    const minimumUnits=current.nextCue?rows*1.2+1.2:rows*1.2;
+    display.style.fontSize=Math.min(base,(available-2)/minimumUnits)+'px';
     display.querySelectorAll('.ln>span').forEach(s=>{s.style.transform='';const w=s.scrollWidth,max=s.parentElement.clientWidth;if(w>max)s.style.transform=`scale(${max/w})`;});
   }
   const receive=d=>{

@@ -120,7 +120,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
-<link rel="stylesheet" href="workspace.css?v=20261016-1">
+<link rel="stylesheet" href="workspace.css?v=20261016-2">
 <link rel="stylesheet" href="extras.css?v=20261016-1">
 </head>
 <body>
@@ -773,6 +773,8 @@ function renderCue(){
   fit();
   if(cue){
     el.style.fontSize='';
+    const base=parseFloat(getComputedStyle(el).fontSize);
+    if(el.clientHeight>0)el.style.fontSize=Math.min(base,(el.clientHeight-2)/1.12)+'px';
     const width=el.scrollWidth;
     if(width>el.clientWidth&&el.clientWidth>0)el.style.fontSize=(parseFloat(getComputedStyle(el).fontSize)*el.clientWidth/width)+'px';
   }
@@ -809,8 +811,14 @@ function fit(){
   // 세로 화면(폰): 화면 전체를 쓰고, 한 줄 폭 17.5자가 화면 폭에 들어가게 글자 크기를 정한 뒤 줄 묶음을 세로 가운데에 둔다
   if(MOBILE||H>W*1.05){
     el.style.width=W+'px'; el.style.height=H+'px';
-    let fs=MOBILE?MFS:W*0.94/MAXW, pitch=fs*(MOBILE?1.55:1.9); if(pitch*LINES>H*(0.94-cueSpace)){pitch=H*(0.94-cueSpace)/LINES; fs=pitch/1.55}
-    if(cueSpace)pitch*=0.9;
+    let fs=MOBILE?MFS:W*0.94/MAXW, pitch=fs*(MOBILE?1.55:1.9);
+    // 먼저 미리보기 없는 화면과 같은 글자 크기를 계산한다.
+    if(pitch*LINES>H*0.94){pitch=H*0.94/LINES;fs=pitch/1.55}
+    if(cueSpace){
+      pitch=Math.min(pitch,H*(0.94-cueSpace)/LINES);
+      // 줄 간격을 먼저 좁히고, 최소 1.2배 높이를 확보할 수 없을 때만 글자를 줄인다.
+      fs=Math.min(fs,pitch/1.2);
+    }
     const pad=Math.max(8,(H*(1-cueSpace)-pitch*LINES)/2);
     el.style.fontSize=fs+'px';
     L.classList.remove('g6','g7'); L.style.top=pad+'px'; L.style.bottom=(pad+H*cueSpace)+'px'; L.style.left=L.style.right='3%';
