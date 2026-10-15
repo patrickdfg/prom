@@ -9,7 +9,7 @@
   const STORAGE = 'promWorkspaceV1';
   let inputTab = 'file', restoring = false, saveTimer, cached = null, background = null;
   let notes = {}, noteEditing = false, noteAnchor = null, bodyNoteAnchor = null;
-  let audience = null, channel = null, channelId = null, lastSent = '';
+  let audience = null, channel = null, channelId = null, lastSent = '', continuous = false;
   const textOf = pg => (pg || []).map(l => l.filter(r => r.c !== 'r' && r.c !== 'n').map(r => r.t).join('')).join('\n').trim();
   // 본문을 키로 삼아 편집·쪽 재배치 후 다른 쪽에 메모가 붙는 것을 막는다.
   const noteKey = pg => textOf(pg);
@@ -180,14 +180,15 @@
   for(const value of ['dark','cloud'])$('theme-'+value).onclick=()=>{$('theme').value=value;$('theme').dispatchEvent(new Event('change'));};
   $('theme').addEventListener('change',()=>{syncTheme();publish();saveNow();});syncTheme();
   function payload() {
-    const extra=window.PromExtras?.settings()||{};
+    const extra={...(window.PromExtras?.settings()||{}),continuous};
     return {type:'frame',extra,...(extra.continuous?{document:P,ranges:lineRange}:{}),nextCue:nextCueLine()?.text||'',pages:P[page],page,total:P.length,lines:LINES,cursor,range:lineRange[page],dim:$('dim').checked,focus:$('focusColor').value,dark:$('theme').value==='dark',bg:$('theme').value==='dark'?null:background||BG_DEFAULT};
   }
   function publish(force=false) {
     if(!channel && !audience)return; const data=payload(), json=JSON.stringify(data);
     if(force || json!==lastSent) { channel?.postMessage(data); if(audience && !audience.closed)audience.postMessage(data,location.origin); lastSent=json; }
   }
-  $('audience').onclick = () => {
+  function openSlideshow(scrollMode){
+    continuous=scrollMode;
     if(!channel) {
       if(!('BroadcastChannel' in window)){toast('이 브라우저는 슬라이드쇼을 지원하지 않습니다.');return;}
       channelId=crypto.randomUUID(); channel=new BroadcastChannel('prom-display-'+channelId);
@@ -202,6 +203,8 @@
     if(!audience){toast('별도 화면이 차단되었습니다. 이 사이트의 팝업을 허용한 뒤 다시 눌러 주세요.',6000);return;}
     toast('슬라이드쇼를 열었습니다. 자동 전체화면이 제한되면 슬라이드 화면을 한 번 클릭하세요.',6000);
   };
+  $('audience').onclick=()=>openSlideshow(false);
+  $('scrollAudience').onclick=()=>openSlideshow(true);
   addEventListener('message',e=>{if(e.origin===location.origin && e.source===audience && e.data?.type==='ready')publish(true);});
   function metadata() { if(noteEditing)storeNote();return {noteLayers:notes,focus:$('focusColor').value}; }
   function applyMetadata(data={}) {

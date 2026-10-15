@@ -137,3 +137,6 @@ button:hover{filter:brightness(1.12)}
 
 /* 슬라이드쇼 창이 있으면 음성 추적 중에도 조작 화면을 유지한다. */
 #view.operator-mode #bar,#view.operator-mode #statusbar{display:flex!important;opacity:1!important;pointer-events:auto!important}
+
+#labOptWrap[hidden]{display:none}
+@media(max-width:900px){#statusbar{flex-wrap:wrap;height:auto}.theme-choices{flex-wrap:wrap;flex-shrink:1}}
