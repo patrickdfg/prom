@@ -14,10 +14,10 @@ c.MediaRecorder=class{static isTypeSupported(){return true}constructor(){this.st
 vm.createContext(c);vm.runInContext(fs.readFileSync('extras.js','utf8'),c);
 (async()=>{
  const api=c.window.PromExtras;
- nodes.continuousView.checked=true;nodes.continuousView.onchange();assert(api.settings().continuous,'single-view click must not undo scroll toggle');assert(scrollCalls>0);
+ nodes.continuousView.checked=true;nodes.continuousView.onchange();assert(api.settings().continuous,'single-view click must not undo scroll toggle');assert.equal(scrollCalls,0,'operator must never scroll');assert(!nodes.view.classes.has('continuous-mode'));
  nodes.theme.value='cloud';c.render();nodes.theme.value='dark';
- nodes.viewMultiple.click();assert(!api.settings().continuous,'grid exits scroll');
- nodes.continuousView.checked=true;nodes.continuousView.onchange();ui.beforeBodyEdit();assert(!api.settings().continuous);
+ nodes.viewMultiple.click();assert(api.settings().continuous,'operator grid must preserve slideshow scroll');
+ nodes.continuousView.checked=true;nodes.continuousView.onchange();ui.beforeBodyEdit();assert(api.settings().continuous,'editing must preserve slideshow setting');nodes.viewSingle.click();nodes.note.click();assert(api.settings().continuous);nodes.continuousView.checked=false;nodes.continuousView.onchange();assert(!api.settings().continuous);
  nodes.mirrorX.checked=true;nodes.mirrorX.onchange();assert(api.settings().mirrorX);assert.equal(store.get('promExtra:mirrorX'),'true');
  nodes.stageMessage.value='<script>시간 5분 남음</script>';nodes.sendStageMessage.click();assert.equal(api.settings().message,nodes.stageMessage.value);nodes.clearStageMessage.click();assert.equal(api.settings().message,'');
  nodes.repeatFrom.value='2';nodes.repeatTo.value='3';nodes.repeatTTS.checked=true;assert.equal(api.ttsPage(3),1);assert.equal(api.ttsPage(2),2);nodes.playRepeat.click();assert.equal(c.page,1);assert(c.ttsStarted);nodes.repeatTo.value='99';assert.equal(api.ttsPage(3),3);assert(!nodes.repeatTTS.checked);
