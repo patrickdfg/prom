@@ -275,6 +275,19 @@
       showNote();
       [...$('lines').children].forEach((el,i)=>{const r=lineRange[page]?.[i];el.classList.toggle('current',!editing && !!r && r[1]>r[0] && cursor>=r[0] && cursor<r[1]);});
       publish(); scheduleSave();
+      // 말씀 원고의 현재 쪽에 있는 제어 표식으로 OBS 전체화면/슬라이드쇼를 전환.
+      // 조작창은 그대로 유지하며 Windows 보조 프로그램이 없으면 기능만 비활성.
+      if(P.length && !editing){
+        const cueText=textOf(P[page]);
+        const hits=[...cueText.matchAll(/\\(\\s*(영상끝|영상)\\s*\\)/g)];
+        if(hits.length){
+          const next=hits[hits.length-1][1]==='영상끝'?'slideshow':'obs';
+          if(window.__promObsCue!==next){
+            window.__promObsCue=next;
+            fetch('http://127.0.0.1:17986/'+next,{method:'POST',mode:'cors',credentials:'omit',signal:AbortSignal.timeout(1500)}).catch(()=>{});
+          }
+        }
+      }
     },
     mic(cls) { $('micStatus').textContent=cls==='live'?'듣는 중':cls==='err'?'마이크 연결 확인':listening?'다시 연결 중':'마이크 꺼짐'; },
     holdControls() { return !menu.hidden || !!document.querySelector('dialog[open]') || ($('bar').contains(document.activeElement) && document.activeElement.matches(':focus-visible')) || editing || noteEditing; },
