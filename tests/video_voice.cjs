@@ -22,6 +22,7 @@ for(const lab of [false,true]){
  const t=setup(lab);let transcript='';
  const states=[];for(const spoken of [intro,a,b,after]){transcript+=spoken;t.feed(transcript);states.push({cursor:t.run('cursor'),cue:t.run('PromVideoCues.active(videoCues,cursor)?.action')});}
  assert.equal(states[0].cue,'obs','start at intro completion '+lab);assert.equal(states[1].cue,'obs','video speech continues '+lab);assert.equal(states[2].cue,'slideshow','end on final video character '+lab);assert.equal(states[3].cursor,built.text.length,'resume preacher without speaking markers '+lab);
+ const echo=setup(lab);echo.feed(intro);echo.feed(intro+a);echo.feed(intro+a+b);const finished=echo.run('cursor');echo.feed(intro+a);assert.equal(echo.run('cursor'),finished,'late video echo must not rewind and reopen OBS '+lab);
  const early=setup(lab);early.run('page=1;cursor=pEnd[0]-2;');early.feed(intro);assert.equal(early.run('cursor'),built.ends[0],'early page must not reset reading cursor '+lab);
  const commands=setup(lab);commands.c.PAGES=[[row('(영상 찬양 시작)')],[row(a)],[row('(영상 찬양 끝)')],[row(after)]];commands.run('P=PAGES;index();page=0;cursor=0;');commands.feed(a);assert.equal(commands.run('cursor'),norm(a).length,'skip standalone command page '+lab);assert.equal(commands.run('PromVideoCues.active(videoCues,cursor).action'),'slideshow','end on standalone marker '+lab);
 }

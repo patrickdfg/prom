@@ -1298,7 +1298,7 @@ function onHeard(text){
   }else{cap(base+' · 원고와 안 맞음');return}
   cap(base+' ✓ 원고 위치 찾음');
   const hit={pos:to};
-  cursor=hit.pos;
+  cursor=Math.max(cursor,hit.pos);
   let target=pageOf(cursor);
   const lead=+$('lead').value;
   if(cursor>=Math.max(pEnd[target]-lead,lastLine[target]+1) && target<P.length-1) target++;
