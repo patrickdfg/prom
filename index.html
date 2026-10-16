@@ -202,6 +202,8 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <span id="autosaveState" role="status">기기에 저장됨</span>
     <div id="moreTools" hidden>
       <button id="set">마이크 설정</button>
+      <button id="obsFullscreenSetup" type="button" title="OBS 전체화면 전환 프로그램 다운로드 · Windows">OBS풀스크린설정</button>
+      <a id="obsFullscreenDownload" href="downloads/OBSFullscreenBridge-1.3.0.exe" download="OBSFullscreenBridge.exe" hidden>OBS 전체화면 전환 프로그램 다운로드</a>
       <label>넘김 <select id="lead"><option value="6">빠르게</option><option value="3" selected>보통</option><option value="1">늦게</option></select></label>
       <label>강조 <select id="focusColor"><option value="#ffff00">노랑</option><option value="#b6f36a">연두</option></select></label>
 
@@ -1862,7 +1864,7 @@ window.__state=()=>({page,cursor,total:P.length});
 })();
 if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 </script>
-<script src="workspace.js?v=20261016-obs4"></script>
+<script src="workspace.js?v=20261017-obs-download1"></script>
 <script src="overview.js?v=20261015-8"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
 <script src="extras.js?v=20261016-4"></script>

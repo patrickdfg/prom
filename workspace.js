@@ -48,6 +48,10 @@
   });
   $('view').addEventListener('pointerdown',e=>{if(listening&&e.clientY>=innerHeight-28)revealControls();});
   $('more').onclick = () => { menu.hidden = !menu.hidden; $('more').setAttribute('aria-expanded',String(!menu.hidden)); showBar(); };
+  $('obsFullscreenSetup').onclick = () => {
+    $('obsFullscreenDownload').click();
+    toast('다운로드한 OBSFullscreenBridge.exe를 실행하고 토글키를 설정하세요.',6000);
+  };
   function showDialog(id) { finishNote(); if(editing)endEdit(); closePanel(); $(id).showModal(); showBar(); }
   document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => $(b.dataset.close).close());
   document.querySelectorAll('.tool-dialog').forEach(d => d.addEventListener('close',showBar));
