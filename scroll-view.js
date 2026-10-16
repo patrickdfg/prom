@@ -25,12 +25,12 @@ window.PromScrollView=class {
       this.host.appendChild(content);
     }
     const height=this.host.clientHeight||innerHeight;
-    const layout=`${innerWidth}:${innerHeight}:${height}`;
+    const layout=`${this.host.clientWidth}:${height}`;
     if(layout!==this.layout){
       this.layout=layout;this.position='';
       for(const slide of this.slides){
         slide.el.style.height=height+'px';
-        const metrics=PromSlideLayout.measure(innerWidth,innerHeight,slide.count);
+        const metrics=PromSlideLayout.measure(this.host.clientWidth||innerWidth,height,slide.count);
         slide.body.style.width=metrics.width+'px';slide.body.style.height=metrics.height+'px';
         slide.el.style.fontSize=metrics.font+'px';
       }

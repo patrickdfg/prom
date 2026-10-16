@@ -50,16 +50,40 @@
     }
   }
   document.addEventListener('fullscreenchange',syncPresentationMode);
+  let localScroll=false;
+  const scrollHost=document.createElement('div');scrollHost.id='localScroll';scrollHost.className='scroll-host';scrollHost.hidden=true;scrollHost.setAttribute('aria-label','현재 창 스크롤 슬라이드쇼');$('stage').appendChild(scrollHost);
+  const localRenderer=new PromScrollView(scrollHost);
+  function setLocalScroll(value){
+    if(value){if(editing)endEdit();finishNote();}
+    localScroll=value;$('view').classList.toggle('local-scroll',value);scrollHost.hidden=!value;
+    $('viewScroll').setAttribute('aria-pressed',String(value));
+    if(value){$('viewSingle').setAttribute('aria-pressed','false');$('viewMultiple').setAttribute('aria-pressed','false');}
+    else window.PromSmoothScroll?.cancel(scrollHost);
+    render();showBar();
+  }
+  function updateLocalScroll(){
+    if(!localScroll)return;
+    const data={...payload(),document:P,ranges:lineRange};
+    scrollHost.style.backgroundColor=data.dark?'#000':'#fff';
+    scrollHost.style.backgroundImage=data.dark?'none':$('page').style.backgroundImage;
+    localRenderer.update(data);
+    scrollHost.style.setProperty('--focus',data.dark?data.focus:'#0000ff');
+  }
+  $('viewScroll').onclick=()=>{$('viewSingle').click();setLocalScroll(true);};
+  for(const id of ['viewSingle','viewMultiple'])$(id).addEventListener('click',()=>{if(localScroll)setLocalScroll(false);},true);
+  $('note').addEventListener('click',()=>{if(localScroll){setLocalScroll(false);$('viewSingle').click();}},true);
+  function immersiveControls(){return listening||$('view').classList.contains('solo-presentation');}
   let controlsTimer;
   function hideControls(){clearTimeout(controlsTimer);controlsTimer=null;$('view').classList.remove('controls-open');}
   function revealControls(){clearTimeout(controlsTimer);controlsTimer=null;$('view').classList.add('controls-open');}
   addEventListener('mousemove',e=>{
-    if(!listening){hideControls();return;}
+    if(!immersiveControls()){hideControls();return;}
     const showing=$('view').classList.contains('controls-open');
     if(e.clientY>=innerHeight-24 || (showing && ($('bar').contains(e.target)||$('statusbar').contains(e.target))))revealControls();
-    else if(showing&&!controlsTimer)controlsTimer=setTimeout(()=>{controlsTimer=null;hideControls();},900);
+    else if(showing&&!controlsTimer)controlsTimer=setTimeout(()=>{controlsTimer=null;if(!window.PromUI?.holdControls())hideControls();},900);
   });
-  $('view').addEventListener('pointerdown',e=>{if(listening&&e.clientY>=innerHeight-28)revealControls();});
+  $('bar').addEventListener('focusin',()=>{if(immersiveControls())revealControls();});
+  $('view').addEventListener('pointerdown',e=>{if(immersiveControls()&&e.clientY>=innerHeight-28)revealControls();});
   $('more').onclick = () => { menu.hidden = !menu.hidden; $('more').setAttribute('aria-expanded',String(!menu.hidden)); showBar(); };
   $('obsFullscreenSetup').onclick = () => {
     $('obsFullscreenDownload').click();
@@ -278,7 +302,7 @@
     hasSlideshow(){return !!audience&&!audience.closed;},
     speedLayer:placeSpeed,
     presentation(){hideControls();showNote();},
-    beforeBodyEdit(){finishNote();bodyNoteAnchor=noteKey(P[page]);},
+    beforeBodyEdit(){if(localScroll){setLocalScroll(false);$('viewSingle').click();}finishNote();bodyNoteAnchor=noteKey(P[page]);},
     afterBodyEdit(){const key=noteKey(P[page]);if(bodyNoteAnchor&&bodyNoteAnchor!==key&&notes[bodyNoteAnchor]){notes[key]=notes[bodyNoteAnchor];delete notes[bodyNoteAnchor];}bodyNoteAnchor=null;showNote();},
     reading(){finishNote();showNote();},
     opened(bg) {
@@ -292,7 +316,7 @@
       $('sessionTitle').textContent=baseName; $('sessionTitle').title=baseName;
       showNote();
       [...$('lines').children].forEach((el,i)=>{const r=lineRange[page]?.[i];el.classList.toggle('current',!editing && !!r && r[1]>r[0] && cursor>=r[0] && cursor<r[1]);});
-      publish(); scheduleSave();
+      updateLocalScroll();publish(); scheduleSave();
       // 시작은 슬라이드쇼를 뒤로, 끝은 앞으로 보낸다. /obs 경로는 호환 유지.
       // 조작창은 그대로 유지하며 Windows 보조 프로그램이 없으면 기능만 비활성.
       if(P.length && !editing){

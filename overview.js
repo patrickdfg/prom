@@ -81,7 +81,7 @@
   const ui=window.PromUI;
   const oldRender=ui.render;ui.render=function(...args){oldRender.apply(this,args);update();};
   const oldEdit=ui.beforeBodyEdit;ui.beforeBodyEdit=function(...args){if(enabled)setMode(false);return oldEdit.apply(this,args);};
-  const oldHold=ui.holdControls;ui.holdControls=function(){return enabled||oldHold.call(this);};
+  const oldHold=ui.holdControls;ui.holdControls=function(){return (enabled&&!view.classList.contains('solo-presentation'))||oldHold.call(this);};
   if(window.ResizeObserver)new ResizeObserver(bounds).observe($('bar'));
   addEventListener('resize',bounds);
   size();

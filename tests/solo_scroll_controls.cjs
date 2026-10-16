@@ -1,0 +1,14 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync('workspace.js','utf8'),handlers={},classes=new Set(['solo-presentation']);let timer,held=false;
+const bar={contains:t=>t==='bar',addEventListener:(name,fn)=>handlers['bar:'+name]=fn},status={contains:t=>t==='header'};
+const view={classList:{contains:n=>classes.has(n),add:n=>classes.add(n),remove:n=>classes.delete(n)},addEventListener:(name,fn)=>handlers['view:'+name]=fn};
+const c={listening:false,innerHeight:900,$:id=>id==='bar'?bar:id==='statusbar'?status:view,window:{PromUI:{holdControls:()=>held}},addEventListener:(name,fn)=>handlers[name]=fn,setTimeout:fn=>(timer=fn,1),clearTimeout:()=>{timer=null;}};vm.createContext(c);
+vm.runInContext(source.slice(source.indexOf('  function immersiveControls()'),source.indexOf("  $('more').onclick")),c);
+handlers.mousemove({clientY:899,target:'stage'});assert(classes.has('controls-open'),'fullscreen without microphone must reveal at bottom');
+handlers.mousemove({clientY:850,target:'bar'});assert(!timer,'hovering controls must retain them');
+handlers.mousemove({clientY:100,target:'stage'});assert(timer);timer();assert(!classes.has('controls-open'),'leave bottom hides controls');
+handlers['view:pointerdown']({clientY:899});assert(classes.has('controls-open'),'touch bottom');
+handlers.mousemove({clientY:100,target:'stage'});held=true;timer();assert(classes.has('controls-open'),'menu/dialog focus retained');
+classes.delete('solo-presentation');handlers.mousemove({clientY:899});assert(!classes.has('controls-open'),'normal mode unaffected');
+c.listening=true;handlers.mousemove({clientY:899,target:'stage'});assert(classes.has('controls-open'),'microphone presentation supported');
+console.log('PASS solo fullscreen bottom reveal, hover, auto-hide, touch, retained menu, normal mode, microphone');

@@ -120,7 +120,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
-<link rel="stylesheet" href="workspace.css?v=20261017-compact1">
+<link rel="stylesheet" href="workspace.css?v=20261017-local-scroll1">
 <link rel="stylesheet" href="extras.css?v=20261016-5">
 <style>.app-switch{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;flex-shrink:0;padding:8px 12px;border:1px solid #506a88;border-radius:8px;background:#20344c;color:#d6f5ec!important;font:600 12px/1.4 sans-serif;text-decoration:none;pointer-events:auto}.app-switch:hover{background:#2b4963}.app-switch:focus-visible{outline:3px solid #5de2ca;outline-offset:2px}</style>
 </head>
@@ -193,7 +193,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
   <div id="bar">
     <div class="control-group"><button id="mic" title="원고만 전체화면으로 표시합니다. Esc 또는 M으로 끝냅니다.">마이크 켜기 (M)</button><button id="tts">읽어주기</button></div>
     <div class="control-group"><button id="prev" aria-label="이전 쪽">◀</button><span id="pg">1 / 1</span><button id="find">검색</button><button id="next" aria-label="다음 쪽">▶</button></div>
-    <div class="control-group view-switch" role="group" aria-label="원고 보기"><button id="viewSingle" aria-pressed="true">한 장</button><button id="viewMultiple" aria-pressed="false">여러 장</button></div>
+    <div class="control-group view-switch" role="group" aria-label="원고 보기"><button id="viewSingle" aria-pressed="true">한 장</button><button id="viewMultiple" aria-pressed="false">여러 장</button><button id="viewScroll" aria-pressed="false" title="현재 창에서 원고를 부드럽게 스크롤합니다">스크롤 보기</button></div>
     <button id="fs">전체화면 (F)</button>
     <div class="control-group"><label id="speedOptWrap" title="마이크를 켰을 때 오른쪽 위에 말하는 속도(현수 목소리=100)를 띄웁니다"><input type="checkbox" id="speedOpt" checked>속도<span class="wide"> 표시</span></label><label id="dimOptWrap"><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label></div>
     <div class="control-group"><button id="note">발표 메모</button><button id="edit">편집 (E)</button><button id="save">저장</button><button id="openf">열기</button></div>
@@ -1864,8 +1864,11 @@ window.__state=()=>({page,cursor,total:P.length});
 })();
 if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 </script>
-<script src="workspace.js?v=20261017-presentation1"></script>
-<script src="overview.js?v=20261015-8"></script>
+<script src="slide-layout.js?v=20261016-6"></script>
+<script src="smooth-scroll.js?v=20261017-1"></script>
+<script src="scroll-view.js?v=20261017-local1"></script>
+<script src="workspace.js?v=20261017-local-scroll1"></script>
+<script src="overview.js?v=20261017-local1"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
 <script src="extras.js?v=20261016-4"></script>
 </body>
