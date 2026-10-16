@@ -49,3 +49,15 @@ const fuzzyJump=C.locateSpeech(noisy.join(''),farText,0);assert(fuzzyJump?.reacq
 const duplicateFar='가'.repeat(2200)+C.normalize(noisyTarget)+'가'.repeat(200)+C.normalize(noisyTarget);
 assert.equal(C.locateSpeech(noisy.join(''),duplicateFar,0),null);
 console.log('PASS distant recovery with recognition errors, ambiguous recovery rejected');
+
+const buildLines=['섭리 역사는 온전한 말씀으로 살아','선생 선조가 생명 땅 공동네 들어와서','예언 천국을 만들고 신앙 역사 예물을 점검하며','사탄 마귀 귀신 악과 싸우게 하셨습니다.'];
+const builds=buildLines.map((_,i)=>({text:buildLines.slice(0,i+1).join('\n')}));
+const buildIndex=C.index(buildLines),buildLinks=C.align(buildLines,builds);
+assert.deepEqual(buildLinks.map(l=>l.status),['exact','exact','exact','exact']);
+for(let i=0;i<4;i++){assert.equal(buildLinks[i].start,buildIndex.ranges[i].start);assert.equal(buildLinks[i].end,buildIndex.ranges[i].end);assert.equal(C.active(buildLinks,buildIndex.ranges[i].start),i);}
+assert.equal(buildLinks[1].reason,'cumulative');
+const contextual=C.align([buildLines[0],'이곳은 다른 이야기입니다.',...buildLines],builds);
+assert(contextual.every(l=>l.status==='exact'));assert.equal(contextual[0].start,C.index([buildLines[0],'이곳은 다른 이야기입니다.']).text.length);
+const duplicateBuild=C.align([...buildLines,'여기서 다시 반복합니다.',...buildLines],builds);assert(duplicateBuild.every(l=>l.status==='review'));
+assert.equal(C.align(['오늘 말씀을 읽겠습니다.'],[{text:'261014 수요말씀'}])[0].status,'unlinked');
+console.log('PASS cumulative captions map newly added lines, repeated lead-in uses full context, ambiguous/absent captions held');

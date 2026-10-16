@@ -20,11 +20,19 @@ function segments(lines,links){
 }
 function distance(a,b,limit=Infinity){if(Math.abs(a.length-b.length)>limit)return limit+1;let prev=Array.from({length:b.length+1},(_,i)=>i);for(let i=1;i<=a.length;i++){const row=[i];let low=i;for(let j=1;j<=b.length;j++){row[j]=Math.min(row[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));low=Math.min(low,row[j]);}if(low>limit)return limit+1;prev=row;}return prev[b.length];}
 function candidates(needle,hay,offset=0,width=8){const out=new Set();for(const frac of [0,.25,.5,.75,1]){const at=Math.floor(Math.max(0,needle.length-width)*frac),anchor=needle.slice(at,at+width);if(anchor.length<width)continue;let start=0,n=0;while((start=hay.indexOf(anchor,start))>=0&&n++<100){for(let d=-2;d<=2;d++)if(start-at+d>=0)out.add(offset+start-at+d);start++;}}return [...out];}
-function align(lines,slides){const ix=index(lines),links=[];let after=0;
- for(const slide of slides){const needle=normalize(slide.text);let hit=-1;if(needle.length>=6)hit=ix.text.indexOf(needle,after);
-  if(hit>=0){const another=ix.text.indexOf(needle,hit+1);links.push({start:hit,end:hit+needle.length,status:another<0?'exact':'review',score:1});after=hit+needle.length;continue;}
-  let best=null; if(needle.length>=12&&needle.length<1600){const hay=ix.text.slice(after);for(const start of candidates(needle,hay,after)){const end=start+needle.length;const cost=distance(needle,ix.text.slice(start,end),Math.ceil(needle.length*.14));const score=1-cost/needle.length;if(score>=.86&&(!best||score>best.score))best={start,end:Math.min(end,ix.text.length),score,status:'review'};}}
-  links.push(best||{start:null,end:null,status:'unlinked',score:0});if(best)after=best.end;
+function align(lines,slides){const ix=index(lines),links=[],needles=slides.map(s=>normalize(s.text));let after=0,last=null;
+ for(let i=0;i<slides.length;i++){const needle=needles[i];
+  // Build-up slides repeat the earlier text; only the newly added words trigger the next slide.
+  if(last&&needle.length>last.needle.length&&needle.startsWith(last.needle)&&ix.text.startsWith(needle,last.start)){
+   const end=last.start+needle.length,status=last.status;links.push({start:last.end,end,status,score:1,reason:'cumulative'});last={needle,start:last.start,end,status};after=end;continue;
+  }
+  let expanded=needle;for(let j=i+1;j<needles.length&&needles[j].length>expanded.length&&needles[j].startsWith(expanded)&&expanded.length>=6;j++)expanded=needles[j];
+  // Use the full build-up as context, so a repeated first line is placed at the right occurrence.
+  const contextHit=needle.length>=6&&expanded.length>needle.length?ix.text.indexOf(expanded,after):-1;
+  let hit=contextHit;if(hit<0&&needle.length>=6)hit=ix.text.indexOf(needle,after);
+  if(hit>=0){const anchor=contextHit>=0?expanded:needle,another=ix.text.indexOf(anchor,hit+1),status=another<0?'exact':'review',end=hit+needle.length;links.push({start:hit,end,status,score:1});last={needle,start:hit,end,status};after=end;continue;}
+  let best=null;if(needle.length>=12&&needle.length<1600){const hay=ix.text.slice(after);for(const start of candidates(needle,hay,after)){const end=start+needle.length,cost=distance(needle,ix.text.slice(start,end),Math.ceil(needle.length*.14)),score=1-cost/needle.length;if(score>=.86&&(!best||score>best.score))best={start,end:Math.min(end,ix.text.length),score,status:'review'};}}
+  links.push(best||{start:null,end:null,status:'unlinked',score:0});if(best){after=best.end;last={needle,start:best.start,end:best.end,status:'review'};}else last=null;
  }
  return links;
 }
