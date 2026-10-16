@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict'),C=require('../core.js');
+const lines=['처음 인사하고 오늘의 주제를 소개합니다.','감사는 작은 일에서 시작됩니다.','원고를 읽으며 잠시 예화를 이야기합니다.','함께 나누면 기쁨은 더 커집니다.','설교를 마칩니다.'];
+const slides=[{text:lines[1]},{text:lines[3]},{text:'이것은 원고에 없는 자막입니다.'}],ix=C.index(lines),links=C.align(lines,slides);
+assert.deepEqual(links.map(l=>l.status),['exact','exact','unlinked']);
+assert.equal(C.active(links,0),-1);assert.equal(C.active(links,links[0].start),0);assert.equal(C.active(links,links[0].end),-1);assert.equal(C.active(links,links[1].start),1);
+const repeated=C.align(['이 문장은 두 번 나옵니다.','이 문장은 두 번 나옵니다.'],[{text:'이 문장은 두 번 나옵니다.'}]);assert.equal(repeated[0].status,'review');assert.equal(C.active(repeated,2),-1);
+assert.equal(C.locateSpeech('오늘 주차장에서 자동차 열쇠를 잃었습니다',ix.text,0),null);
+const hit=C.locateSpeech('감사는 작은 일에서',ix.text,0);assert(hit);assert.equal(C.active(links,hit.pos),0);
+assert.equal(C.locateSpeech('네 그렇습니다',ix.text,0),null);
+const ix2=C.index(['하나님께 늘 감사하면서 살아갑시다.','그다음 내용을 이야기합니다.']);assert(C.locateSpeech('하나님께 늘 감사하면서 살아갑시다',ix2.text,0));
+console.log('PASS exact/gap/ambiguous/unlinked cues, speech advancement and adlib/short-phrase hold');
