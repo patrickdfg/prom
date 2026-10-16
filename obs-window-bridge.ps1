@@ -45,7 +45,7 @@ function Find-Window([string]$kind) {
 function Activate([string]$kind){
   $hwnd=Find-Window $kind
   if($hwnd -eq [IntPtr]::Zero){
-    Write-Host "창을 찾지 못함: $kind (OBS 전체 화면 프로젝터 / Chrome 슬라이드쇼 확인)"
+    Write-Host "Window not found: $kind (check OBS projector / Chrome slideshow)"
     return
   }
   [void][PromWindow]::ShowWindow($hwnd,9)
@@ -53,12 +53,12 @@ function Activate([string]$kind){
   [void][PromWindow]::SetWindowPos($hwnd,[IntPtr](-1),0,0,0,0,0x0003)
   [void][PromWindow]::SetWindowPos($hwnd,[IntPtr](-2),0,0,0,0,0x0003)
   [void][PromWindow]::SetForegroundWindow($hwnd)
-  Write-Host "전환: $kind"
+  Write-Host "Switched: $kind"
 }
 $listener=[System.Net.HttpListener]::new()
 $listener.Prefixes.Add('http://127.0.0.1:17986/')
-try{$listener.Start()}catch{Write-Error "포트 17986을 열 수 없습니다: $_";exit 1}
-Write-Host "OBS/슬라이드쇼 전환 준비 완료. 이 창은 닫지 마세요. (종료: Ctrl+C)"
+try{$listener.Start()}catch{Write-Error "Cannot open port 17986: $_";exit 1}
+Write-Host "OBS window bridge ready. Keep this window open. Stop: Ctrl+C"
 try {
   while($listener.IsListening){
     $ctx=$listener.GetContext()
