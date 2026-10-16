@@ -279,9 +279,11 @@
       // 조작창은 그대로 유지하며 Windows 보조 프로그램이 없으면 기능만 비활성.
       if(P.length && !editing){
         const cueText=textOf(P[page]);
-        const hits=[...cueText.matchAll(/\(\s*(영상끝|영상)\s*\)/g)];
+        // 영상 이름은 한글·숫자·공백만 허용하고, 시작/끝이 괄호 끝에 있어야 한다.
+        // 이름 없는 기존 (영상)/(영상끝) 표식도 지원한다.
+        const hits=[...cueText.matchAll(/\([ \t]*영상(?:[가-힣ㄱ-ㅎㅏ-ㅣ0-9 \t]*(시작|끝))?[ \t]*\)/g)];
         if(hits.length){
-          const next=hits[hits.length-1][1]==='영상끝'?'slideshow':'obs';
+          const next=hits[hits.length-1][1]==='끝'?'slideshow':'obs';
           if(window.__promObsCue!==next){
             window.__promObsCue=next;
             fetch('http://127.0.0.1:17986/'+next,{method:'POST',mode:'cors',credentials:'omit',signal:AbortSignal.timeout(1500)}).catch(()=>{});
