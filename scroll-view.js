@@ -1,6 +1,6 @@
 /* 쪽 사이의 빈 공간 없이 실제 원고 줄을 일정한 간격으로 잇는다. */
 window.PromScrollView=class {
-  constructor(host){this.host=host;this.key='';this.rows=[];this.slides=[];this.position='';this.layout='';}
+  constructor(host){this.host=host;this.key='';this.rows=[];this.position='';this.layout='';}
   currentRow(data){
     const spoken=this.rows.filter(r=>{const range=data.ranges?.[r.pi]?.[r.li];return range&&range[1]>range[0];});
     // The page may advance early; only consumed text determines the scroll position.
@@ -9,11 +9,10 @@ window.PromScrollView=class {
   update(data){
     const key=JSON.stringify([data.lines,data.document||[]]);
     if(key!==this.key){
-      this.key=key;this.position='';this.layout='';this.host.replaceChildren();this.rows=[];this.slides=[];
+      this.key=key;this.position='';this.layout='';this.host.replaceChildren();this.rows=[];
       const content=document.createElement('div');content.className='scroll-content';
+      const body=document.createElement('div');body.className='scroll-flow';content.appendChild(body);
       (data.document||[]).forEach((pg,pi)=>{
-        const slide=document.createElement('section');slide.className='scroll-page';
-        const body=document.createElement('div');body.className='scroll-page-body';slide.appendChild(body);
         const count=pg.length;
         for(let li=0;li<count;li++){
           const row=document.createElement('div');row.className='scroll-line';
@@ -26,7 +25,6 @@ window.PromScrollView=class {
           if(!wrap.textContent.trim()||(range&&range[1]===range[0]))continue;
           row.appendChild(wrap);body.appendChild(row);this.rows.push({el:row,wrap,pi,li});
         }
-        content.appendChild(slide);this.slides.push({el:slide,body,count:body.children.length});
       });
       this.host.appendChild(content);
     }
@@ -39,11 +37,10 @@ window.PromScrollView=class {
       this.pitch=metrics.height/Math.max(1,data.lines);
       this.host.firstElementChild.style.paddingTop=(height*.3)+'px';
       this.host.firstElementChild.style.paddingBottom=(height*.7)+'px';
-      for(const slide of this.slides){
-        slide.el.style.height=(slide.count*this.pitch)+'px';
-        slide.body.style.width=metrics.width+'px';slide.body.style.height=(slide.count*this.pitch)+'px';
-        slide.el.style.fontSize=metrics.font+'px';
-      }
+      const flow=this.host.querySelector('.scroll-flow');
+      flow.style.width=metrics.width+'px';flow.style.margin='0 auto';
+      flow.style.fontSize=metrics.font+'px';
+      for(const row of this.rows)row.el.style.height=this.pitch+'px';
       for(const row of this.rows){row.wrap.style.transform='';const width=row.wrap.scrollWidth,max=row.el.clientWidth;if(width>max&&max>0)row.wrap.style.transform=`scale(${max/width})`;}
     }
     this.host.classList.toggle('scroll-dark',data.dark);
