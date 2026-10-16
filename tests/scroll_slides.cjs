@@ -23,10 +23,11 @@ assert.equal(JSON.stringify(cueDocument),original,'display filtering must preser
 assert.equal(cueView.rows[0].wrap.children[0].className,'b');
 const source=fs.readFileSync('workspace.js','utf8');
 const block=source.slice(source.indexOf('  function openSlideshow('),source.indexOf("  addEventListener('message',e=>{if(e.origin===location.origin"));
-let opened=0,focused=0;const nodes={audience:{},scrollAudience:{}};
+let opened=0,focused=0,overview=0;const nodes={audience:{},scrollAudience:{},viewMultiple:{click(){overview++}}};
 const d={continuous:false,channel:{},audience:null,channelId:'test',window:{open(){opened++;return {closed:false,focus(){focused++},startSlideshowFullscreen(){}}}},$:id=>nodes[id],toast(){},publish(){d.published=d.continuous}};
 vm.createContext(d);vm.runInContext(block,d);
 nodes.scrollAudience.onclick();assert(d.continuous);assert.equal(opened,1);
 nodes.audience.onclick();assert(!d.continuous);assert.equal(d.published,false);assert.equal(focused,1);
-nodes.scrollAudience.onclick();assert.equal(d.published,true);assert.equal(opened,1);
+nodes.scrollAudience.onclick();assert.equal(d.published,true);assert.equal(opened,1);assert.equal(overview,3,'both launch modes and reused window select overview');
+d.audience=null;d.window.open=()=>null;nodes.audience.onclick();assert.equal(overview,3,'blocked popup must not change operator view');
 console.log('PASS 5/6/7-row slide sizing, page grouping, speech position tracking, separate launch buttons and mode switching in reused window');

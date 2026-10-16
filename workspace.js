@@ -195,12 +195,14 @@
       channel.onmessage=e=>{ if(e.data?.type==='ready')publish(true); };
     }
     if(audience&&!audience.closed){
+      $('viewMultiple').click();
       audience.focus();
       try{audience.startSlideshowFullscreen?.();}catch(_){}
       publish(true);return;
     }
     audience=window.open('audience.html?fullscreen=1#'+channelId,'promAudience');
     if(!audience){toast('별도 화면이 차단되었습니다. 이 사이트의 팝업을 허용한 뒤 다시 눌러 주세요.',6000);return;}
+    $('viewMultiple').click();
     toast('슬라이드쇼를 열었습니다. 자동 전체화면이 제한되면 슬라이드 화면을 한 번 클릭하세요.',6000);
   };
   $('audience').onclick=()=>openSlideshow(false);
