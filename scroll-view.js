@@ -41,6 +41,6 @@ window.PromScrollView=class {
     const current=inPage.find(r=>data.ranges?.[r.pi]?.[r.li]?.[1]>data.cursor)||inPage.filter(r=>data.ranges?.[r.pi]?.[r.li]).at(-1)||inPage[0];
     for(const r of this.rows){const range=data.ranges?.[r.pi]?.[r.li];r.el.classList.toggle('scroll-current',r===current);r.el.classList.toggle('scroll-read',!!data.dim&&!!range&&range[1]>range[0]&&range[1]<=data.cursor);}
     const position=current?`${current.pi}:${current.li}`:'';
-    if(current&&position!==this.position){this.position=position;requestAnimationFrame(()=>{if(!current.el.isConnected)return;const top=current.el.getBoundingClientRect().top-this.host.getBoundingClientRect().top+this.host.scrollTop;this.host.scrollTo({top:Math.max(0,top-height*.3),behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});});}
+    if(current&&position!==this.position){this.position=position;requestAnimationFrame(()=>{if(!current.el.isConnected||this.position!==position)return;const top=current.el.getBoundingClientRect().top-this.host.getBoundingClientRect().top+this.host.scrollTop,target=Math.max(0,top-height*.3);if(window.PromSmoothScroll)window.PromSmoothScroll.to(this.host,target);else this.host.scrollTo({top:target,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});});}
   }
 };
