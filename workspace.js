@@ -279,7 +279,7 @@
       // 조작창은 그대로 유지하며 Windows 보조 프로그램이 없으면 기능만 비활성.
       if(P.length && !editing){
         const cueText=textOf(P[page]);
-        const hits=[...cueText.matchAll(/\\(\\s*(영상끝|영상)\\s*\\)/g)];
+        const hits=[...cueText.matchAll(/\(\s*(영상끝|영상)\s*\)/g)];
         if(hits.length){
           const next=hits[hits.length-1][1]==='영상끝'?'slideshow':'obs';
           if(window.__promObsCue!==next){
