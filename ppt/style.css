@@ -23,3 +23,8 @@ main{grid-template-columns:minmax(0,var(--script-width,36%)) 9px minmax(0,1fr);g
 @font-face{font-family:'PROM MaruBuri';src:url('https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Bold.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
 .slide-text{font-family:'PROM MaruBuri',serif;font-synthesis:none;word-spacing:normal;letter-spacing:normal;text-transform:none}
 .slide-text>div{white-space:inherit;min-width:0}
+
+/* Preserve the text box and shrink only content that would otherwise be clipped. */
+.slide-text-frame{position:relative;flex:0 0 auto;width:100%;min-height:0}
+.slide-text-content{display:flow-root;transform-origin:top left;white-space:inherit}
+.slide-text-content>div{white-space:inherit;min-width:0}

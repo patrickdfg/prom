@@ -4,11 +4,13 @@
 const rel=(type,target)=>`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${r}/${type}" Target="${target}"/></Relationships>`;
 z.file('ppt/presentation.xml',`<p:presentation xmlns:p="${p}" xmlns:r="${r}"><p:sldIdLst><p:sldId id="256" r:id="rId1"/></p:sldIdLst><p:sldSz cx="9144000" cy="5143500"/></p:presentation>`);
 z.file('ppt/_rels/presentation.xml.rels',rel('slide','slides/slide1.xml'));
-z.file('ppt/slides/_rels/slide1.xml.rels',rel('slideLayout','../slideLayouts/slideLayout1.xml'));
+z.file('ppt/slides/_rels/slide1.xml.rels',rel('slideLayout','../slideLayouts/slideLayout1.xml').replace('</Relationships>',`<Relationship Id="rId2" Type="${r}/image" Target="../media/bg.png"/></Relationships>`));
+z.file('ppt/media/bg.png','iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=',{base64:true});
 const shape=(body)=>`<p:sp><p:nvSpPr><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr>${body}</p:sp>`;
 z.file('ppt/slideLayouts/slideLayout1.xml',`<p:sldLayout xmlns:p="${p}" xmlns:a="${a}"><p:cSld><p:spTree>${shape('<p:spPr><a:xfrm><a:off x="95250" y="190500"/><a:ext cx="8572500" cy="1905000"/></a:xfrm></p:spPr><p:txBody><a:bodyPr anchor="ctr" lIns="95250"><a:normAutofit fontScale="80000"/></a:bodyPr><a:lstStyle><a:lvl1pPr algn="ctr"><a:lnSpc><a:spcPct val="120000"/></a:lnSpc><a:spcAft><a:spcPts val="600"/></a:spcAft><a:defRPr sz="3000" b="1" spc="150"><a:ea typeface="마루 부리OTF 굵은"/></a:defRPr></a:lvl1pPr></a:lstStyle></p:txBody>')}</p:spTree></p:cSld></p:sldLayout>`);
-z.file('ppt/slides/slide1.xml',`<p:sld xmlns:p="${p}" xmlns:a="${a}"><p:cSld><p:spTree>${shape('<p:spPr/><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr/></a:pPr><a:r><a:rPr b="0"/><a:t xml:space="preserve">  첫  문장 </a:t></a:r><a:br/><a:r><a:t>둘째 문장</a:t></a:r></a:p></p:txBody>')}</p:spTree></p:cSld></p:sld>`);
+z.file('ppt/slides/slide1.xml',`<p:sld xmlns:p="${p}" xmlns:a="${a}" xmlns:r="${r}"><p:cSld><p:bg><p:bgPr><a:blipFill><a:blip r:embed="rId2"/></a:blipFill></p:bgPr></p:bg><p:spTree>${shape('<p:spPr/><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr/></a:pPr><a:r><a:rPr b="0"/><a:t xml:space="preserve">  첫  문장 </a:t></a:r><a:br/><a:r><a:t>둘째 문장</a:t></a:r></a:p></p:txBody>')}</p:spTree></p:cSld></p:sld>`);
 const deck=await CaptionImport.deck(new File([await z.generateAsync({type:'blob'})],'fixture.pptx')),s=deck.slides[0],shapeText=s.shapes.find(s=>s.type==='text'),para=shapeText.paragraphs[0];
+assert(s.shapes[0].background&&s.shapes[0].w===960&&s.shapes[0].h===540,'PPT background image fills slide');
 assert(shapeText.x===10&&shapeText.y===20&&shapeText.w===900,'Inherited text position');assert(shapeText.anchor==='ctr'&&shapeText.padding[3]===10,'Inherited anchor/padding');
 assert(para.align==='center'&&para.lineSpacing.value===1.2&&para.spaceAfter.value===8,'Paragraph inheritance');
 assert(para.runs[0].text==='  첫  문장 '&&para.runs[1].text==='\n','Exact whitespace and soft line break');
@@ -16,6 +18,17 @@ assert(para.runs[0].size===32&&para.runs[0].spacing===1.6,'Font scale and charac
 CaptionRender.show(document.getElementById('preview'),s);await document.fonts.ready;
 assert(document.fonts.check('700 32px "PROM MaruBuri"'),'Bundled font loaded');
 const el=document.querySelector('.slide-text');assert(el.textContent==='  첫  문장 \n둘째 문장','Renderer preserves whitespace');assert(getComputedStyle(el.querySelector('span')).fontWeight==='700','Named bold font face retained');
-document.getElementById('result').textContent='PASS: position, inherited styles, explicit overrides, font scale, spacing, whitespace, line breaks, bundled bold font';
+// A five-line caption must remain wholly inside its text box after fonts settle.
+const host=document.getElementById('preview'),long={...shapeText,x:30,y:100,w:900,h:140,anchor:'ctr',padding:[5,5,5,5],paragraphs:[{align:'center',lineSpacing:{unit:'ratio',value:1.2},runs:[{text:'첫 번째 자막입니다.\n두 번째 자막입니다.\n세 번째 자막입니다.\n네 번째 자막입니다.\n마지막 줄까지 보입니다.',size:48,font:'마루 부리OTF 굵은',bold:true}]}]};
+CaptionRender.show(host,{width:960,height:540,shapes:[long]});await document.fonts.ready;await new Promise(requestAnimationFrame);
+let textBox=host.querySelector('.slide-text'),bounds=textBox.getBoundingClientRect();
+assert(+host.querySelector('.slide-text-frame').dataset.scale<1,'Overflow caption shrinks');
+for(const span of textBox.querySelectorAll('span'))for(const box of span.getClientRects())assert(box.top>=bounds.top-1&&box.bottom<=bounds.bottom+1&&box.left>=bounds.left-1&&box.right<=bounds.right+1,'Every caption line visible');
+const short={...long,h:250,paragraphs:[{runs:[{text:'짧은 자막',size:32,font:'마루 부리OTF 굵은'}]}]};
+CaptionRender.show(host,{width:960,height:540,shapes:[short]});await document.fonts.ready;await new Promise(requestAnimationFrame);assert(+host.querySelector('.slide-text-frame').dataset.scale===1,'Fitting text retains original size');
+const src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
+CaptionRender.show(host,{width:960,height:540,shapes:[{type:'image',x:9,y:5,w:942,h:530,src},{type:'image',x:30,y:400,w:900,h:100,src}]});
+const pictures=host.querySelectorAll('.slide-object');assert(pictures[0].dataset.fullBleed==='true'&&pictures[0].style.width==='960px','Near-full background reaches screen edges');assert(!pictures[1].dataset.fullBleed&&pictures[1].style.top==='400px','Caption strip stays in original position');
+document.getElementById('result').textContent='PASS: position, inherited styles, explicit overrides, font scale, spacing, whitespace, line breaks, bold font, overflow fit, unchanged fitting text, full-bleed background';
 })().catch(e=>{document.getElementById('result').textContent='FAIL: '+e.message;throw e;});
 </script>
