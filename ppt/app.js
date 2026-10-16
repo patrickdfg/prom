@@ -30,8 +30,8 @@ function renderSlides(){const host=$('slideList');CaptionRender.release(host);ho
 function rebuild(){ix=C.index(project.lines);$('scriptName').textContent=project.scriptName||'HWP · HWPX · DOCX · TXT';$('deckName').textContent=project.deckName||'PPTX';$('rangeStart').max=$('rangeEnd').max=project.lines.length;renderLines();renderSlides();select(project.slides.length?0:-1);cursor=0;showLive(-1);if(project.lines.length)seek(0);save();}
 function align(){project.links=C.align(project.lines,project.slides);}
 async function load(file,kind){if(!file||busy)return;busy=true;stopMic();showLive(-1);status(`${file.name} 읽는 중…`);$('scriptFile').disabled=$('deckFile').disabled=true;
- try{let preserveLinks=false;if(kind==='script'){const lines=await CaptionImport.manuscript(file);project.lines=lines;project.scriptName=file.name;}else{const result=await CaptionImport.deck(file);preserveLinks=project.links.length===result.slides.length&&project.slides.length===result.slides.length&&result.slides.every((slide,i)=>slide.text===project.slides[i].text);project.slides=result.slides;project.deckName=file.name;project.warnings=result.warnings;}
- if(!preserveLinks)align();rebuild();status(`불러왔습니다. 원고 ${project.lines.length}줄 · 자막 ${project.slides.length}장. 연결 구간을 확인하세요.${project.warnings?.length?' '+project.warnings.join(' '):''}`);
+ try{if(file.size>50*1024*1024)throw Error('원본 파일은 50MB 이하로 선택하세요.');const source=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve({name:file.name,data:reader.result});reader.onerror=()=>reject(Error('원본 파일을 보관하지 못했습니다.'));reader.readAsDataURL(file);});let preserveLinks=false;if(kind==='script'){const lines=await CaptionImport.manuscript(file);project.lines=lines;project.scriptName=file.name;}else{const result=await CaptionImport.deck(file);preserveLinks=project.links.length===result.slides.length&&project.slides.length===result.slides.length&&result.slides.every((slide,i)=>slide.text===project.slides[i].text);project.slides=result.slides;project.deckName=file.name;project.warnings=result.warnings;}
+ project.sources=project.sources||{};project.sources[kind]=source;if(!preserveLinks)align();rebuild();status(`불러왔습니다. 원고 ${project.lines.length}줄 · 자막 ${project.slides.length}장. 연결 구간을 확인하세요.${project.warnings?.length?' '+project.warnings.join(' '):''}`);
  }catch(e){status(e.message||'파일을 읽지 못했습니다.');}finally{busy=false;$('scriptFile').disabled=$('deckFile').disabled=false;}}
 $('scriptFile').onchange=e=>{load(e.target.files[0],'script');e.target.value='';};$('deckFile').onchange=e=>{load(e.target.files[0],'deck');e.target.value='';};
 $('openOutput').onclick=()=>{if(!('BroadcastChannel'in window)){status('이 브라우저는 두 창 송출을 지원하지 않습니다. 최신 Chrome 또는 Edge를 사용하세요.');return;}if(!channel){channelId=crypto.randomUUID();channel=new BroadcastChannel('prom-ppt-'+channelId);channel.onmessage=e=>{if(e.data?.type==='ready'){lastOutputSeen=Date.now();publish();}if(e.data?.type==='alive')lastOutputSeen=Date.now();};}
@@ -74,6 +74,11 @@ divider.onpointerdown=e=>{divider.setPointerCapture(e.pointerId);};
 divider.onpointermove=e=>{if(divider.hasPointerCapture(e.pointerId)){const r=layout.getBoundingClientRect();resizePane((e.clientX-r.left)/r.width*100);}};
 divider.onpointerup=e=>{if(divider.hasPointerCapture(e.pointerId))divider.releasePointerCapture(e.pointerId);};
 divider.onkeydown=e=>{if(['ArrowLeft','ArrowRight','Home'].includes(e.key)){e.preventDefault();resizePane(e.key==='Home'?50:Number(divider.getAttribute('aria-valuenow'))+(e.key==='ArrowLeft'?-2:2));}};
+window.CaptionWorkspace={
+ snapshot(){if(busy)throw Error('파일을 읽는 중입니다. 잠시 후 다시 시도하세요.');if(!project.lines.length&&!project.slides.length)throw Error('먼저 원고나 PPT를 불러오세요.');return structuredClone(project);},
+ open(next){if(busy)throw Error('파일을 읽는 중입니다. 잠시 후 다시 시도하세요.');validate(next);stopMic();project=next;rebuild();status('드라이브 작업을 불러왔습니다. 송출 전 연결 구간을 확인하세요.');},
+ validate
+};
 CaptionRender.show($('livePreview'),null);
 (async()=>{try{const database=await db(),tx=database.transaction('projects','readonly'),r=tx.objectStore('projects').get('last');r.onsuccess=()=>{if(r.result&&!project.lines.length&&!busy){try{project=validate(r.result);rebuild();status(project.slides.some(s=>s.renderVersion!==2)?'저장된 작업을 복원했습니다. 정확한 PPT 서식 적용을 위해 자막 PPT 파일을 한 번 다시 불러와 주세요.':'이 기기에 저장된 작업을 복원했습니다. 송출 전 연결 구간을 확인하세요.');}catch{status('저장된 작업을 읽지 못했습니다. 파일을 다시 불러오세요.');}}};}catch{$('saveState').textContent='작업 저장 버튼으로 파일을 보관하세요';}})();
 })();
