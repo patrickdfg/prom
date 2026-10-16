@@ -59,8 +59,9 @@
   function syncScrollText(){const value=PromScrollView.getScale();scrollTextTools.hidden=!localScroll;$('scrollTextReset').textContent=value+'%';$('scrollTextSmaller').disabled=value<=60;$('scrollTextLarger').disabled=value>=180;}
   for(const [id,delta]of [['scrollTextSmaller',-10],['scrollTextReset',0],['scrollTextLarger',10]])$(id).onclick=()=>{PromScrollView.setScale(delta?PromScrollView.getScale()+delta:100);syncScrollText();render();};
   addEventListener('storage',e=>{if(e.key==='promScrollTextScale'){syncScrollText();render();}});
-  function setLocalScroll(value){
-    if(value){if(editing)endEdit();finishNote();}
+  function captureReadingPosition(){const line=editing?caretLine():-1;return line>=0?(lineRange[page]?.[line]?.[0]??cursor):cursor;}
+  function setLocalScroll(value,start=cursor){
+    if(value){if(editing)endEdit();finishNote();cursor=Math.max(0,Math.min(norm.length,start));page=pageOf(cursor);localRenderer.position='';localRenderer.layout='';}
     localScroll=value;syncScrollText();$('view').classList.toggle('local-scroll',value);scrollHost.hidden=!value;
     $('viewScroll').setAttribute('aria-pressed',String(value));
     if(value){$('viewSingle').setAttribute('aria-pressed','false');$('viewMultiple').setAttribute('aria-pressed','false');}
@@ -69,13 +70,13 @@
   }
   function updateLocalScroll(){
     syncScrollText();if(!localScroll)return;
-    const data={...payload(),document:P,ranges:lineRange};
+    const data={...payload(),document:P,ranges:lineRange,readingAnchor:0};
     scrollHost.style.backgroundColor=data.dark?'#000':'#fff';
     scrollHost.style.backgroundImage=data.dark?'none':$('page').style.backgroundImage;
     localRenderer.update(data);
     scrollHost.style.setProperty('--focus',data.dark?data.focus:'#0000ff');
   }
-  $('viewScroll').onclick=()=>{$('viewSingle').click();setLocalScroll(true);};
+  $('viewScroll').onclick=()=>{const start=captureReadingPosition();$('viewSingle').click();setLocalScroll(true,start);};
   for(const id of ['viewSingle','viewMultiple'])$(id).addEventListener('click',()=>{if(localScroll)setLocalScroll(false);},true);
   $('note').addEventListener('click',()=>{if(localScroll){setLocalScroll(false);$('viewSingle').click();}},true);
   function immersiveControls(){return listening||$('view').classList.contains('solo-presentation');}
@@ -91,6 +92,25 @@
   $('bar').addEventListener('focusin',()=>{if(immersiveControls())revealControls();});
   $('view').addEventListener('pointerdown',e=>{if(immersiveControls()&&e.clientY>=innerHeight-28)revealControls();});
   $('more').onclick = () => { menu.hidden = !menu.hidden; $('more').setAttribute('aria-expanded',String(!menu.hidden)); showBar(); };
+  let bridgeConnected=false,bridgeGeneration=0;
+  function setBridgeConnected(value,message){
+    bridgeConnected=value;bridgeGeneration++;
+    $('obsBridgeConnect').textContent=value?'보조 프로그램 연결 해제':'보조 프로그램 연결';
+    $('obsBridgeStatus').textContent=message||(value?'연결됨 · 영상 표식에 따라 화면을 전환합니다.':'연결 안 함 · 영상이 없는 날은 연결하지 않아도 됩니다.');
+  }
+  async function toggleBridgeConnection(){
+    if(bridgeConnected){setBridgeConnected(false);return;}
+    const button=$('obsBridgeConnect');button.disabled=true;$('obsBridgeStatus').textContent='실행 중인 보조 프로그램에 연결하는 중…';
+    try{
+      const response=await fetch('http://127.0.0.1:17986/health',{mode:'cors',credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(1500)});
+      if(!response.ok)throw Error('unavailable');const data=await response.json();
+      if(data.ready!==true||data.app!=='PromWindowBridge')throw Error('unavailable');
+      window.__promObsCue=null;window.__promObsRetryAt=0;setBridgeConnected(true);render();
+    }catch(_){setBridgeConnected(false,'프로그램을 실행한 뒤 연결을 다시 눌러 주세요. 자동으로 재시도하지 않습니다.');}
+    finally{button.disabled=false;}
+  }
+  $('obsBridgeConnect').onclick=toggleBridgeConnection;
+  setBridgeConnected(false);
   $('obsFullscreenSetup').onclick = () => showDialog('obsFullscreenDialog');
   function showDialog(id) { finishNote(); if(editing)endEdit(); closePanel(); $(id).showModal(); showBar(); }
   document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => $(b.dataset.close).close());
@@ -225,7 +245,7 @@
   $('theme').addEventListener('change',()=>{syncTheme();publish();saveNow();});syncTheme();
   function payload() {
     const extra={...(window.PromExtras?.settings()||{}),continuous};
-    return {type:'frame',extra,...(extra.continuous?{document:P,ranges:lineRange}:{}),nextCue:nextCueLine()?.text||'',pages:P[page],page,total:P.length,lines:LINES,cursor,range:lineRange[page],dim:$('dim').checked,focus:$('focusColor').value,dark:$('theme').value==='dark',bg:$('theme').value==='dark'?null:background||BG_DEFAULT};
+    return {type:'frame',extra,...(extra.continuous?{document:P,ranges:lineRange}:{}),nextCue:nextCueLine()?.text||'',pages:P[page],page,total:P.length,lines:LINES,cursor,readingAnchor:continuous?0:.3,range:lineRange[page],dim:$('dim').checked,focus:$('focusColor').value,dark:$('theme').value==='dark',bg:$('theme').value==='dark'?null:background||BG_DEFAULT};
   }
   function publish(force=false) {
     if(!channel && !audience)return; const data=payload(), json=JSON.stringify(data);
@@ -303,6 +323,7 @@
   window.PromUI = {
     metadata, applyMetadata, finishNote, syncPresentationMode,
     hasSlideshow(){return !!audience&&!audience.closed;},
+    readingStart(){return (localScroll||(continuous&&audience&&!audience.closed))?cursor:undefined;},
     speedLayer:placeSpeed,
     presentation(){hideControls();showNote();},
     beforeBodyEdit(){if(localScroll){setLocalScroll(false);$('viewSingle').click();}finishNote();bodyNoteAnchor=noteKey(P[page]);},
@@ -322,17 +343,20 @@
       updateLocalScroll();publish(); scheduleSave();
       // 읽은 위치가 조작 표식에 도달할 때만 OBS 전체화면을 전환한다.
       // 조작창은 그대로 유지하며 Windows 보조 프로그램이 없으면 기능만 비활성.
-      if(P.length && !editing){
+      if(P.length && !editing && bridgeConnected && videoCues.length){
         const cue=PromVideoCues.active(videoCues,cursor);
         const next=cue?.action||(videoCues.length&&window.__promObsCue==='obs'?'slideshow':null);
         if(next){
           window.__promObsDesired=next;
           if(window.__promObsCue!==next && !window.__promObsPending && Date.now()>=(window.__promObsRetryAt||0)){
-            window.__promObsPending=next;
+            window.__promObsPending=next;const generation=bridgeGeneration;
             Promise.resolve().then(()=>fetch('http://127.0.0.1:17986/'+next,{method:'POST',mode:'cors',credentials:'omit',signal:AbortSignal.timeout(1500)})).then(response=>{
-              if(!response.ok)throw new Error('Window switch failed: '+response.status);
+              if(!bridgeConnected||generation!==bridgeGeneration)return;
+              if(!response.ok)throw Object.assign(new Error('Window switch failed: '+response.status),{bridgeResponse:true});
               window.__promObsCue=next;window.__promObsWarned=null;window.__promObsRetryAt=0;
-            }).catch(()=>{
+            }).catch(error=>{
+              if(!bridgeConnected||generation!==bridgeGeneration)return;
+              if(!error.bridgeResponse){setBridgeConnected(false,'보조 프로그램 연결이 종료됐습니다. 실행 후 연결을 다시 눌러 주세요.');window.__promObsRetryAt=0;return;}
               window.__promObsRetryAt=Date.now()+3000;
               if(window.__promObsWarned!==next){
                 window.__promObsWarned=next;

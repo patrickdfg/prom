@@ -16,6 +16,7 @@
  }
  data.cursor=10;data.page=0;view.update(data);await new Promise(requestAnimationFrame);const before=host.scrollTop;data.cursor=40;data.page=1;view.update(data);await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);
  assert(host.scrollTop-before<pitch*.2,'여러 줄 음성 결과가 들어와도 순간 점프 없음');
+ data.readingAnchor=0;data.cursor=50;view.update(data);await new Promise(requestAnimationFrame);assert(Math.abs(view.currentRow(data).el.getBoundingClientRect().top-host.getBoundingClientRect().top)<1,'현재 줄이 마지막 부분이어도 화면 맨 위에서 시작');
  document.querySelector('#result').textContent='PASS · 5/6/7줄 모두 쪽번호·쪽 상자 없음 · 실제 문단 사이 한 줄·연속 빈 줄 압축·자동 쪽 경계는 연속 · 한 줄 완료마다 다음 줄 · 조기 쪽넘김 분리 · 여러 줄 인식 속도 제한';document.body.dataset.pass='true';
 })().catch(e=>{document.querySelector('#result').textContent='FAIL '+e.stack;document.body.dataset.pass='false';});
 </script></html>

@@ -212,6 +212,8 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
   <dialog id="obsFullscreenDialog" class="tool-dialog" aria-labelledby="obsFullscreenTitle">
     <div class="dialog-head"><h2 id="obsFullscreenTitle">OBS 풀스크린 전환 안내</h2><button type="button" data-close="obsFullscreenDialog" aria-label="OBS 안내 닫기">닫기</button></div>
     <p><strong>어떤 용도인가요?</strong><br>같은 모니터에 띄운 OBS 전체화면 프로젝터와 슬라이드쇼를 번갈아 보여 주는 Windows용 보조 프로그램입니다. OBS 전체화면을 앞으로 가져오거나 뒤로 보내며, 조작창은 그대로 유지합니다.</p>
+    <div class="obs-bridge-connection"><button id="obsBridgeConnect" type="button">보조 프로그램 연결</button><p id="obsBridgeStatus" role="status">연결 안 함 · 영상이 없는 날은 연결하지 않아도 됩니다.</p></div>
+    <p>프로그램을 실행한 뒤 <strong>보조 프로그램 연결</strong>을 누르세요. 연결하지 않으면 응답 확인이나 자동 재시도를 하지 않습니다. 새로고침 후에는 다시 연결하세요.</p>
     <ol class="obs-instructions">
       <li>아래 버튼으로 프로그램을 내려받고 <strong>OBSFullscreenBridge.exe</strong>를 실행하세요. 설치나 PowerShell 실행은 필요 없습니다. 기존 PowerShell 보조 프로그램이 실행 중이면 먼저 종료하세요.</li>
       <li>OBS에서 <strong>전체화면 프로젝터</strong>(프로그램 또는 미리보기)를 하나 열고, 슬라이드쇼와 같은 모니터에 띄우세요. OBS 편집창이나 작은 프로젝터 창은 전환 대상이 아닙니다.</li>
@@ -1361,6 +1363,7 @@ async function androidWait(){
   },50);
 }
 function releaseMic(){if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null}}
+function recognitionStart(){const selected=notifyUI('readingStart');return Number.isFinite(selected)?Math.max(0,Math.min(norm.length,selected)):(pStart[page]||0);}
 async function startMic(){
   if(ttsOn)tStop();
   if(editing){toast('편집을 끝낸 뒤(Esc) 마이크를 켜세요.',4000);return}
@@ -1405,7 +1408,7 @@ async function startMic(){
   rec.onspeechstart=()=>cap('말소리 감지 · 글자로 바꾸는 중');
   if(ANDROID){makeWaitAC(); lastResultAt=0;emptySessions=0;}
   if(ANDROID&&panelOpen())closePanel();      // 소리 막대가 마이크를 같이 잡지 않게
-  cursor=pStart[page]||0; heardCarry=''; sessionText=''; lastTail='';     // 켤 때 보고 있는 쪽부터 찾는다
+  cursor=recognitionStart(); heardCarry=''; sessionText=''; lastTail='';     // 스크롤 보기에서는 현재 읽는 위치부터 이어 간다
   listening=true; $('view').classList.toggle('presenting',!hasSlideshow);$('view').classList.toggle('operator-mode',hasSlideshow);notifyUI('presentation');
   $('fontPanel').classList.remove('open');$('ttsPanel').classList.remove('open');
   document.activeElement?.blur();fit();render();
@@ -1869,8 +1872,8 @@ if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 </script>
 <script src="slide-layout.js?v=20261016-6"></script>
 <script src="smooth-scroll.js?v=20261017-line1"></script>
-<script src="scroll-view.js?v=20261017-zoom1"></script>
-<script src="workspace.js?v=20261017-video1"></script>
+<script src="scroll-view.js?v=20261017-cursor1"></script>
+<script src="workspace.js?v=20261017-cursor-bridge1"></script>
 <script src="overview.js?v=20261017-local1"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
 <script src="extras.js?v=20261017-video1"></script>

@@ -43,15 +43,15 @@ window.PromScrollView=class {
       this.host.appendChild(content);
     }
     const height=this.host.clientHeight||innerHeight;
-    const scale=PromScrollView.getScale()/100;
-    const layout=`${this.host.clientWidth}:${height}:${scale}`;
+    const scale=PromScrollView.getScale()/100,anchor=Number.isFinite(data.readingAnchor)?Math.max(0,Math.min(.5,data.readingAnchor)):.3;
+    const layout=`${this.host.clientWidth}:${height}:${scale}:${anchor}`;
     const relayout=layout!==this.layout;
     if(relayout){
       this.layout=layout;this.position='';
       const metrics=PromSlideLayout.measure(this.host.clientWidth||innerWidth,height,Math.max(1,data.lines));
       this.pitch=metrics.height/Math.max(1,data.lines)*scale;
-      this.host.firstElementChild.style.paddingTop=(height*.3)+'px';
-      this.host.firstElementChild.style.paddingBottom=(height*.7)+'px';
+      this.host.firstElementChild.style.paddingTop=(height*anchor)+'px';
+      this.host.firstElementChild.style.paddingBottom=(height*(1-anchor))+'px';
       const flow=this.host.querySelector('.scroll-flow');
       flow.style.width=metrics.width+'px';flow.style.margin='0 auto';
       flow.style.fontSize=(metrics.font*scale)+'px';
@@ -63,6 +63,6 @@ window.PromScrollView=class {
     const current=this.currentRow(data);
     for(const r of this.rows){const range=data.ranges?.[r.pi]?.[r.li];r.el.classList.toggle('scroll-current',r===current);r.el.classList.toggle('scroll-read',!!data.dim&&!!range&&range[1]>range[0]&&range[1]<=data.cursor);}
     const position=current?`${current.pi}:${current.li}`:'';
-    if(current&&position!==this.position){this.position=position;requestAnimationFrame(()=>{if(!current.el.isConnected||this.position!==position)return;const top=current.el.getBoundingClientRect().top-this.host.getBoundingClientRect().top+this.host.scrollTop,target=Math.max(0,top-height*.3);if(relayout){window.PromSmoothScroll?.cancel(this.host);this.host.scrollTop=target;}else if(window.PromSmoothScroll)window.PromSmoothScroll.to(this.host,target,{maxSpeed:Math.abs(target-this.host.scrollTop)>height*2?Infinity:this.pitch*2});else this.host.scrollTo({top:target,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});});}
+    if(current&&position!==this.position){this.position=position;requestAnimationFrame(()=>{if(!current.el.isConnected||this.position!==position)return;const top=current.el.getBoundingClientRect().top-this.host.getBoundingClientRect().top+this.host.scrollTop,target=Math.max(0,top-height*anchor);if(relayout){window.PromSmoothScroll?.cancel(this.host);this.host.scrollTop=target;}else if(window.PromSmoothScroll)window.PromSmoothScroll.to(this.host,target,{maxSpeed:Math.abs(target-this.host.scrollTop)>height*2?Infinity:this.pitch*2});else this.host.scrollTo({top:target,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});});}
   }
 };

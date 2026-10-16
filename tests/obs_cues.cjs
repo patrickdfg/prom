@@ -4,14 +4,14 @@ const vm=require('node:vm');
 const assert=require('node:assert/strict');
 const source=readFileSync('workspace.js','utf8');
 const V=require('../video-cues.js');
-const start=source.indexOf('      if(P.length && !editing){');
+const start=source.indexOf('      if(P.length && !editing && bridgeConnected && videoCues.length){');
 assert.notEqual(start,-1);
 const end=source.indexOf('\n    },',start);
 assert.notEqual(end,-1);
 const dispatch=source.slice(start,end);
 function setup(){
   const requests=[],warnings=[];
-  const c={P:[],videoCues:[],cursor:0,PromVideoCues:V,page:0,editing:false,window:{},textOf:pg=>pg,AbortSignal,
+  const c={bridgeConnected:true,bridgeGeneration:0,setBridgeConnected(value){c.bridgeConnected=value;c.bridgeGeneration++;},P:[],videoCues:[],cursor:0,PromVideoCues:V,page:0,editing:false,window:{},textOf:pg=>pg,AbortSignal,
     toast:message=>warnings.push(message),Date:{now:()=>10000},
     fetch:(url,options)=>{requests.push({url,options});return Promise.resolve({ok:true});}};
   vm.createContext(c);
@@ -46,6 +46,8 @@ const invalid=[
 for(const text of invalid){
   const t=setup();await t.render(text);assert.equal(t.requests.length,0,text);
 }
+const disabled=setup();disabled.c.bridgeConnected=false;for(let i=0;i<20;i++)await disabled.render('(영상1 시작)');assert.equal(disabled.requests.length,0,'unconnected helper must never be contacted');
+const noVideo=setup();noVideo.c.window.__promObsCue='obs';for(let i=0;i<20;i++)await noVideo.render('영상 없는 날의 설교 원고');assert.equal(noVideo.requests.length,0,'no video days must not check or restore helper');
 const positional=setup(),body='영상 전 문장입니다.(영상1 시작)영상의 첫 대사와 마지막 대사입니다.(영상1 끝)설교가 계속됩니다.';
 const indexed=V.build([[[{t:body,c:'k'}]]]);
 await positional.render(body,0);assert.equal(positional.requests.length,0,'future markers on the same page must not run');
@@ -70,10 +72,10 @@ const offline=setup();
 offline.c.fetch=()=>Promise.reject(new Error('bridge unavailable'));
 await offline.render('(영상 찬양 시작)');
 assert.equal(offline.c.window.__promObsCue,undefined,'failed requests must not be remembered as successful');
-assert.equal(offline.warnings.length,1,'connection failure must be visible');
+assert.equal(offline.warnings.length,0,'closed helper must not interrupt sermon');assert.equal(offline.c.bridgeConnected,false);
 offline.c.fetch=()=>Promise.resolve({ok:true});
 offline.c.Date.now=()=>14000;
-await offline.render('(영상 찬양 시작)');
+await offline.render('(영상 찬양 시작)');assert.equal(offline.c.window.__promObsCue,undefined,'no automatic retry when helper is closed');offline.c.bridgeConnected=true;await offline.render('(영상 찬양 시작)');
 assert.equal(offline.c.window.__promObsCue,'obs','retry must work after bridge is restored');
 const missing=setup();missing.c.fetch=()=>Promise.resolve({ok:false,status:409});
 await missing.render('(영상끝)');

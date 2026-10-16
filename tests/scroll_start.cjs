@@ -1,0 +1,14 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const html=fs.readFileSync('index.html','utf8'),source=fs.readFileSync('workspace.js','utf8');
+const node=()=>({hidden:false,classList:{toggle(){}},setAttribute(){}}),nodes={view:node(),viewScroll:node(),viewMultiple:node(),viewSingle:{setAttribute(){},click(){c.cursor=120;}}};
+const c={cursor:149,page:4,editing:false,norm:'가'.repeat(500),pStart:[0,30,60,90,120],lineRange:Array.from({length:5},()=>[[120,140],[140,160],[160,180]]),caretLine:()=>2,pageOf:pos=>Math.floor(pos/30),localScroll:false,localRenderer:{position:'4:0',layout:'old'},scrollHost:node(),window:{PromSmoothScroll:{cancel(){}}},$:id=>nodes[id],syncScrollText(){},finishNote(){},render(){},showBar(){},endEdit(){c.editing=false;c.cursor=120;}};
+vm.createContext(c);vm.runInContext(source.slice(source.indexOf('  function captureReadingPosition()'),source.indexOf('  function updateLocalScroll()')),c);
+vm.runInContext(source.slice(source.indexOf("  $('viewScroll').onclick="),source.indexOf("  for(const id of ['viewSingle'")),c);
+nodes.viewScroll.onclick();assert.equal(c.cursor,149,'scroll entry preserves consumed character');assert.equal(c.localRenderer.position,'');assert.equal(c.localRenderer.layout,'','entry forces alignment even after manual scrolling');
+c.editing=true;c.cursor=120;nodes.viewScroll.onclick();assert.equal(c.cursor,160,'body edit caret line restored after commit');
+c.audience=null;c.continuous=false;vm.runInContext('var readingStart=({'+source.match(/readingStart\(\)\{[^\n]+\}/)[0]+'}).readingStart;',c);c.notifyUI=()=>c.readingStart();
+vm.runInContext(html.slice(html.indexOf('function recognitionStart(){'),html.indexOf('async function startMic(){')),c);
+assert.equal(c.recognitionStart(),160,'microphone must start at selected cursor');c.localScroll=false;c.page=4;assert.equal(c.recognitionStart(),120,'regular page presentation preserves previous behavior');
+c.audience={closed:false};c.continuous=true;assert.equal(c.recognitionStart(),160,'separate scroll slideshow also continues at cursor');c.audience.closed=true;assert.equal(c.recognitionStart(),120);
+assert(html.includes('cursor=recognitionStart();'));
+console.log('PASS scroll entry cursor, editing caret, repeat-entry alignment, microphone current position and regular-view start');
