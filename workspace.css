@@ -183,3 +183,6 @@ button:hover{filter:brightness(1.12)}
 #ttsRateControls{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
 #ttsRateControls button{font:inherit;min-width:25px;padding:4px 6px}
 #ttsRateInline{min-width:26px;text-align:center;font-variant-numeric:tabular-nums}
+
+.status-left{display:flex;align-items:center;gap:10px;flex-shrink:0;white-space:nowrap}
+#statusbar .status-home{pointer-events:auto;flex-shrink:0;background:#202b3a;color:#dce8f8;border:1px solid #52647c;border-radius:8px;font:inherit;min-height:28px;padding:5px 7px;cursor:pointer;white-space:nowrap}
