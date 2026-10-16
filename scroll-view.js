@@ -2,6 +2,10 @@
 window.PromScrollView=class {
   static getScale(){try{const n=Number(localStorage.getItem('promScrollTextScale'));if(n>=60&&n<=180)return n;}catch(_){}return this.zoom||100;}
   static setScale(value){const n=Math.max(60,Math.min(180,Math.round(Number(value)/10)*10||100));this.zoom=n;try{localStorage.setItem('promScrollTextScale',String(n));}catch(_){}return n;}
+  static getAnchor(){try{const n=localStorage.getItem("promScrollAnchor");if(n!==null&&Number(n)>=.15&&Number(n)<=.5)return Number(n);}catch(_){}return .35;}
+  static setAnchor(value){const n=Math.max(.15,Math.min(.5,Number(value)||.35));try{localStorage.setItem("promScrollAnchor",String(n));}catch(_){}return n;}
+  static getSpacing(){try{const n=Number(localStorage.getItem("promScrollSpacing"));if(n>=80&&n<=140)return n;}catch(_){}return 100;}
+  static setSpacing(value){const n=Math.max(80,Math.min(140,Number(value)||100));try{localStorage.setItem("promScrollSpacing",String(n));}catch(_){}return n;}
   constructor(host){this.host=host;this.key='';this.rows=[];this.gaps=[];this.position='';this.layout='';}
   currentRow(data){
     const spoken=this.rows.filter(r=>{const range=data.ranges?.[r.pi]?.[r.li];return range&&range[1]>range[0];});
@@ -38,18 +42,19 @@ window.PromScrollView=class {
           }
           pendingGap=false;
           row.appendChild(wrap);body.appendChild(row);this.rows.push({el:row,wrap,pi,li});
+          if(this.onSelect){row.title='이 줄부터 따라가기';row.style.cursor='pointer';row.onclick=()=>this.onSelect(pi,li);}
         }
       });
       this.host.appendChild(content);
     }
     const height=this.host.clientHeight||innerHeight;
-    const scale=PromScrollView.getScale()/100,anchor=Number.isFinite(data.readingAnchor)?Math.max(0,Math.min(.5,data.readingAnchor)):.3;
-    const layout=`${this.host.clientWidth}:${height}:${scale}:${anchor}`;
+    const scale=PromScrollView.getScale()/100,anchor=Number.isFinite(data.readingAnchor)?Math.max(0,Math.min(.5,data.readingAnchor)):PromScrollView.getAnchor();
+    const layout=`${this.host.clientWidth}:${height}:${scale}:${anchor}:${PromScrollView.getSpacing()}`;
     const relayout=layout!==this.layout;
     if(relayout){
       this.layout=layout;this.position='';
       const metrics=PromSlideLayout.measure(this.host.clientWidth||innerWidth,height,Math.max(1,data.lines));
-      this.pitch=metrics.height/Math.max(1,data.lines)*scale;
+      this.pitch=metrics.height/Math.max(1,data.lines)*scale*PromScrollView.getSpacing()/100;
       this.host.firstElementChild.style.paddingTop=(height*anchor)+'px';
       this.host.firstElementChild.style.paddingBottom=(height*(1-anchor))+'px';
       const flow=this.host.querySelector('.scroll-flow');

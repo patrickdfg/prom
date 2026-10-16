@@ -13,3 +13,5 @@
 .scroll-zoom{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:6px;padding:8px;border-radius:10px;background:#10151ded;z-index:20;opacity:0;pointer-events:none;transition:opacity .15s}
 .scroll-zoom[hidden]{display:none!important}.zoom-open .scroll-zoom{opacity:1;pointer-events:auto}
 .scroll-zoom button{position:static;min-width:44px;padding:8px 12px;font-size:16px}.scroll-zoom button:disabled{opacity:.45}
+
+.scroll-zoom{max-width:calc(100vw - 24px);flex-wrap:wrap;justify-content:center}.scroll-zoom label{white-space:nowrap;font-size:14px}.scroll-zoom select{font:inherit;padding:6px;color:#e8eef6;background:#1c293b;border:1px solid #425672;border-radius:6px}.scroll-zoom>span{display:flex;gap:8px;align-items:center}

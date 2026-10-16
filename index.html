@@ -121,7 +121,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
 <link rel="stylesheet" href="workspace.css?v=20261017-home-left1">
-<link rel="stylesheet" href="extras.css?v=20261017-paragraph1">
+<link rel="stylesheet" href="extras.css?v=20261017-follow3">
 <style>.app-switch{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;flex-shrink:0;padding:8px 12px;border:1px solid #506a88;border-radius:8px;background:#20344c;color:#d6f5ec!important;font:600 12px/1.4 sans-serif;text-decoration:none;pointer-events:auto}.app-switch:hover{background:#2b4963}.app-switch:focus-visible{outline:3px solid #5de2ca;outline-offset:2px}</style>
 </head>
 <body>
@@ -708,6 +708,37 @@ function pageOf(pos){
 // 들은 말 끝부분 S가 원고에서 끝나는 곳을 세 구역에서 따로 찾는다
 // back: 이미 읽은 곳(지금 위치 40자 이전 ~ 300자 이전), near: 지금 위치 -40 ~ +45, far: +45 ~ +350
 let pend=null;
+function lineSpeech(heard,target,cursor,offset=0,map=null){
+  // Prefer unique short evidence in the current display row and the next row.
+  const pi=pageOf(cursor),rows=[];
+  for(let p=pi;p<lineRange.length&&rows.length<2;p++)for(const r of lineRange[p])if(r[1]>r[0]&&r[1]>cursor&&rows.length<2)rows.push(r);
+  const end=rows.at(-1)?.[1]??cursor+45,position=i=>map?map[i-1]:offset+i;
+  for(let n=Math.min(24,heard.length);n>=6;n--){
+    const tail=heard.slice(-n);let at=target.indexOf(tail),hit=null,count=0;
+    while(at>=0){const pos=position(at+n);if(pos>cursor&&pos<=end){hit=pos;count++;}at=target.indexOf(tail,at+1);}
+    if(count===1&&(hit<=(rows[0]?.[1]??cursor+45)||n>=10))return hit;
+  }
+  return null;
+}
+function confirmedSpeech(heard,target,cursor,offset=0,map=null){
+  const position=end=>map?map[end-1]:offset+end;
+  for(let length=Math.min(64,heard.length);length>=28;length--){
+    const tail=heard.slice(-length),first=target.indexOf(tail);
+    if(first<0)continue;
+    if(target.indexOf(tail,first+1)>=0)continue;
+    const pos=position(first+length);return pos>cursor?pos:null;
+  }
+  // A long result can contain a small recognition error. Require 40 characters,
+  // at most two edits, and a single matching location within the reading window.
+  if(heard.length<40)return null;
+  const tail=heard.slice(-40);let previous=Array(target.length+1).fill(0);
+  for(let i=1;i<=tail.length;i++){const next=[i];for(let j=1;j<=target.length;j++)next[j]=Math.min(previous[j]+1,next[j-1]+1,previous[j-1]+(tail[i-1]===target[j-1]?0:1));previous=next;}
+  const hits=[];for(let j=1;j<=target.length;j++)if(previous[j]<=2)hits.push({end:j,d:previous[j]});
+  if(!hits.length)return null;
+  const best=hits.reduce((a,b)=>b.d<a.d?b:a);
+  if(hits.some(h=>Math.abs(h.end-best.end)>6))return null;
+  const pos=position(best.end);return pos>cursor?pos:null;
+}
 function locate3(S,cursor){
   const NEAR=45, from=Math.max(0,cursor-300), to=Math.min(norm.length,cursor+350);
   const T=norm.slice(from,to), m=S.length, n=T.length, out={back:null,near:null,far:null};
@@ -1263,6 +1294,7 @@ function go(p,manual){
 /* ---------- 음성 인식 ---------- */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 let rec=null, listening=false, heardCarry='', sessionText='', lastTail='', micFullscreen=false;
+let speechFloor=0,speechResultCount=0;
 function toast(msg,ms=3000){const t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',ms)}
 function setDot(cls){$('dot').className=cls||''; notifyUI('mic',cls)}
 // 화면 왼쪽 위에 지금 어디까지 되고 있는지 보여 준다 (소리가 들어오는지, 글자로 바뀌는지, 원고에서 찾았는지)
@@ -1277,15 +1309,22 @@ function onHeard(text){
   $('heard').textContent=text.slice(-40);
   const S=all.slice(-14), base='들림 「'+text.slice(-24)+'」';
   if(S.length<5){cap(base+' · 너무 짧아 기다림');return}
-  if(S===lastTail)return;
-  lastTail=S;
+  const sampleKey=all.slice(-64);if(sampleKey===lastTail)return;
+  lastTail=sampleKey;
   const cuePos=cueMatch(S);
   if(cuePos!==null){cursor=cuePos;pend=null;go(pageOf(cursor));cap(base+' ✓ 다음 장 첫 줄 확인');return;}
   // 가까운 곳(지금 위치 앞뒤)을 먼저 본다. 이미 읽은 곳을 다시 읽으면(강조·다 같이 읽기) 그대로 두고,
   // 멀리 앞쪽과 맞으면 바로 넘기지 않고 이어서 더 읽어 같은 흐름이 확인될 때만 넘긴다 (부연 설명 중 우연히 맞는 것 막기)
   const h=locate3(S,cursor), lim=Math.floor(S.length*0.3);
+  const readingPage=pageOf(cursor);let nextPage=readingPage+1;
+  while(nextPage<P.length&&pEnd[nextPage]===pEnd[readingPage])nextPage++;
+  const from=Math.max(0,cursor-64),end=pEnd[Math.min(nextPage,P.length-1)]||norm.length;
+  const confirmed=confirmedSpeech(all,norm.slice(from,end),cursor,from);
+  const local=lineSpeech(all,norm.slice(from,end),cursor,from);
   let to;
-  if(h.near&&h.near.d<=lim){
+  if(confirmed!==null){to=confirmed;pend=null;}
+  else if(local!==null){to=local;pend=null;}
+  else if(h.near&&h.near.d<=lim){
     if(h.near.pos<cursor&&h.near.d>1){cap(base+' · 앞쪽이라 그대로');return}
     to=h.near.pos; pend=null;
   }else if(h.back&&h.back.d<=2&&(!h.far||h.back.d<=h.far.d)){
@@ -1378,7 +1417,8 @@ async function startMic(){
   const activeRec=rec;
   rec.onresult=e=>{
     if(!listening||rec!==activeRec)return;
-    let t=''; for(let i=0;i<e.results.length;i++) t+=e.results[i][0].transcript;
+    speechResultCount=e.results.length;
+    let t=''; for(let i=speechFloor;i<e.results.length;i++) t+=e.results[i][0].transcript;
     sessionText=t; onHeard(t); speedFeed(e.results); lastResultAt=Date.now();emptySessions=0;
   };
   rec.onerror=e=>{
@@ -1398,7 +1438,7 @@ async function startMic(){
   rec.onend=()=>{
     if(rec!==activeRec||!listening)return;
     if(ANDROID){emptySessions=sessionText.trim()?0:emptySessions+1;if(emptySessions>=3){stopMic();toast('말소리를 인식하지 못해 반복 연결을 멈췄습니다. 마이크를 확인한 뒤 다시 켜 주세요.',7000);return}}
-    heardCarry=(heardCarry+sessionText).slice(-60); sessionText=''; spLast=0;
+    heardCarry=(heardCarry+sessionText).slice(-60); sessionText=''; speechFloor=0;speechResultCount=0;spLast=0;
     if(listening&&ANDROID){setDot('');androidWait();return}
     if(listening){setDot('');try{startRec()}catch(_){setTimeout(()=>{if(listening)try{startRec()}catch(__){}},300)}}
     else setDot('');
@@ -1408,7 +1448,7 @@ async function startMic(){
   rec.onspeechstart=()=>cap('말소리 감지 · 글자로 바꾸는 중');
   if(ANDROID){makeWaitAC(); lastResultAt=0;emptySessions=0;}
   if(ANDROID&&panelOpen())closePanel();      // 소리 막대가 마이크를 같이 잡지 않게
-  cursor=recognitionStart(); heardCarry=''; sessionText=''; lastTail='';     // 스크롤 보기에서는 현재 읽는 위치부터 이어 간다
+  cursor=recognitionStart(); heardCarry=''; sessionText=''; lastTail='';speechFloor=0;speechResultCount=0;     // 스크롤 보기에서는 현재 읽는 위치부터 이어 간다
   listening=true; $('view').classList.toggle('presenting',!hasSlideshow);$('view').classList.toggle('operator-mode',hasSlideshow);notifyUI('presentation');
   $('fontPanel').classList.remove('open');$('ttsPanel').classList.remove('open');
   document.activeElement?.blur();fit();render();
@@ -1883,10 +1923,10 @@ if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 </script>
 <script src="slide-layout.js?v=20261016-6"></script>
 <script src="smooth-scroll.js?v=20261017-line1"></script>
-<script src="scroll-view.js?v=20261017-cursor1"></script>
-<script src="workspace.js?v=20261017-tts-inline1"></script>
+<script src="scroll-view.js?v=20261017-follow3"></script>
+<script src="workspace.js?v=20261017-follow3"></script>
 <script src="overview.js?v=20261017-local1"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
-<script src="extras.js?v=20261017-video1"></script>
+<script src="extras.js?v=20261017-follow3"></script>
 </body>
 </html>

@@ -13,9 +13,12 @@
     display.querySelectorAll('.ln>span').forEach(s=>{s.style.transform='';const w=s.scrollWidth,max=s.parentElement.clientWidth;if(w>max)s.style.transform=`scale(${max/w})`;});
   }
   const zoomTools=document.getElementById('scrollTextTools');let zoomTimer;
-  function zoomLabels(){const value=PromScrollView.getScale();document.getElementById('scrollTextReset').textContent=value+'%';document.getElementById('scrollTextSmaller').disabled=value<=60;document.getElementById('scrollTextLarger').disabled=value>=180;}
+  const readingTools=document.createElement('span');readingTools.innerHTML='<label>읽는 위치 <select id="scrollAnchor" aria-label="읽는 줄 위치"><option value="0.2">위쪽</option><option value="0.35">중간 위</option><option value="0.5">가운데</option></select></label><label>줄간격 <select id="scrollSpacing" aria-label="스크롤 줄간격"><option value="80">좁게</option><option value="100">보통</option><option value="120">넓게</option><option value="140">더 넓게</option></select></label>';zoomTools.appendChild(readingTools);
+  document.getElementById('scrollAnchor').onchange=()=>{PromScrollView.setAnchor(document.getElementById('scrollAnchor').value);if(current)current.readingAnchor=PromScrollView.getAnchor();fit();};
+  document.getElementById('scrollSpacing').onchange=()=>{PromScrollView.setSpacing(document.getElementById('scrollSpacing').value);fit();};
+  function zoomLabels(){document.getElementById('scrollAnchor').value=String(PromScrollView.getAnchor());document.getElementById('scrollSpacing').value=String(PromScrollView.getSpacing());const value=PromScrollView.getScale();document.getElementById('scrollTextReset').textContent=value+'%';document.getElementById('scrollTextSmaller').disabled=value<=60;document.getElementById('scrollTextLarger').disabled=value>=180;}
   for(const [id,delta]of [['scrollTextSmaller',-10],['scrollTextReset',0],['scrollTextLarger',10]])document.getElementById(id).onclick=()=>{PromScrollView.setScale(delta?PromScrollView.getScale()+delta:100);zoomLabels();fit();};
-  addEventListener('storage',e=>{if(e.key==='promScrollTextScale'){zoomLabels();fit();}});
+  addEventListener('storage',e=>{if(['promScrollTextScale','promScrollAnchor','promScrollSpacing'].includes(e.key)){if(current)current.readingAnchor=PromScrollView.getAnchor();zoomLabels();fit();}});
   addEventListener('mousemove',e=>{if(zoomTools.hidden)return;clearTimeout(zoomTimer);if(e.clientY>=innerHeight-60||zoomTools.contains(e.target))document.body.classList.add('zoom-open');else zoomTimer=setTimeout(()=>document.body.classList.remove('zoom-open'),900);});
   addEventListener('pointerdown',e=>{if(!zoomTools.hidden&&e.clientY>=innerHeight-60)document.body.classList.add('zoom-open');});
   zoomTools.addEventListener('focusin',()=>document.body.classList.add('zoom-open'));

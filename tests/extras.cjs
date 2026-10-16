@@ -11,7 +11,7 @@ const c={videoSpeech:[],PromVideoCues:require('../video-cues.js'),norm:'가'.rep
 const ui={finishNote(){},render(){},beforeBodyEdit(){},hasSlideshow:()=>true};c.PromUI=ui;c.window={PromUI:ui,MediaRecorder:true};c.render=()=>ui.render();c.go=i=>{c.page=i;goCount++;ui.render();};
 c.navigator={mediaDevices:{getUserMedia:async()=>({getTracks:()=>[{stop(){stoppedTracks++}}]})}};
 c.MediaRecorder=class{static isTypeSupported(){return true}constructor(){this.state='inactive';this.mimeType='audio/webm'}start(){this.state='recording'}stop(){this.state='inactive';this.ondataavailable({data:new Blob(['sound'])});this.onstop()}};
-vm.createContext(c);vm.runInContext(fs.readFileSync('extras.js','utf8'),c);
+vm.createContext(c);const root=fs.readFileSync('index.html','utf8');vm.runInContext(root.slice(root.indexOf('function lineSpeech('),root.indexOf('function locate3(')),c);vm.runInContext(fs.readFileSync('extras.js','utf8'),c);
 (async()=>{
  const api=c.window.PromExtras;
  assert(nodes.nextLineTools.children.includes(nodes.labOptWrap),'existing next-line setting moved into tools');assert(!nodes.labOptWrap.hidden);

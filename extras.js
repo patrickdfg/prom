@@ -30,8 +30,8 @@
  onHeard=function(text){
    if(!$('voiceLab').checked)return originalHeard(text);
    indexVoice();if(lastPage!==page){pending=null;lastSample='';lastPage=page;}
-   const sample=PromVoiceLab.mapped(heardCarry+text).text.slice(-22);$('heard').textContent=text.slice(-40);
-   if(sample===lastSample)return;lastSample=sample;
+   const recognized=PromVoiceLab.mapped(heardCarry+text).text,sample=recognized.slice(-22);$('heard').textContent=text.slice(-40);
+   const sampleKey=recognized.slice(-64);if(sampleKey===lastSample)return;lastSample=sampleKey;
    const readingPage=pageOf(cursor),current=voicePages[readingPage];if(!current)return;
    // 다음 장의 첫 본문 줄까지만 살펴본다. 임의의 먼 장으로는 이동하지 않는다.
    let nextPage=readingPage+1,next=-1;
@@ -39,10 +39,12 @@
    const range=next>=0?lineRange[nextPage]?.[next]:null;
    const nextData=voicePages[nextPage];const n=range&&nextData?nextData.map.filter(p=>p<=range[1]).length:0;
    const target=current.text+(nextData?.text.slice(0,n)||''),map=current.map.concat(nextData?.map.slice(0,n)||[]);
-   const hit=PromVoiceLab.match(sample,target,map,cursor);
+   const local=lineSpeech(recognized,target,cursor,0,map);
+   const confirmed=confirmedSpeech(recognized,target,cursor,0,map)??local;
+   const hit=confirmed===null?PromVoiceLab.match(sample,target,map,cursor):{pos:confirmed,confirmed:true};
    if(!hit){cap('원고 밖 발화 또는 인식 차이 · 원고가 이어지면 다시 따라갑니다.');return;}
    const far=hit.pos-cursor>45;
-   if(far){const now=Date.now();if(!pending||now-pending.time>12000||hit.pos<pending.pos+5||hit.pos>pending.pos+70){pending={pos:hit.pos,time:now};cap('복귀 위치 확인 중 · 이어서 읽어 주세요.');return;}}
+   if(far&&!hit.confirmed){const now=Date.now();if(!pending||now-pending.time>12000||hit.pos<pending.pos+5||hit.pos>pending.pos+70){pending={pos:hit.pos,time:now};cap('복귀 위치 확인 중 · 이어서 읽어 주세요.');return;}}
    pending=null;cursor=Math.max(cursor,Math.min(hit.pos,norm.length));let targetPage=pageOf(cursor);
    if(cursor>=Math.max(pEnd[targetPage]-Number($('lead').value),lastLine[targetPage]+1)&&targetPage<P.length-1)targetPage++;
    cap('실험실 · 원고 위치 확인');if(targetPage!==page)go(targetPage);else render();
@@ -78,5 +80,5 @@
  $('recordStop').onclick=()=>{if(recorder?.state==='recording')recorder.stop();};
  $('recordDownload').onclick=()=>{unsavedRecording=false;};
  addEventListener('beforeunload',e=>{if(recordPending||recorder?.state==='recording'||unsavedRecording){e.preventDefault();e.returnValue='';}});
- window.PromExtras={settings,ttsPage};
+ window.PromExtras={settings,ttsPage,resetVoice(){pending=null;lastSample='';lastPage=-1;}};
 })();

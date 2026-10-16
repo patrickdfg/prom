@@ -57,9 +57,16 @@
   const scrollTextTools=document.createElement('span');scrollTextTools.id='scrollTextTools';scrollTextTools.className='control-group';scrollTextTools.hidden=true;scrollTextTools.setAttribute('role','group');scrollTextTools.setAttribute('aria-label','스크롤 글자 크기');
   scrollTextTools.innerHTML='<button type="button" id="scrollTextSmaller" aria-label="스크롤 글자 줄이기">−</button><button type="button" id="scrollTextReset" title="기본 글자 크기로 복원" aria-label="스크롤 글자 기본 크기로">100%</button><button type="button" id="scrollTextLarger" aria-label="스크롤 글자 키우기">＋</button>';
   $('viewScroll').parentElement.after(scrollTextTools);
-  function syncScrollText(){const value=PromScrollView.getScale();scrollTextTools.hidden=!localScroll;$('scrollTextReset').textContent=value+'%';$('scrollTextSmaller').disabled=value<=60;$('scrollTextLarger').disabled=value>=180;}
+  const scrollReadingTools=document.createElement('span');scrollReadingTools.className='control-group';scrollReadingTools.id='scrollReadingTools';scrollReadingTools.hidden=true;
+  scrollReadingTools.innerHTML='<label>읽는 위치 <select id="scrollAnchor" aria-label="읽는 줄 위치"><option value="0.2">위쪽</option><option value="0.35">중간 위</option><option value="0.5">가운데</option></select></label><label>줄간격 <select id="scrollSpacing" aria-label="스크롤 줄간격"><option value="80">좁게</option><option value="100">보통</option><option value="120">넓게</option><option value="140">더 넓게</option></select></label>';
+  scrollTextTools.after(scrollReadingTools);
+  $('scrollAnchor').value=String(PromScrollView.getAnchor());$('scrollSpacing').value=String(PromScrollView.getSpacing());
+  $('scrollAnchor').onchange=()=>{PromScrollView.setAnchor($('scrollAnchor').value);render();};
+  $('scrollSpacing').onchange=()=>{PromScrollView.setSpacing($('scrollSpacing').value);render();};
+  localRenderer.onSelect=(pi,li)=>{cursor=lineRange[pi][li][0];pend=null;lastTail='';heardCarry='';sessionText='';speechFloor=speechResultCount;window.PromExtras?.resetVoice?.();go(pi);localRenderer.position='';localRenderer.layout='';render();};
+  function syncScrollText(){const value=PromScrollView.getScale();scrollTextTools.hidden=!localScroll;scrollReadingTools.hidden=!localScroll;$('scrollTextReset').textContent=value+'%';$('scrollTextSmaller').disabled=value<=60;$('scrollTextLarger').disabled=value>=180;}
   for(const [id,delta]of [['scrollTextSmaller',-10],['scrollTextReset',0],['scrollTextLarger',10]])$(id).onclick=()=>{PromScrollView.setScale(delta?PromScrollView.getScale()+delta:100);syncScrollText();render();};
-  addEventListener('storage',e=>{if(e.key==='promScrollTextScale'){syncScrollText();render();}});
+  addEventListener('storage',e=>{if(['promScrollTextScale','promScrollAnchor','promScrollSpacing'].includes(e.key)){$('scrollAnchor').value=String(PromScrollView.getAnchor());$('scrollSpacing').value=String(PromScrollView.getSpacing());syncScrollText();render();}});
   function captureReadingPosition(){const line=editing?caretLine():-1;return line>=0?(lineRange[page]?.[line]?.[0]??cursor):cursor;}
   function setLocalScroll(value,start=cursor){
     if(value){if(editing)endEdit();finishNote();cursor=Math.max(0,Math.min(norm.length,start));page=pageOf(cursor);localRenderer.position='';localRenderer.layout='';}
@@ -71,7 +78,7 @@
   }
   function updateLocalScroll(){
     syncScrollText();if(!localScroll)return;
-    const data={...payload(),document:P,ranges:lineRange,readingAnchor:0};
+    const data={...payload(),document:P,ranges:lineRange,readingAnchor:PromScrollView.getAnchor()};
     scrollHost.style.backgroundColor=data.dark?'#000':'#fff';
     scrollHost.style.backgroundImage=data.dark?'none':$('page').style.backgroundImage;
     localRenderer.update(data);
@@ -246,7 +253,7 @@
   $('theme').addEventListener('change',()=>{syncTheme();publish();saveNow();});syncTheme();
   function payload() {
     const extra={...(window.PromExtras?.settings()||{}),continuous};
-    return {type:'frame',extra,...(extra.continuous?{document:P,ranges:lineRange}:{}),nextCue:nextCueLine()?.text||'',pages:P[page],page,total:P.length,lines:LINES,cursor,readingAnchor:continuous?0:.3,range:lineRange[page],dim:$('dim').checked,focus:$('focusColor').value,dark:$('theme').value==='dark',bg:$('theme').value==='dark'?null:background||BG_DEFAULT};
+    return {type:'frame',extra,...(extra.continuous?{document:P,ranges:lineRange}:{}),nextCue:nextCueLine()?.text||'',pages:P[page],page,total:P.length,lines:LINES,cursor,readingAnchor:PromScrollView.getAnchor(),range:lineRange[page],dim:$('dim').checked,focus:$('focusColor').value,dark:$('theme').value==='dark',bg:$('theme').value==='dark'?null:background||BG_DEFAULT};
   }
   function publish(force=false) {
     if(!channel && !audience)return; const data=payload(), json=JSON.stringify(data);

@@ -1,6 +1,7 @@
-<!doctype html><html lang="ko"><meta charset="utf-8"><title>한 줄 스크롤 검증</title><link rel="stylesheet" href="../audience.css"><link rel="stylesheet" href="../extras.css"><style>body{overflow:auto}#display{position:relative;width:960px;height:600px}#result{font-size:16px;white-space:pre-wrap}</style><pre id="result">검증 중</pre><div id="display" class="scroll-host"></div><script src="../slide-layout.js"></script><script src="../smooth-scroll.js"></script><script src="../scroll-view.js"></script><script>
+<!doctype html><html lang="ko"><meta charset="utf-8"><title>한 줄 스크롤 검증</title><link rel="stylesheet" href="../audience.css"><link rel="stylesheet" href="../extras.css?v=20261017-follow3"><style>body{overflow:auto}#display{position:relative;width:960px;height:600px}#result{font-size:16px;white-space:pre-wrap}</style><pre id="result">검증 중</pre><div id="display" class="scroll-host"></div><script src="../slide-layout.js"></script><script src="../smooth-scroll.js"></script><script src="../scroll-view.js"></script><script>
 (async()=>{
  const assert=(v,m)=>{if(!v)throw Error(m)},host=document.querySelector('#display'),view=new PromScrollView(host),row=t=>[{c:'k',t}];
+ const originalScale=PromScrollView.getScale(),originalSpacing=PromScrollView.getSpacing();PromScrollView.setScale(100);PromScrollView.setSpacing(100);
  const data={lines:5,document:[[row('첫 문단 첫 줄'),row(''),row(''),[{c:'r',t:'2'}],row('첫 문단 둘째 줄')],[[{c:'k',t:'다음 문단 첫 줄',paragraphStart:true}],row('다음 문단 둘째 줄'),row('다음 문단 셋째 줄'),row('다음 문단 넷째 줄')]],ranges:[[[0,10],[10,10],[10,10],[10,10],[10,20]],[[20,30],[30,40],[40,50],[50,60]]],cursor:0,page:0,dark:true,dim:true};
  for(const lines of [5,6,7]){
   data.lines=lines;view.update(data);await new Promise(requestAnimationFrame);
@@ -16,7 +17,13 @@
  }
  data.cursor=10;data.page=0;view.update(data);await new Promise(requestAnimationFrame);const before=host.scrollTop;data.cursor=40;data.page=1;view.update(data);await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);
  assert(host.scrollTop-before<pitch*.2,'여러 줄 음성 결과가 들어와도 순간 점프 없음');
+ const savedScale=PromScrollView.getScale(),savedSpacing=PromScrollView.getSpacing();
+ PromScrollView.setScale(140);PromScrollView.setSpacing(120);data.readingAnchor=.35;view.update(data);await new Promise(requestAnimationFrame);
+ assert(Math.abs(view.currentRow(data).el.getBoundingClientRect().top-host.getBoundingClientRect().top-host.clientHeight*.35)<1,'140%에서도 읽는 줄은 35% 위치');
+ assert(view.pitch>pitch*1.6,'줄간격과 글자 크기 조절을 함께 적용');
+ PromScrollView.setScale(savedScale);PromScrollView.setSpacing(savedSpacing);
  data.readingAnchor=0;data.cursor=50;view.update(data);await new Promise(requestAnimationFrame);assert(Math.abs(view.currentRow(data).el.getBoundingClientRect().top-host.getBoundingClientRect().top)<1,'현재 줄이 마지막 부분이어도 화면 맨 위에서 시작');
+ PromScrollView.setScale(originalScale);PromScrollView.setSpacing(originalSpacing);
  document.querySelector('#result').textContent='PASS · 5/6/7줄 모두 쪽번호·쪽 상자 없음 · 실제 문단 사이 한 줄·연속 빈 줄 압축·자동 쪽 경계는 연속 · 한 줄 완료마다 다음 줄 · 조기 쪽넘김 분리 · 여러 줄 인식 속도 제한';document.body.dataset.pass='true';
 })().catch(e=>{document.querySelector('#result').textContent='FAIL '+e.stack;document.body.dataset.pass='false';});
 </script></html>
