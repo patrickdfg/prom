@@ -2,6 +2,7 @@ using System;
 using System.Net;
 using System.IO;
 using System.Drawing;
+using System.Windows.Forms;
 using PromBridge;
 
 class FakeWindows : IWindowBackend
@@ -39,6 +40,23 @@ class Tests
     static int Main()
     {
         try {
+            Check(ToggleHotkey.FromKeys(Keys.Control | Keys.Alt | Keys.F8).ToString() == "Ctrl + Alt + F8", "modifier combination capture failed");
+            Check(ToggleHotkey.FromKeys(Keys.F8).Key == 119, "plain key capture failed");
+            Check(ToggleHotkey.FromKeys(Keys.Next).ToString() == "PgDn", "PgDn capture failed");
+            Check(ToggleHotkey.FromKeys(Keys.ControlKey) == null && ToggleHotkey.FromKeys(Keys.ShiftKey) == null, "modifier alone must not bind");
+            Check(ToggleHotkey.FromKeys(Keys.Escape) == null && ToggleHotkey.FromKeys(Keys.F12) == null && ToggleHotkey.FromKeys(Keys.LWin) == null, "reserved keys must not bind");
+            string settingsDirectory = Path.Combine(Path.GetTempPath(), "prom-hotkey-test-" + Guid.NewGuid().ToString("N"));
+            string settingsPath = Path.Combine(settingsDirectory, "binding.txt");
+            try {
+                Check(ToggleHotkey.Load(settingsPath) == null, "missing settings should mean unassigned");
+                var chosen = ToggleHotkey.FromKeys(Keys.Control | Keys.Shift | Keys.F9);
+                ToggleHotkey.Save(settingsPath, chosen);
+                var restored = ToggleHotkey.Load(settingsPath);
+                Check(restored.Key == chosen.Key && restored.Modifiers == chosen.Modifiers, "binding must survive restart");
+                ToggleHotkey.Save(settingsPath, null); Check(ToggleHotkey.Load(settingsPath) == null, "clear binding must persist");
+                File.WriteAllText(settingsPath, "99999,0"); Check(ToggleHotkey.Load(settingsPath) == null, "invalid key must be ignored");
+                File.WriteAllText(settingsPath, "119,8"); Check(ToggleHotkey.Load(settingsPath) == null, "unsupported modifiers must be ignored");
+            } finally { if (File.Exists(settingsPath)) File.Delete(settingsPath); if (Directory.Exists(settingsDirectory)) Directory.Delete(settingsDirectory); }
             var monitor = new Rectangle(1920, 0, 2048, 1152);
             Check(NativeWindows.IsFullscreenProjector("obs64", "프로젝터 - 미리보기", monitor, monitor), "OBS 32 fullscreen preview must match");
             Check(NativeWindows.IsFullscreenProjector("obs64", "Fullscreen Projector (Program)", monitor, monitor), "fullscreen program projector must match");
@@ -80,7 +98,7 @@ class Tests
                 fake.Throw = false;
                 Check(Request("slideshow", "POST", BridgeServer.Origin, out body) == 204, "server must recover after exception");
             }
-            Console.WriteLine("PASS fullscreen OBS projector selection, editor/windowed/Chrome exclusions, PgDn toggle, cues, missing window, Win32 failure, HTTP checks, error recovery, shutdown");
+            Console.WriteLine("PASS hotkey capture/validation/save/load/clear, fullscreen projector selection, editor/Chrome exclusions, toggle/cues, failure recovery, HTTP checks, shutdown");
             return 0;
         } catch (Exception error) { Console.Error.WriteLine(error); return 1; }
     }

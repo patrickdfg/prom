@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -9,6 +10,85 @@ using System.Windows.Forms;
 
 namespace PromBridge
 {
+    public sealed class ToggleHotkey
+    {
+        public readonly uint Key, Modifiers;
+        public ToggleHotkey(uint key, uint modifiers) { Key = key; Modifiers = modifiers; }
+        public static ToggleHotkey FromKeys(Keys data)
+        {
+            Keys key = data & Keys.KeyCode;
+            if (key == Keys.None || key == Keys.Escape || key == Keys.F12 || key == Keys.LWin || key == Keys.RWin
+                || key == Keys.ShiftKey || key == Keys.ControlKey || key == Keys.Menu
+                || key == Keys.LShiftKey || key == Keys.RShiftKey || key == Keys.LControlKey || key == Keys.RControlKey
+                || key == Keys.LMenu || key == Keys.RMenu || (uint)key > 254) return null;
+            uint modifiers = 0;
+            if ((data & Keys.Alt) != 0) modifiers |= 1;
+            if ((data & Keys.Control) != 0) modifiers |= 2;
+            if ((data & Keys.Shift) != 0) modifiers |= 4;
+            return new ToggleHotkey((uint)key, modifiers);
+        }
+        public override string ToString()
+        {
+            return ((Modifiers & 2) != 0 ? "Ctrl + " : "") + ((Modifiers & 1) != 0 ? "Alt + " : "")
+                + ((Modifiers & 4) != 0 ? "Shift + " : "") + (Key == 0x22 ? "PgDn" : new KeysConverter().ConvertToString((Keys)Key));
+        }
+        public static ToggleHotkey Load(string path)
+        {
+            if (!File.Exists(path)) return null;
+            string[] parts = File.ReadAllText(path).Trim().Split(',');
+            uint key, modifiers;
+            if (parts.Length != 2 || !uint.TryParse(parts[0], out key) || key > 254 || !uint.TryParse(parts[1], out modifiers) || modifiers > 7) return null;
+            var data = (Keys)key | ((modifiers & 1) != 0 ? Keys.Alt : Keys.None)
+                | ((modifiers & 2) != 0 ? Keys.Control : Keys.None) | ((modifiers & 4) != 0 ? Keys.Shift : Keys.None);
+            return FromKeys(data);
+        }
+        public static void Save(string path, ToggleHotkey binding)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            File.WriteAllText(path, binding == null ? "" : binding.Key + "," + binding.Modifiers);
+        }
+    }
+    internal sealed class HotkeyDialog : Form
+    {
+        private readonly TextBox input = new TextBox();
+        private readonly Button save = new Button();
+        private readonly Label hint = new Label();
+        public ToggleHotkey Binding;
+        public HotkeyDialog(ToggleHotkey current)
+        {
+            Binding = current;
+            Text = "OBS 앞 / 뒤 전환 · 토글키 설정";
+            ClientSize = new Size(465, 200); FormBorderStyle = FormBorderStyle.FixedDialog;
+            MaximizeBox = false; MinimizeBox = false; ShowInTaskbar = false; StartPosition = FormStartPosition.CenterParent;
+            Font = new Font("맑은 고딕", 10); AutoScaleMode = AutoScaleMode.Font;
+            Controls.Add(new Label { Text = "사용할 키를 누르세요. Ctrl / Alt / Shift 조합도 가능합니다.", AutoSize = true, Location = new Point(20, 18) });
+            input.ReadOnly = true; input.Location = new Point(20, 53); input.Size = new Size(420, 30);
+            input.Text = current == null ? "여기를 선택하고 원하는 키를 누르세요" : current.ToString();
+            input.AccessibleName = "토글 단축키 입력"; Controls.Add(input);
+            hint.Text = "이 키를 누를 때마다 OBS 전체화면이 앞 / 뒤로 전환됩니다.";
+            hint.Location = new Point(20, 94); hint.Size = new Size(425, 40); Controls.Add(hint);
+            save.Text = "저장"; save.Location = new Point(178, 148); save.Size = new Size(80, 32);
+            save.Enabled = current != null; save.DialogResult = DialogResult.OK; Controls.Add(save);
+            var clear = new Button { Text = "설정 해제", Location = new Point(20, 148), Size = new Size(100, 32) };
+            clear.Click += delegate { Binding = null; DialogResult = DialogResult.OK; }; Controls.Add(clear);
+            var cancel = new Button { Text = "취소", Location = new Point(272, 148), Size = new Size(80, 32), DialogResult = DialogResult.Cancel };
+            Controls.Add(cancel); CancelButton = cancel;
+            Shown += delegate { input.Focus(); };
+        }
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (input.Focused) {
+                if ((keyData & Keys.KeyCode) == Keys.Escape) { DialogResult = DialogResult.Cancel; return true; }
+                ToggleHotkey candidate = ToggleHotkey.FromKeys(keyData);
+                if (candidate != null) {
+                    Binding = candidate; input.Text = candidate.ToString(); save.Enabled = true;
+                    hint.Text = "저장을 누르면 기존 토글키가 이 키로 바뀝니다.";
+                }
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+    }
     public sealed class PresentationWindow
     {
         public IntPtr Handle;
@@ -156,7 +236,7 @@ namespace PromBridge
             if (c.Request.HttpMethod == "OPTIONS") { r.StatusCode = 204; return; }
             if (c.Request.HttpMethod == "GET" && path == "health") {
                 PresentationWindow window = switcher.Inspect();
-                string body = "{\"ready\":true,\"app\":\"PromWindowBridge\",\"version\":\"1.1.0\",\"mode\":\"obs-projector-z-order\",\"obs\":" + (window != null ? "true" : "false") + ",\"front\":" + (window != null && window.InFront ? "true" : "false") + "}";
+                string body = "{\"ready\":true,\"app\":\"PromWindowBridge\",\"version\":\"1.3.0\",\"mode\":\"obs-projector-z-order\",\"obs\":" + (window != null ? "true" : "false") + ",\"front\":" + (window != null && window.InFront ? "true" : "false") + "}";
                 byte[] bytes = Encoding.UTF8.GetBytes(body);
                 r.ContentType = "application/json; charset=utf-8";
                 r.OutputStream.Write(bytes, 0, bytes.Length);
@@ -177,57 +257,65 @@ namespace PromBridge
     public sealed class BridgeForm : Form
     {
         private const int HotkeyId = 177;
+        private static readonly string ToggleHotkeyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PromWindowBridge", "toggle-hotkey.txt");
         [DllImport("user32.dll", SetLastError = true)] private static extern bool RegisterHotKey(IntPtr hwnd, int id, uint modifiers, uint key);
         [DllImport("user32.dll")] private static extern bool UnregisterHotKey(IntPtr hwnd, int id);
         private readonly Switcher switcher = new Switcher(new NativeWindows());
         private readonly Label status = new Label();
         private readonly Label target = new Label();
         private readonly Label hotkeyStatus = new Label();
+        private readonly Label toggleKeyStatus = new Label();
         private readonly CheckBox hotkey = new CheckBox();
         private readonly ListBox history = new ListBox();
         private readonly NotifyIcon tray = new NotifyIcon();
         private readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
         private BridgeServer server;
         private bool quitting, registered, updating;
+        private ToggleHotkey toggleBinding;
         private readonly EventWaitHandle showEvent;
         private RegisteredWaitHandle showWait;
         public BridgeForm(EventWaitHandle showEvent)
         {
             this.showEvent = showEvent;
             Text = "OBS 전체화면 전환";
-            ClientSize = new Size(570, 450);
-            MinimumSize = new Size(586, 489);
+            ClientSize = new Size(620, 520);
+            MinimumSize = new Size(636, 559);
             StartPosition = FormStartPosition.CenterScreen;
             Font = new Font("맑은 고딕", 10);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.FromArgb(245, 247, 251);
             Icon = SystemIcons.Application;
-            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(22), ColumnCount = 1, RowCount = 9 };
+            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(22), ColumnCount = 1, RowCount = 10 };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            for (int i = 0; i < 9; i++) layout.RowStyles.Add(new RowStyle(i == 6 ? SizeType.Percent : SizeType.Absolute, i == 6 ? 100 : (i == 0 ? 43 : i == 3 || i == 8 ? 46 : 30)));
+            for (int i = 0; i < 10; i++) layout.RowStyles.Add(new RowStyle(i == 7 ? SizeType.Percent : SizeType.Absolute, i == 7 ? 100 : (i == 0 ? 43 : i == 3 || i == 6 || i == 9 ? 46 : 30)));
             layout.Controls.Add(new Label { Text = "OBS 전체화면만 앞 / 뒤 전환", AutoSize = true, Font = new Font("맑은 고딕", 14, FontStyle.Bold), Dock = DockStyle.Fill }, 0, 0);
             status.Dock = DockStyle.Fill; layout.Controls.Add(status, 0, 1);
             target.Dock = DockStyle.Fill; target.AutoEllipsis = true; layout.Controls.Add(target, 0, 2);
             var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
-            AddButton(buttons, "PgDn처럼 전환", delegate { Switch("toggle", "버튼"); });
+            AddButton(buttons, "앞 / 뒤 전환", delegate { Switch("toggle", "버튼"); });
             AddButton(buttons, "전체화면 앞으로", delegate { Switch("obs", "버튼"); });
             AddButton(buttons, "전체화면 뒤로", delegate { Switch("slideshow", "버튼"); });
             layout.Controls.Add(buttons, 0, 3);
-            hotkey.Text = "PgDn 키로 OBS 전체화면 앞 / 뒤 전환"; hotkey.AutoSize = true;
+            hotkey.Text = "토글 단축키 사용"; hotkey.AutoSize = true;
             hotkey.CheckedChanged += delegate { if (!updating) UpdateHotkey(); };
             layout.Controls.Add(hotkey, 0, 4);
             hotkeyStatus.Dock = DockStyle.Fill; layout.Controls.Add(hotkeyStatus, 0, 5);
+            var backPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
+            AddButton(backPanel, "토글키 설정…", ConfigureToggleHotkey);
+            toggleKeyStatus.AutoSize = true; toggleKeyStatus.Margin = new Padding(10, 9, 0, 0);
+            backPanel.Controls.Add(toggleKeyStatus); layout.Controls.Add(backPanel, 0, 6);
             history.Dock = DockStyle.Fill; history.HorizontalScrollbar = true;
-            layout.Controls.Add(history, 0, 6);
-            layout.Controls.Add(new Label { Text = "창을 닫아도 트레이에서 계속 실행됩니다.", AutoSize = true, Dock = DockStyle.Fill }, 0, 7);
+            layout.Controls.Add(history, 0, 7);
+            layout.Controls.Add(new Label { Text = "창을 닫아도 트레이에서 계속 실행됩니다.", AutoSize = true, Dock = DockStyle.Fill }, 0, 8);
             var footer = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
             AddButton(footer, "트레이로 숨기기", delegate { Hide(); });
             AddButton(footer, "프로그램 종료", delegate { Quit(); });
-            layout.Controls.Add(footer, 0, 8);
+            layout.Controls.Add(footer, 0, 9);
             Controls.Add(layout);
             var menu = new ContextMenuStrip();
             menu.Items.Add("상태 창 열기", null, delegate { ShowStatus(); });
-            menu.Items.Add("앞 / 뒤 전환 (PgDn)", null, delegate { Switch("toggle", "트레이"); });
+            menu.Items.Add("앞 / 뒤 전환", null, delegate { Switch("toggle", "트레이"); });
+            menu.Items.Add("토글키 설정…", null, delegate { ShowStatus(); ConfigureToggleHotkey(); });
             menu.Items.Add("프로그램 종료", null, delegate { Quit(); });
             tray.Icon = Icon; tray.Text = "OBS 전체화면 전환"; tray.ContextMenuStrip = menu;
             tray.DoubleClick += delegate { ShowStatus(); };
@@ -251,24 +339,53 @@ namespace PromBridge
                 status.Text = "● 웹 연결 실패 · 기존 보조 프로그램을 종료한 뒤 다시 실행하세요."; status.ForeColor = Color.Firebrick;
                 Log("웹 연결 실패: " + error.Message);
             }
-            hotkey.Checked = true;
+            toggleBinding = new ToggleHotkey(0x22, 0);
+            try { if (File.Exists(ToggleHotkeyPath)) toggleBinding = ToggleHotkey.Load(ToggleHotkeyPath); }
+            catch (IOException error) { Log("단축키 설정 읽기 실패: " + error.Message); }
+            catch (UnauthorizedAccessException error) { Log("단축키 설정 읽기 실패: " + error.Message); }
+            updating = true; hotkey.Checked = toggleBinding != null; updating = false;
+            UpdateHotkey();
             RefreshTarget(); timer.Start();
             showWait = ThreadPool.RegisterWaitForSingleObject(showEvent, delegate { if (!IsDisposed) try { BeginInvoke((Action)ShowStatus); } catch (InvalidOperationException) { } }, null, Timeout.Infinite, false);
         }
-        private void UpdateHotkey()
+        private bool UpdateHotkey()
         {
             if (registered) { UnregisterHotKey(Handle, HotkeyId); registered = false; }
-            if (hotkey.Checked) {
-                registered = RegisterHotKey(Handle, HotkeyId, 0x4000, 0x22);
+            toggleKeyStatus.Text = toggleBinding == null ? "설정 안 됨" : toggleBinding.ToString();
+            if (hotkey.Checked && toggleBinding != null) {
+                registered = RegisterHotKey(Handle, HotkeyId, toggleBinding.Modifiers | 0x4000, toggleBinding.Key);
                 if (!registered) {
-                    updating = true; hotkey.Checked = false; updating = false;
-                    hotkeyStatus.Text = "PgDn을 등록하지 못했습니다. 다른 단축키 프로그램을 확인하세요.";
+                    hotkeyStatus.Text = toggleBinding + " 등록 실패 · 다른 단축키 프로그램을 확인하세요.";
                     hotkeyStatus.ForeColor = Color.Firebrick;
-                    return;
+                    return false;
                 }
             }
-            hotkeyStatus.Text = registered ? "PgDn 사용 중 · 원고 넘기기는 다른 키나 버튼을 사용하세요." : "PgDn 꺼짐 · 원래 키 동작을 사용합니다.";
+            hotkeyStatus.Text = registered ? toggleBinding + " 사용 중 · 누를 때마다 OBS 전체화면 앞 / 뒤 전환" : "토글 단축키 꺼짐 · 원래 키 동작을 사용합니다.";
             hotkeyStatus.ForeColor = Color.DimGray;
+            return true;
+        }
+        private void ConfigureToggleHotkey()
+        {
+            ToggleHotkey previous = toggleBinding;
+            bool wasEnabled = hotkey.Checked;
+            if (registered) { UnregisterHotKey(Handle, HotkeyId); registered = false; }
+            using (var dialog = new HotkeyDialog(previous)) {
+                if (dialog.ShowDialog(this) != DialogResult.OK) { UpdateHotkey(); return; }
+                toggleBinding = dialog.Binding;
+            }
+            updating = true; hotkey.Checked = toggleBinding != null; updating = false;
+            if (!UpdateHotkey()) {
+                toggleBinding = previous;
+                updating = true; hotkey.Checked = wasEnabled; updating = false;
+                UpdateHotkey();
+                MessageBox.Show(this, "다른 프로그램에서 사용 중인 키입니다. 이전 토글키를 유지합니다.", "단축키 등록 실패", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            try {
+                ToggleHotkey.Save(ToggleHotkeyPath, toggleBinding);
+                Log(toggleBinding == null ? "토글 단축키를 해제했습니다." : "토글 단축키 저장: " + toggleBinding);
+            } catch (IOException error) { Log("단축키는 적용됐지만 저장하지 못했습니다: " + error.Message); }
+              catch (UnauthorizedAccessException error) { Log("단축키는 적용됐지만 저장하지 못했습니다: " + error.Message); }
         }
         private void Switch(string action, string source)
         {
@@ -295,7 +412,7 @@ namespace PromBridge
         private void Quit() { quitting = true; Close(); }
         protected override void WndProc(ref Message m)
         {
-            if (m.Msg == 0x0312 && m.WParam.ToInt32() == HotkeyId) { Switch("toggle", "PgDn"); return; }
+            if (m.Msg == 0x0312 && m.WParam.ToInt32() == HotkeyId && registered) { Switch("toggle", toggleBinding.ToString()); return; }
             base.WndProc(ref m);
         }
         protected override void OnFormClosing(FormClosingEventArgs e)
