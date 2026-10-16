@@ -1,0 +1,21 @@
+<!doctype html><meta charset="utf-8"><title>PPT text fidelity regression</title><link rel="stylesheet" href="../style.css"><pre id="result">Running</pre><div id="preview" class="slide-host" style="width:960px;height:540px"></div>
+<script src="../vendor.js"></script><script src="../importers.js"></script><script src="../render.js"></script><script>
+(async()=>{const assert=(ok,msg)=>{if(!ok)throw Error(msg);},z=new JSZip(),a='http://schemas.openxmlformats.org/drawingml/2006/main',p='http://schemas.openxmlformats.org/presentationml/2006/main',r='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+const rel=(type,target)=>`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${r}/${type}" Target="${target}"/></Relationships>`;
+z.file('ppt/presentation.xml',`<p:presentation xmlns:p="${p}" xmlns:r="${r}"><p:sldIdLst><p:sldId id="256" r:id="rId1"/></p:sldIdLst><p:sldSz cx="9144000" cy="5143500"/></p:presentation>`);
+z.file('ppt/_rels/presentation.xml.rels',rel('slide','slides/slide1.xml'));
+z.file('ppt/slides/_rels/slide1.xml.rels',rel('slideLayout','../slideLayouts/slideLayout1.xml'));
+const shape=(body)=>`<p:sp><p:nvSpPr><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr>${body}</p:sp>`;
+z.file('ppt/slideLayouts/slideLayout1.xml',`<p:sldLayout xmlns:p="${p}" xmlns:a="${a}"><p:cSld><p:spTree>${shape('<p:spPr><a:xfrm><a:off x="95250" y="190500"/><a:ext cx="8572500" cy="1905000"/></a:xfrm></p:spPr><p:txBody><a:bodyPr anchor="ctr" lIns="95250"><a:normAutofit fontScale="80000"/></a:bodyPr><a:lstStyle><a:lvl1pPr algn="ctr"><a:lnSpc><a:spcPct val="120000"/></a:lnSpc><a:spcAft><a:spcPts val="600"/></a:spcAft><a:defRPr sz="3000" b="1" spc="150"><a:ea typeface="마루 부리OTF 굵은"/></a:defRPr></a:lvl1pPr></a:lstStyle></p:txBody>')}</p:spTree></p:cSld></p:sldLayout>`);
+z.file('ppt/slides/slide1.xml',`<p:sld xmlns:p="${p}" xmlns:a="${a}"><p:cSld><p:spTree>${shape('<p:spPr/><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr/></a:pPr><a:r><a:rPr b="0"/><a:t xml:space="preserve">  첫  문장 </a:t></a:r><a:br/><a:r><a:t>둘째 문장</a:t></a:r></a:p></p:txBody>')}</p:spTree></p:cSld></p:sld>`);
+const deck=await CaptionImport.deck(new File([await z.generateAsync({type:'blob'})],'fixture.pptx')),s=deck.slides[0],shapeText=s.shapes.find(s=>s.type==='text'),para=shapeText.paragraphs[0];
+assert(shapeText.x===10&&shapeText.y===20&&shapeText.w===900,'Inherited text position');assert(shapeText.anchor==='ctr'&&shapeText.padding[3]===10,'Inherited anchor/padding');
+assert(para.align==='center'&&para.lineSpacing.value===1.2&&para.spaceAfter.value===8,'Paragraph inheritance');
+assert(para.runs[0].text==='  첫  문장 '&&para.runs[1].text==='\n','Exact whitespace and soft line break');
+assert(para.runs[0].size===32&&para.runs[0].spacing===1.6,'Font scale and character spacing');assert(!para.runs[0].bold&&para.runs[2].bold,'Explicit false overrides inherited bold');
+CaptionRender.show(document.getElementById('preview'),s);await document.fonts.ready;
+assert(document.fonts.check('700 32px "PROM MaruBuri"'),'Bundled font loaded');
+const el=document.querySelector('.slide-text');assert(el.textContent==='  첫  문장 \n둘째 문장','Renderer preserves whitespace');assert(getComputedStyle(el.querySelector('span')).fontWeight==='700','Named bold font face retained');
+document.getElementById('result').textContent='PASS: position, inherited styles, explicit overrides, font scale, spacing, whitespace, line breaks, bundled bold font';
+})().catch(e=>{document.getElementById('result').textContent='FAIL: '+e.message;throw e;});
+</script>

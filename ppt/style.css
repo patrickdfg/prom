@@ -18,3 +18,8 @@ main{grid-template-columns:minmax(0,var(--script-width,36%)) 9px minmax(0,1fr);g
 .script-line.linked.current{color:#ffe6a5;background:#4b3c20;border-left-color:#ffd470}
 .script-line.linked .number{color:#d6b66c}
 @media(max-width:720px){#divider{display:none}main{display:flex}#slideList{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* Original NAVER Maru Buri faces, loaded from the official NAVER distribution on both windows. */
+@font-face{font-family:'PROM MaruBuri';src:url('https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Regular.woff2') format('woff2');font-weight:400;font-style:normal;font-display:block}
+@font-face{font-family:'PROM MaruBuri';src:url('https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Bold.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+.slide-text{font-family:'PROM MaruBuri',serif;font-synthesis:none;word-spacing:normal;letter-spacing:normal;text-transform:none}
+.slide-text>div{white-space:inherit;min-width:0}
