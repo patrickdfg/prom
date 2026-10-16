@@ -3,6 +3,11 @@
 let project={version:1,lines:[],slides:[],links:[],scriptName:'',deckName:''},ix=C.index([]),rows=[],cursor=0,line=0,selected=-1,live=-1,auto=true,output=null,channel=null,channelId='',lastOutputSeen=0;
 let listening=false,recognition=null,restart=null,retry=0,session=0,lastHit=0,carry='',greenTimer=null,saveTimer=null,busy=false,dbPromise;
 const status=s=>{$('status').textContent=s;};
+const fullscreenButton=$('controlFullscreen');
+function syncControlFullscreen(){const active=!!(document.fullscreenElement||document.webkitFullscreenElement);fullscreenButton.textContent=active?'전체화면 종료':'전체화면';fullscreenButton.setAttribute('aria-pressed',String(active));fullscreenButton.title=active?'조작화면 전체화면 종료 (Esc)':'조작화면 전체화면';}
+fullscreenButton.onclick=async()=>{try{if(document.fullscreenElement||document.webkitFullscreenElement){const exit=document.exitFullscreen||document.webkitExitFullscreen;if(exit)await exit.call(document);}else{const root=document.documentElement,enter=root.requestFullscreen||root.webkitRequestFullscreen;if(!enter){status('이 브라우저에서는 전체화면을 지원하지 않습니다. PC에서는 F11을 사용할 수 있습니다.');return;}await enter.call(root);}syncControlFullscreen();}catch{status('전체화면으로 전환하지 못했습니다. 버튼을 다시 누르거나 PC에서 F11을 사용하세요.');}};
+document.addEventListener('fullscreenchange',syncControlFullscreen);document.addEventListener('webkitfullscreenchange',syncControlFullscreen);
+
 function db(){return dbPromise||(dbPromise=new Promise((resolve,reject)=>{const r=indexedDB.open('prom-ppt-caption',1);r.onupgradeneeded=()=>r.result.createObjectStore('projects');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);}));}
 function save(){clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{try{const database=await db(),tx=database.transaction('projects','readwrite');tx.objectStore('projects').put(project,'last');tx.oncomplete=()=>{$('saveState').textContent='이 기기에 저장됨';};tx.onerror=()=>{$('saveState').textContent='저장 공간 부족 · 작업 저장 버튼으로 보관하세요';};}catch{$('saveState').textContent='자동 저장 불가 · 작업 저장 버튼으로 보관하세요';}},300);}
 function frame(){return {type:'frame',slide:project.slides[live]||null,index:live,green:'#00ff00'};}
