@@ -10,7 +10,7 @@ function show(host,slide,green='#00ff00'){
    for(const para of shape.paragraphs||[]){const p=document.createElement('div');p.style.textAlign=para.align||'left';for(const run of para.runs||[]){const span=document.createElement('span');span.textContent=run.text;Object.assign(span.style,{fontSize:(run.size||30)+'px',fontWeight:run.bold?'700':'400',fontStyle:run.italic?'italic':'normal',color:run.color||'#000',fontFamily:`"${String(run.font||'Malgun Gothic').replace(/["\\]/g,'')}", "Malgun Gothic", "Apple SD Gothic Neo", serif`});p.appendChild(span);}el.appendChild(p);}
   }canvas.appendChild(el);
  }
- const fit=()=>{const scale=Math.min(host.clientWidth/slide.width,host.clientHeight/slide.height);canvas.style.transform=`translate(-50%,-50%) scale(${scale})`;};fit();const observer=new ResizeObserver(fit);observer.observe(host);instances.set(host,observer);
+ const fit=()=>{const scale=Math.min(host.clientWidth/slide.width,host.clientHeight/slide.height);canvas.style.transform=host.dataset.fill==='screen'?`translate(-50%,-50%) scale(${host.clientWidth/slide.width},${host.clientHeight/slide.height})`:`translate(-50%,-50%) scale(${scale})`;};fit();const observer=new ResizeObserver(fit);observer.observe(host);instances.set(host,observer);
 }
 function release(host){instances.get(host)?.disconnect();for(const el of host.querySelectorAll('.slide-host'))instances.get(el)?.disconnect();}
 return {show,release};

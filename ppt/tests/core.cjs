@@ -9,3 +9,13 @@ const hit=C.locateSpeech('감사는 작은 일에서',ix.text,0);assert(hit);ass
 assert.equal(C.locateSpeech('네 그렇습니다',ix.text,0),null);
 const ix2=C.index(['하나님께 늘 감사하면서 살아갑시다.','그다음 내용을 이야기합니다.']);assert(C.locateSpeech('하나님께 늘 감사하면서 살아갑시다',ix2.text,0));
 console.log('PASS exact/gap/ambiguous/unlinked cues, speech advancement and adlib/short-phrase hold');
+
+const partialLines=['앞의 설명입니다. 자막이 나오는 부분입니다. 뒤의 설명입니다.'];
+const partialLinks=C.align(partialLines,[{text:'자막이 나오는 부분입니다.'}]);
+const split=C.segments(partialLines,partialLinks);
+assert.equal(split.length,3);
+assert.equal(split.map(r=>r.text).join(''),partialLines[0]);
+assert.equal(C.active(partialLinks,split[1].start),0);
+assert.equal(C.active(partialLinks,split[1].end),-1);
+assert.equal(split[2].start,partialLinks[0].end);
+console.log('PASS partial-line captions split at exact start/end without losing manuscript text');
