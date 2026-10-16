@@ -7,13 +7,22 @@ const all=(e,name)=>Array.from(e?.getElementsByTagNameNS('*',name)||[]);
 const direct=(e,name)=>children(e,name)[0];
 function xml(s){const d=new DOMParser().parseFromString(s,'application/xml');if(d.getElementsByTagName('parsererror').length)throw Error('파일 내부 XML을 읽지 못했습니다.');return d;}
 function resolve(base,target){if(target.startsWith('/'))return target.slice(1);const parts=base.split('/');parts.pop();for(const part of target.split('/')){if(part==='..')parts.pop();else if(part&&part!=='.')parts.push(part);}return parts.join('/');}
-async function manuscript(file){const buf=await file.arrayBuffer(),ext=file.name.split('.').pop().toLowerCase();let lines;
- if(ext==='hwp'){const parsed=await CaptionHwp(buf);lines=parsed.pages.map(p=>(p.num?p.num+' ':'')+p.runs.map(r=>r.t).join(''));}
- else if(ext==='hwpx'||ext==='docx'){const z=await JSZip.loadAsync(buf);const names=ext==='hwpx'?Object.keys(z.files).filter(n=>/^Contents\/section\d+\.xml$/.test(n)).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})):['word/document.xml'];lines=[];for(const n of names){const entry=z.file(n);if(!entry)continue;const d=xml(await entry.async('string'));for(const p of all(d,'p')){const texts=all(p,'t').map(t=>t.textContent);if(texts.length)lines.push(texts.join(''));}}}
- else if(ext==='txt')lines=new TextDecoder().decode(buf).split(/\r?\n/);
+async function manuscript(file){return (await manuscriptRich(file)).lines;}
+async function manuscriptRich(file){
+ const buf=await file.arrayBuffer(),ext=file.name.split('.').pop().toLowerCase();let paras=[];
+ if(ext==='hwp'){const parsed=await CaptionHwp(buf);paras=parsed.pages.map(p=>[...(p.num?[{text:p.num+' ',hex:'000000'}]:[]),...p.runs.map(r=>({text:r.t,hex:r.hex}))]);}
+ else if(ext==='hwpx'||ext==='docx'){
+  const z=await JSZip.loadAsync(buf),colors=new Map();
+  if(ext==='hwpx'){const head=z.file('Contents/header.xml');if(head)for(const c of all(xml(await head.async('string')),'charPr'))colors.set(c.getAttribute('id'),c.getAttribute('textColor')||'#000000');}
+  const names=ext==='hwpx'?Object.keys(z.files).filter(n=>/^Contents\/section\d+\.xml$/.test(n)).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})):['word/document.xml'];
+  for(const name of names){const f=z.file(name);if(!f)continue;const d=xml(await f.async('string'));for(const p of all(d,'p')){const runs=[];for(const r of children(p,ext==='hwpx'?'run':'r')){const color=ext==='hwpx'?colors.get(r.getAttribute('charPrIDRef')):first(r,'color')?.getAttributeNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main','val');let text='';for(const t of all(r,'t'))text+=t.textContent;if(text)runs.push({text,hex:(color||'000000').replace('#','').toUpperCase()});}if(runs.length)paras.push(runs);}}
+ }else if(ext==='txt')paras=new TextDecoder().decode(buf).split(/\r?\n/).map(text=>[{text,hex:'000000'}]);
  else throw Error('원고는 HWP, HWPX, DOCX, TXT를 선택하세요.');
- lines=lines.flatMap(s=>s.split(/\r?\n/)).map(s=>s.trim()).filter(Boolean);if(!lines.length)throw Error('원고 본문을 찾지 못했습니다.');return lines;
+ const richLines=[];
+ for(const para of paras){const chars=[];for(const r of para)for(const ch of r.text)chars.push({ch,hex:r.hex});let row=[];const flush=()=>{while(row.length&&/\s/.test(row[0].ch))row.shift();while(row.length&&/\s/.test(row[row.length-1].ch))row.pop();if(row.length){const runs=[];for(const c of row){const last=runs[runs.length-1];if(last?.hex===c.hex)last.text+=c.ch;else runs.push({text:c.ch,hex:c.hex});}richLines.push({text:row.map(c=>c.ch).join(''),runs});}row=[];};for(const c of chars){if(c.ch==='\n'||c.ch==='\r')flush();else row.push(c);}flush();}
+ if(!richLines.length)throw Error('원고 본문을 찾지 못했습니다.');return {lines:richLines.map(r=>r.text),richLines};
 }
+
 async function deck(file){if(!/\.pptx$/i.test(file.name))throw Error('PPTX 파일을 선택하세요. 구형 PPT는 PowerPoint에서 PPTX로 저장해 주세요.');const z=await JSZip.loadAsync(await file.arrayBuffer()),cache=new Map(),media=new Map(),warnings=new Set();
  async function doc(path){if(!cache.has(path)){const f=z.file(path);cache.set(path,f?xml(await f.async('string')):null);}return cache.get(path);}
  async function rels(path){const slash=path.lastIndexOf('/'),d=await doc(path.slice(0,slash+1)+'_rels/'+path.slice(slash+1)+'.rels');return new Map(all(d,'Relationship').filter(r=>r.getAttribute('TargetMode')!=='External').map(r=>[r.getAttribute('Id'),{path:resolve(path,r.getAttribute('Target')),type:r.getAttribute('Type')} ]));}
@@ -70,7 +79,8 @@ async function deck(file){if(!/\.pptx$/i.test(file.name))throw Error('PPTX 파�
   if(first(slide,'graphicFrame')||first(slide,'oleObj')||first(slide,'videoFile'))warnings.add('표·차트·동영상은 원본 이미지로 바꿔 넣으면 더 정확합니다.');
   slides.push({renderVersion:2,text:text.join('\n').trim(),background,width,height,shapes});
  }
- return {slides,warnings:[...warnings]};
+ let cues=null;const cuesFile=z.file('prom/cues.json');if(cuesFile){try{cues=JSON.parse(await cuesFile.async('string'));if(cues.version===1&&cues.editors?.length===slides.length)cues.editors.forEach((e,i)=>{slides[i].uid=e.uid;slides[i].editor=e.editor;slides[i].bodyIndex=e.bodyIndex;});}catch{warnings.add('저장된 원고 연결 정보는 읽지 못했습니다.');}}
+ return {slides,warnings:[...warnings],cues};
 }
-return {manuscript,deck};
+return {manuscript,manuscriptRich,deck};
 })();
