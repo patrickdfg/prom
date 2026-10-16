@@ -25,26 +25,26 @@
  $('repeatTTS').onchange=()=>{if($('repeatTTS').checked&&!repeatRange()){$('repeatTTS').checked=false;toast('반복 시작·끝 쪽을 확인하세요.');}};
  $('playRepeat').onclick=()=>{const range=repeatRange();if(!range){toast('반복 시작·끝 쪽을 확인하세요.');return;}if(!P.slice(range[0],range[1]+1).some((_,i)=>pageSay(i+range[0]).trim())){toast('읽을 본문이 없습니다.');return;}go(range[0],true);dialog.close();tPlay();};
  function ttsPage(i){if(!$('repeatTTS').checked)return i;const range=repeatRange();if(!range){$('repeatTTS').checked=false;return i;}let at=i>range[1]||i<range[0]?range[0]:i;for(let k=0;k<=range[1]-range[0];k++){if(/[가-힣A-Za-z0-9]/.test(pageSay(at)))return at;at=at>=range[1]?range[0]:at+1;}$('repeatTTS').checked=false;return i;}
- function indexVoice(){const key=JSON.stringify(P);if(key===voiceKey)return;voiceKey=key;voicePages=P.map((pg,pi)=>{let text='',map=[];pg.forEach((runs,li)=>{const raw=runs.filter(r=>r.c!=='r'&&r.c!=='n').map(r=>r.t).join('');const result=PromVoiceLab.mapped(raw,lineRange[pi][li][0]);text+=result.text;map.push(...result.map);});return {text,map};});pending=null;lastSample='';}
+ function indexVoice(){const key=JSON.stringify(P);if(key===voiceKey)return;voiceKey=key;voicePages=P.map((pg,pi)=>{let text='',map=[];pg.forEach((runs,li)=>{const raw=videoSpeech[pi]?.[li]??PromVideoCues.speech(runs);const result=PromVoiceLab.mapped(raw,lineRange[pi][li][0]);text+=result.text;map.push(...result.map);});return {text,map};});pending=null;lastSample='';}
  const originalHeard=onHeard;
  onHeard=function(text){
    if(!$('voiceLab').checked)return originalHeard(text);
    indexVoice();if(lastPage!==page){pending=null;lastSample='';lastPage=page;}
    const sample=PromVoiceLab.mapped(heardCarry+text).text.slice(-22);$('heard').textContent=text.slice(-40);
    if(sample===lastSample)return;lastSample=sample;
-   const current=voicePages[page];if(!current)return;
+   const readingPage=pageOf(cursor),current=voicePages[readingPage];if(!current)return;
    // 다음 장의 첫 본문 줄까지만 살펴본다. 임의의 먼 장으로는 이동하지 않는다.
-   const next=P[page+1]?.findIndex(r=>r.some(x=>x.c!=='r'&&x.c!=='n'&&normStr(x.t)));
-   const range=next>=0?lineRange[page+1]?.[next]:null;
-   const nextData=voicePages[page+1];const n=range&&nextData?nextData.map.filter(p=>p<=range[1]).length:0;
+   let nextPage=readingPage+1,next=-1;
+   while(nextPage<P.length){next=P[nextPage].findIndex((runs,li)=>lineRange[nextPage]?.[li]?.[1]>lineRange[nextPage]?.[li]?.[0]);if(next>=0)break;nextPage++;}
+   const range=next>=0?lineRange[nextPage]?.[next]:null;
+   const nextData=voicePages[nextPage];const n=range&&nextData?nextData.map.filter(p=>p<=range[1]).length:0;
    const target=current.text+(nextData?.text.slice(0,n)||''),map=current.map.concat(nextData?.map.slice(0,n)||[]);
-   const hit=PromVoiceLab.match(sample,target,map,Math.max(cursor,pStart[page]));
+   const hit=PromVoiceLab.match(sample,target,map,cursor);
    if(!hit){cap('원고 밖 발화 또는 인식 차이 · 원고가 이어지면 다시 따라갑니다.');return;}
    const far=hit.pos-cursor>45;
    if(far){const now=Date.now();if(!pending||now-pending.time>12000||hit.pos<pending.pos+5||hit.pos>pending.pos+70){pending={pos:hit.pos,time:now};cap('복귀 위치 확인 중 · 이어서 읽어 주세요.');return;}}
-   pending=null;cursor=Math.max(cursor,hit.pos);let targetPage=page;
-   if(range&&cursor>pStart[page+1]){targetPage=page+1;cursor=Math.min(cursor,pEnd[targetPage]-1);}
-   else if(cursor>=Math.max(pEnd[page]-Number($('lead').value),lastLine[page]+1)&&page<P.length-1)targetPage=page+1;
+   pending=null;cursor=Math.max(cursor,Math.min(hit.pos,norm.length));let targetPage=pageOf(cursor);
+   if(cursor>=Math.max(pEnd[targetPage]-Number($('lead').value),lastLine[targetPage]+1)&&targetPage<P.length-1)targetPage++;
    cap('실험실 · 원고 위치 확인');if(targetPage!==page)go(targetPage);else render();
  };
  const originalMic=startMic;

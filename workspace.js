@@ -320,15 +320,12 @@
       showNote();
       [...$('lines').children].forEach((el,i)=>{const r=lineRange[page]?.[i];el.classList.toggle('current',!editing && !!r && r[1]>r[0] && cursor>=r[0] && cursor<r[1]);});
       updateLocalScroll();publish(); scheduleSave();
-      // 시작은 슬라이드쇼를 뒤로, 끝은 앞으로 보낸다. /obs 경로는 호환 유지.
+      // 읽은 위치가 조작 표식에 도달할 때만 OBS 전체화면을 전환한다.
       // 조작창은 그대로 유지하며 Windows 보조 프로그램이 없으면 기능만 비활성.
       if(P.length && !editing){
-        const cueText=textOf(P[page]);
-        // 영상 이름은 한글·숫자·공백만 허용하고, 시작/끝이 괄호 끝에 있어야 한다.
-        // 이름 없는 기존 (영상)/(영상끝) 표식도 지원한다.
-        const hits=[...cueText.matchAll(/\([ \t]*영상(?:[가-힣ㄱ-ㅎㅏ-ㅣ0-9 \t]*(시작|끝))?[ \t]*\)/g)];
-        if(hits.length){
-          const next=hits[hits.length-1][1]==='끝'?'slideshow':'obs';
+        const cue=PromVideoCues.active(videoCues,cursor);
+        const next=cue?.action||(videoCues.length&&window.__promObsCue==='obs'?'slideshow':null);
+        if(next){
           window.__promObsDesired=next;
           if(window.__promObsCue!==next && !window.__promObsPending && Date.now()>=(window.__promObsRetryAt||0)){
             window.__promObsPending=next;

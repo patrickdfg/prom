@@ -3,7 +3,7 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
 const html=fs.readFileSync('index.html','utf8');
 const extract=(a,b)=>html.slice(html.indexOf(a),html.indexOf(b));
 const nodes={labNextLine:{checked:true},heard:{},lead:{value:'3'}};
-const c={$:id=>nodes[id],editing:false,heardCarry:'',lastTail:'',cap(){},render(){},go(p){vm.runInContext('page='+p,c)}};
+const c={PromVideoCues:require('../video-cues.js'),$:id=>nodes[id],editing:false,heardCarry:'',lastTail:'',cap(){},render(){},go(p){vm.runInContext('page='+p,c)}};
 vm.createContext(c);
 vm.runInContext(extract('const keep=','/* ---------- 화면 ---------- */')+'\nlet page=0,cursor=0;\n'+extract('function nextCueLine(){','function renderCue(){')+extract('function onHeard(text){','// 마이크를 한 번 열어'),c);
 const run=s=>vm.runInContext(s,c);

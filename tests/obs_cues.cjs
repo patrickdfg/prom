@@ -3,6 +3,7 @@ const {readFileSync}=require('node:fs');
 const vm=require('node:vm');
 const assert=require('node:assert/strict');
 const source=readFileSync('workspace.js','utf8');
+const V=require('../video-cues.js');
 const start=source.indexOf('      if(P.length && !editing){');
 assert.notEqual(start,-1);
 const end=source.indexOf('\n    },',start);
@@ -10,11 +11,11 @@ assert.notEqual(end,-1);
 const dispatch=source.slice(start,end);
 function setup(){
   const requests=[],warnings=[];
-  const c={P:[],page:0,editing:false,window:{},textOf:pg=>pg,AbortSignal,
+  const c={P:[],videoCues:[],cursor:0,PromVideoCues:V,page:0,editing:false,window:{},textOf:pg=>pg,AbortSignal,
     toast:message=>warnings.push(message),Date:{now:()=>10000},
     fetch:(url,options)=>{requests.push({url,options});return Promise.resolve({ok:true});}};
   vm.createContext(c);
-  return {c,requests,warnings,async render(text){c.P=[text];vm.runInContext(dispatch,c);await new Promise(setImmediate);}};
+  return {c,requests,warnings,async render(text,position){c.P=[[[{t:text,c:'k'}]]];const data=V.build(c.P);c.videoCues=data.cues;c.cursor=position??data.text.length;vm.runInContext(dispatch,c);await new Promise(setImmediate);}};
 }
 (async()=>{
 const valid=[
@@ -45,6 +46,14 @@ const invalid=[
 for(const text of invalid){
   const t=setup();await t.render(text);assert.equal(t.requests.length,0,text);
 }
+const positional=setup(),body='영상 전 문장입니다.(영상1 시작)영상의 첫 대사와 마지막 대사입니다.(영상1 끝)설교가 계속됩니다.';
+const indexed=V.build([[[{t:body,c:'k'}]]]);
+await positional.render(body,0);assert.equal(positional.requests.length,0,'future markers on the same page must not run');
+await positional.render(body,indexed.cues[0].position);assert.equal(positional.requests.length,1);assert(positional.requests[0].url.endsWith('/obs'));
+await positional.render(body,indexed.cues[1].position-1);assert.equal(positional.requests.length,1,'last video character must complete before end');
+await positional.render(body,indexed.cues[1].position);assert.equal(positional.requests.length,2);assert(positional.requests[1].url.endsWith('/slideshow'));
+await positional.render(body,indexed.cues[1].position);assert.equal(positional.requests.length,2);
+await positional.render(body,0);assert.equal(positional.requests.length,2,'seeking before the start leaves slides visible');
 const t=setup();
 await t.render('(영상1 시작)');await t.render('(영상1 시작)');
 await t.render('일반 본문');await t.render('(영상 찬양 시작)');
