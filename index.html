@@ -120,7 +120,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
-<link rel="stylesheet" href="workspace.css?v=20261017-local-scroll1">
+<link rel="stylesheet" href="workspace.css?v=20261017-obs-help1">
 <link rel="stylesheet" href="extras.css?v=20261016-5">
 <style>.app-switch{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;flex-shrink:0;padding:8px 12px;border:1px solid #506a88;border-radius:8px;background:#20344c;color:#d6f5ec!important;font:600 12px/1.4 sans-serif;text-decoration:none;pointer-events:auto}.app-switch:hover{background:#2b4963}.app-switch:focus-visible{outline:3px solid #5de2ca;outline-offset:2px}</style>
 </head>
@@ -202,14 +202,25 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <span id="autosaveState" role="status">기기에 저장됨</span>
     <div id="moreTools" hidden>
       <button id="set">마이크 설정</button>
-      <button id="obsFullscreenSetup" type="button" title="OBS 전체화면 전환 프로그램 다운로드 · Windows">OBS풀스크린설정</button>
-      <a id="obsFullscreenDownload" href="downloads/OBSFullscreenBridge-1.3.0.exe" download="OBSFullscreenBridge.exe" hidden>OBS 전체화면 전환 프로그램 다운로드</a>
+      <button id="obsFullscreenSetup" type="button" title="OBS 전체화면 전환 용도·사용법·다운로드">OBS풀스크린설명</button>
       <label>넘김 <select id="lead"><option value="6">빠르게</option><option value="3" selected>보통</option><option value="1">늦게</option></select></label>
       <label>강조 <select id="focusColor"><option value="#ffff00">노랑</option><option value="#b6f36a">연두</option></select></label>
 
       <span id="heard"></span>
     </div>
   </div>
+  <dialog id="obsFullscreenDialog" class="tool-dialog" aria-labelledby="obsFullscreenTitle">
+    <div class="dialog-head"><h2 id="obsFullscreenTitle">OBS 풀스크린 전환 안내</h2><button type="button" data-close="obsFullscreenDialog" aria-label="OBS 안내 닫기">닫기</button></div>
+    <p><strong>어떤 용도인가요?</strong><br>같은 모니터에 띄운 OBS 전체화면 프로젝터와 슬라이드쇼를 번갈아 보여 주는 Windows용 보조 프로그램입니다. OBS 전체화면을 앞으로 가져오거나 뒤로 보내며, 조작창은 그대로 유지합니다.</p>
+    <ol class="obs-instructions">
+      <li>아래 버튼으로 프로그램을 내려받고 <strong>OBSFullscreenBridge.exe</strong>를 실행하세요. 설치나 PowerShell 실행은 필요 없습니다. 기존 PowerShell 보조 프로그램이 실행 중이면 먼저 종료하세요.</li>
+      <li>OBS에서 <strong>전체화면 프로젝터</strong>(프로그램 또는 미리보기)를 하나 열고, 슬라이드쇼와 같은 모니터에 띄우세요. OBS 편집창이나 작은 프로젝터 창은 전환 대상이 아닙니다.</li>
+      <li><strong>PgDn</strong>을 누를 때마다 OBS 전체화면이 앞/뒤로 전환됩니다. 뒤로 보내면 그 아래의 슬라이드쇼가 보입니다. 보조 프로그램의 <strong>토글키 설정…</strong>에서 다른 키로 바꿀 수 있습니다.</li>
+      <li>원고에 <strong>(영상1 시작)</strong>을 넣으면 OBS 전체화면을 앞으로, <strong>(영상1 끝)</strong>을 넣으면 뒤로 보냅니다. 영상 이름은 바꿀 수 있으며, 기존 <strong>(영상)</strong>·<strong>(영상끝)</strong>도 사용할 수 있습니다.</li>
+    </ol>
+    <p>사용 중에는 보조 프로그램을 켜 두세요. 창의 X는 트레이로 숨기기이며, 다시 보려면 시계 옆 아이콘을 두 번 클릭하세요. 지정한 토글키는 화면 전환에 사용되므로 원고 넘기기는 다른 키나 버튼을 사용하세요.</p>
+    <a id="obsFullscreenDownload" class="btn obs-download" href="downloads/OBSFullscreenBridge-1.3.0.exe" download="OBSFullscreenBridge.exe">Windows 프로그램 다운로드 · v1.3</a>
+  </dialog>
   <dialog id="searchDialog" class="tool-dialog" aria-labelledby="searchTitle"><div class="dialog-head"><h2 id="searchTitle">검색</h2><button data-close="searchDialog" aria-label="검색 닫기">닫기</button></div>
     <label class="sr-only" for="searchQuery">원고에서 찾을 말</label><input type="search" id="searchQuery" placeholder="성구나 문장을 입력하세요"><p id="searchCount" role="status"></p><div id="searchResults"></div>
   </dialog>
@@ -1867,7 +1878,7 @@ if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 <script src="slide-layout.js?v=20261016-6"></script>
 <script src="smooth-scroll.js?v=20261017-1"></script>
 <script src="scroll-view.js?v=20261017-local1"></script>
-<script src="workspace.js?v=20261017-local-scroll1"></script>
+<script src="workspace.js?v=20261017-obs-help1"></script>
 <script src="overview.js?v=20261017-local1"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
 <script src="extras.js?v=20261016-4"></script>

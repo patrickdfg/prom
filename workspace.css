@@ -175,3 +175,7 @@ button:hover{filter:brightness(1.12)}
 #view.local-scroll #page,#view.local-scroll #noteLayer,#view.local-scroll #speedLayer{display:none!important}
 #view.solo-presentation.controls-open #bar,#view.solo-presentation.controls-open #statusbar{display:flex!important;opacity:1!important;pointer-events:auto!important}
 #view.solo-presentation #localScroll .scroll-current{box-shadow:none}
+
+.obs-instructions{padding-left:24px;font-size:14px;line-height:1.8;color:var(--muted)}
+.obs-instructions li{margin:12px 0}
+.obs-download{display:block;position:sticky;bottom:0;text-decoration:none;text-align:center;margin-top:16px;box-shadow:0 -8px 18px #161e2a}
