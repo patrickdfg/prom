@@ -30,7 +30,7 @@ function Find-Window([string]$kind) {
     [uint32]$pidOfWindow=0
     [void][PromWindow]::GetWindowThreadProcessId($hwnd,[ref]$pidOfWindow)
     try{$proc=(Get-Process -Id $pidOfWindow -ErrorAction Stop).ProcessName}catch{return $true}
-    if($kind -eq 'obs' -and $proc -eq 'obs64' -and $title -match '(?i)(fullscreen projector|full.screen projector|전체.?화면.?프로젝터|전체.?화면.*프로젝터)'){
+    if($kind -eq 'obs' -and $proc -eq 'obs64' -and $title -match '(?i)(fullscreen projector|full.screen projector|projector.*program|전체.?화면.?프로젝터|전체.?화면.*프로젝터|프로젝터.*프로그램)'){
       [void]$script:matches.Add($hwnd)
     }
     if($kind -eq 'slideshow' -and $proc -in @('chrome','msedge') -and $title -match '슬라이드쇼'){
