@@ -275,7 +275,7 @@
       showNote();
       [...$('lines').children].forEach((el,i)=>{const r=lineRange[page]?.[i];el.classList.toggle('current',!editing && !!r && r[1]>r[0] && cursor>=r[0] && cursor<r[1]);});
       publish(); scheduleSave();
-      // 말씀 원고의 현재 쪽에 있는 제어 표식으로 OBS 전체화면/슬라이드쇼를 전환.
+      // 시작은 슬라이드쇼를 뒤로, 끝은 앞으로 보낸다. /obs 경로는 호환 유지.
       // 조작창은 그대로 유지하며 Windows 보조 프로그램이 없으면 기능만 비활성.
       if(P.length && !editing){
         const cueText=textOf(P[page]);
@@ -294,7 +294,7 @@
               window.__promObsRetryAt=Date.now()+3000;
               if(window.__promObsWarned!==next){
                 window.__promObsWarned=next;
-                toast('창 전환 실패: 전환 보조 프로그램과 OBS 전체화면 프로젝터·슬라이드쇼 창을 확인하세요.',6000);
+                toast('창 전환 실패: 전환 보조 프로그램과 슬라이드쇼 창을 확인하세요.',6000);
               }
             }).finally(()=>{
               window.__promObsPending=null;
