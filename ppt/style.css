@@ -28,3 +28,24 @@ main{grid-template-columns:minmax(0,var(--script-width,36%)) 9px minmax(0,1fr);g
 .slide-text-frame{position:relative;flex:0 0 auto;width:100%;min-height:0}
 .slide-text-content{display:flow-root;transform-origin:top left;white-space:inherit}
 .slide-text-content>div{white-space:inherit;min-width:0}
+
+/* PROM-style multi-slide workspace. */
+.overview-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:0 18px 12px;border-bottom:1px solid #29394e}
+.overview-toolbar button{font-size:12px;padding:7px 10px}.view-buttons{display:flex;gap:4px}.view-buttons [aria-pressed=true]{background:#335b65;border-color:#64d9c0;color:#fff}
+.overview-toolbar label{display:flex;align-items:center;gap:7px;font-size:12px;margin-left:auto}.overview-toolbar input{width:105px;accent-color:#64d9c0}.overview-toolbar output{min-width:4ch}
+#slideList{grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--card-width,280px)),1fr));gap:16px;padding:4px 18px 20px;align-content:start;align-items:start;overscroll-behavior:contain}
+#slideList[hidden],.preview-trio[hidden],#mappingSettings[hidden]{display:none!important}
+.slide-card{padding:8px;border-radius:9px}.slide-card.live{border-color:#ffbb77;box-shadow:0 0 0 2px #ffbb77}.card-info{align-items:center;font-size:11px;flex-wrap:wrap}.card-info strong{margin-right:auto}.card-live{display:none;background:#ffbb77;color:#34200c;border-radius:4px;padding:2px 5px;font-weight:700}.slide-card.live .card-live{display:inline-block}
+.mapping-actions{display:flex;gap:6px}.mapping{flex-shrink:0}.mapping #mappingSettings{max-height:24vh;overflow:auto}
+.single-view .preview-trio{display:block;flex:1;min-height:0;overflow:auto;padding:12px 18px}.single-view .preview-trio>section:not(.current-preview){display:none}.single-view .link-summary{flex-shrink:0}
+
+/* Full-height split: controller on the left, slides from the top on the right. */
+main{--script-width:50%;grid-template-columns:minmax(0,var(--script-width)) 9px minmax(0,1fr)}
+.control-pane{display:flex;flex-direction:column;min-width:0;min-height:0;background:#111a25;overflow:hidden}.control-pane .manuscript-pane{flex:1;min-height:0}
+.control-pane header{padding:12px;gap:10px;flex-wrap:wrap}.control-pane header h1{font-size:17px}.control-pane header p{display:none}.control-pane #connection{font-size:10px}.control-pane #openOutput{padding:8px 10px;font-size:12px}
+.control-pane .imports,.control-pane .transport{padding:8px 12px;gap:6px;flex-wrap:wrap}.control-pane .imports button,.control-pane .transport button{font-size:12px;padding:7px 9px}.control-pane .file-button{max-width:calc(50% - 4px);padding:7px 9px}.control-pane .file-button small{max-width:170px}.control-pane .transport label{font-size:12px}.control-pane .follow{margin-left:0}.control-pane #status{padding:7px 12px}.control-pane #help{padding:10px 12px;max-height:30vh;overflow:auto;flex-shrink:0}
+.slides-pane>.pane-heading{padding:12px 14px}.overview-toolbar{padding:0 14px 10px;gap:7px}.overview-toolbar label{gap:4px}.overview-toolbar input[type=range]{width:90px}.overview-toolbar #cardZoomNumber{width:56px;background:#142235;color:#e7edf5;border:1px solid #435872;border-radius:5px;padding:5px;font-size:12px}
+#slideList{grid-template-columns:repeat(var(--card-columns,3),minmax(0,1fr))}.card-info{min-height:19px}.card-text{line-height:15px}.control-pane .pane-heading{flex-wrap:wrap}.mapping{padding:8px 12px}
+@media(max-width:720px){body{height:auto}main{display:flex;flex-direction:column}.control-pane{min-height:75vh;overflow:visible}.control-pane .manuscript-pane{height:45vh;flex:none}.slides-pane{height:100dvh}.control-pane header p{display:none}}
+
+#slideList{grid-template-columns:repeat(var(--card-columns,3),minmax(0,var(--card-width,1fr)));justify-content:center}
