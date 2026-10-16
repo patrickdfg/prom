@@ -53,16 +53,22 @@
   let localScroll=false;
   const scrollHost=document.createElement('div');scrollHost.id='localScroll';scrollHost.className='scroll-host';scrollHost.hidden=true;scrollHost.setAttribute('aria-label','현재 창 스크롤 슬라이드쇼');$('stage').appendChild(scrollHost);
   const localRenderer=new PromScrollView(scrollHost);
+  const scrollTextTools=document.createElement('span');scrollTextTools.id='scrollTextTools';scrollTextTools.className='control-group';scrollTextTools.hidden=true;scrollTextTools.setAttribute('role','group');scrollTextTools.setAttribute('aria-label','스크롤 글자 크기');
+  scrollTextTools.innerHTML='<button type="button" id="scrollTextSmaller" aria-label="스크롤 글자 줄이기">−</button><button type="button" id="scrollTextReset" title="기본 글자 크기로 복원" aria-label="스크롤 글자 기본 크기로">100%</button><button type="button" id="scrollTextLarger" aria-label="스크롤 글자 키우기">＋</button>';
+  $('viewScroll').parentElement.after(scrollTextTools);
+  function syncScrollText(){const value=PromScrollView.getScale();scrollTextTools.hidden=!localScroll;$('scrollTextReset').textContent=value+'%';$('scrollTextSmaller').disabled=value<=60;$('scrollTextLarger').disabled=value>=180;}
+  for(const [id,delta]of [['scrollTextSmaller',-10],['scrollTextReset',0],['scrollTextLarger',10]])$(id).onclick=()=>{PromScrollView.setScale(delta?PromScrollView.getScale()+delta:100);syncScrollText();render();};
+  addEventListener('storage',e=>{if(e.key==='promScrollTextScale'){syncScrollText();render();}});
   function setLocalScroll(value){
     if(value){if(editing)endEdit();finishNote();}
-    localScroll=value;$('view').classList.toggle('local-scroll',value);scrollHost.hidden=!value;
+    localScroll=value;syncScrollText();$('view').classList.toggle('local-scroll',value);scrollHost.hidden=!value;
     $('viewScroll').setAttribute('aria-pressed',String(value));
     if(value){$('viewSingle').setAttribute('aria-pressed','false');$('viewMultiple').setAttribute('aria-pressed','false');}
     else window.PromSmoothScroll?.cancel(scrollHost);
     render();showBar();
   }
   function updateLocalScroll(){
-    if(!localScroll)return;
+    syncScrollText();if(!localScroll)return;
     const data={...payload(),document:P,ranges:lineRange};
     scrollHost.style.backgroundColor=data.dark?'#000':'#fff';
     scrollHost.style.backgroundImage=data.dark?'none':$('page').style.backgroundImage;

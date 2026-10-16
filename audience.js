@@ -12,11 +12,18 @@
     display.style.fontSize=metrics.font+'px';
     display.querySelectorAll('.ln>span').forEach(s=>{s.style.transform='';const w=s.scrollWidth,max=s.parentElement.clientWidth;if(w>max)s.style.transform=`scale(${max/w})`;});
   }
+  const zoomTools=document.getElementById('scrollTextTools');let zoomTimer;
+  function zoomLabels(){const value=PromScrollView.getScale();document.getElementById('scrollTextReset').textContent=value+'%';document.getElementById('scrollTextSmaller').disabled=value<=60;document.getElementById('scrollTextLarger').disabled=value>=180;}
+  for(const [id,delta]of [['scrollTextSmaller',-10],['scrollTextReset',0],['scrollTextLarger',10]])document.getElementById(id).onclick=()=>{PromScrollView.setScale(delta?PromScrollView.getScale()+delta:100);zoomLabels();fit();};
+  addEventListener('storage',e=>{if(e.key==='promScrollTextScale'){zoomLabels();fit();}});
+  addEventListener('mousemove',e=>{if(zoomTools.hidden)return;clearTimeout(zoomTimer);if(e.clientY>=innerHeight-60||zoomTools.contains(e.target))document.body.classList.add('zoom-open');else zoomTimer=setTimeout(()=>document.body.classList.remove('zoom-open'),900);});
+  addEventListener('pointerdown',e=>{if(!zoomTools.hidden&&e.clientY>=innerHeight-60)document.body.classList.add('zoom-open');});
+  zoomTools.addEventListener('focusin',()=>document.body.classList.add('zoom-open'));
   const receive=d=>{
     if(d?.type==='heartbeat'){lastSeen=Date.now();if(current)document.body.classList.add('connected');return;}
     if(d?.type!=='frame' || !Array.isArray(d.pages))return;current=d;lastSeen=Date.now();
     document.body.classList.add('connected');
-    const extra=d.extra||{};
+    const extra=d.extra||{};zoomTools.hidden=!extra.continuous;zoomLabels();
     document.getElementById('paper').style.transform=`scale(${extra.mirrorX?-1:1},${extra.mirrorY?-1:1})`;
     const notice=document.getElementById('stageNotice');notice.textContent=typeof extra.message==='string'?extra.message.slice(0,140):'';notice.hidden=!notice.textContent;
     display.classList.toggle('scroll-host',!!extra.continuous);

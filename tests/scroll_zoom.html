@@ -1,0 +1,6 @@
+<!doctype html><html lang="ko"><meta charset="utf-8"><title>별도 스크롤 글자 크기 검증</title><button id="open">별도 화면 검증</button><p id="status">준비</p><script>
+const id=crypto.randomUUID(),channel=new BroadcastChannel('prom-display-'+id),data={type:'frame',extra:{continuous:true},lines:7,document:[Array.from({length:14},(_,i)=>[{c:'k',t:'글자 크기 확인 '+(i+1)}])],ranges:[Array.from({length:14},(_,i)=>[i*10,i*10+10])],pages:[],page:0,total:1,cursor:20,dark:true,dim:true};
+channel.onmessage=e=>{if(e.data?.type==='ready'){channel.postMessage(data);document.getElementById('status').textContent='연결됨';}};
+document.getElementById('open').onclick=()=>{const url='../audience.html#'+id;document.getElementById('status').dataset.url=new URL(url,location.href).href;window.open(url,'promZoomFixture');};
+setInterval(()=>channel.postMessage({type:'heartbeat'}),3000);
+</script></html>

@@ -1,5 +1,7 @@
 /* 쪽 사이의 빈 공간 없이 실제 원고 줄을 일정한 간격으로 잇는다. */
 window.PromScrollView=class {
+  static getScale(){try{const n=Number(localStorage.getItem('promScrollTextScale'));if(n>=60&&n<=180)return n;}catch(_){}return this.zoom||100;}
+  static setScale(value){const n=Math.max(60,Math.min(180,Math.round(Number(value)/10)*10||100));this.zoom=n;try{localStorage.setItem('promScrollTextScale',String(n));}catch(_){}return n;}
   constructor(host){this.host=host;this.key='';this.rows=[];this.gaps=[];this.position='';this.layout='';}
   currentRow(data){
     const spoken=this.rows.filter(r=>{const range=data.ranges?.[r.pi]?.[r.li];return range&&range[1]>range[0];});
@@ -41,17 +43,18 @@ window.PromScrollView=class {
       this.host.appendChild(content);
     }
     const height=this.host.clientHeight||innerHeight;
-    const layout=`${this.host.clientWidth}:${height}`;
+    const scale=PromScrollView.getScale()/100;
+    const layout=`${this.host.clientWidth}:${height}:${scale}`;
     const relayout=layout!==this.layout;
     if(relayout){
       this.layout=layout;this.position='';
       const metrics=PromSlideLayout.measure(this.host.clientWidth||innerWidth,height,Math.max(1,data.lines));
-      this.pitch=metrics.height/Math.max(1,data.lines);
+      this.pitch=metrics.height/Math.max(1,data.lines)*scale;
       this.host.firstElementChild.style.paddingTop=(height*.3)+'px';
       this.host.firstElementChild.style.paddingBottom=(height*.7)+'px';
       const flow=this.host.querySelector('.scroll-flow');
       flow.style.width=metrics.width+'px';flow.style.margin='0 auto';
-      flow.style.fontSize=metrics.font+'px';
+      flow.style.fontSize=(metrics.font*scale)+'px';
       for(const row of this.rows)row.el.style.height=this.pitch+'px';
       for(const gap of this.gaps)gap.style.height=this.pitch+'px';
       for(const row of this.rows){row.wrap.style.transform='';const width=row.wrap.scrollWidth,max=row.el.clientWidth;if(width>max&&max>0)row.wrap.style.transform=`scale(${max/width})`;}
