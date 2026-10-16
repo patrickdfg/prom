@@ -9,12 +9,14 @@ const end=source.indexOf('\n    },',start);
 assert.notEqual(end,-1);
 const dispatch=source.slice(start,end);
 function setup(){
-  const requests=[];
+  const requests=[],warnings=[];
   const c={P:[],page:0,editing:false,window:{},textOf:pg=>pg,AbortSignal,
-    fetch:(url,options)=>{requests.push({url,options});return Promise.resolve();}};
+    toast:message=>warnings.push(message),Date:{now:()=>10000},
+    fetch:(url,options)=>{requests.push({url,options});return Promise.resolve({ok:true});}};
   vm.createContext(c);
-  return {c,requests,render(text){c.P=[text];vm.runInContext(dispatch,c);}};
+  return {c,requests,warnings,async render(text){c.P=[text];vm.runInContext(dispatch,c);await new Promise(setImmediate);}};
 }
+(async()=>{
 const valid=[
   ['(영상)','obs'],['(영상끝)','slideshow'],
   ['(영상1 시작)','obs'],['(영상 찬양 시작)','obs'],
@@ -28,7 +30,7 @@ const valid=[
   ['(영상3 끝) (영상 찬양)','slideshow']
 ];
 for(const [text,target]of valid){
-  const t=setup();t.render(text);
+  const t=setup();await t.render(text);
   assert.equal(t.requests.length,1,text);
   assert.equal(t.requests[0].url,'http://127.0.0.1:17986/'+target,text);
   assert.equal(t.requests[0].options.method,'POST');
@@ -41,22 +43,43 @@ const invalid=[
   '(영상 찬양) 시작)','(영상 찬양 시작','영상끝)'
 ];
 for(const text of invalid){
-  const t=setup();t.render(text);assert.equal(t.requests.length,0,text);
+  const t=setup();await t.render(text);assert.equal(t.requests.length,0,text);
 }
 const t=setup();
-t.render('(영상1 시작)');t.render('(영상1 시작)');
-t.render('일반 본문');t.render('(영상 찬양 시작)');
+await t.render('(영상1 시작)');await t.render('(영상1 시작)');
+await t.render('일반 본문');await t.render('(영상 찬양 시작)');
 assert.equal(t.requests.length,1,'repeated renders and starts must not switch twice');
-t.render('(영상 특별영상 끝)');t.render('(영상끝)');
+await t.render('(영상 특별영상 끝)');await t.render('(영상끝)');
 assert.equal(t.requests.length,2,'legacy and named ends share deduplication');
-t.c.editing=true;t.render('(영상3 시작)');
+t.c.editing=true;await t.render('(영상3 시작)');
 assert.equal(t.requests.length,2,'editing must not switch windows');
-t.c.editing=false;t.render('(영상3 시작)');
+t.c.editing=false;await t.render('(영상3 시작)');
 assert.equal(t.requests.length,3,'a new start after an end switches again');
 t.c.P=[];vm.runInContext(dispatch,t.c);
 assert.equal(t.requests.length,3,'empty documents must not switch windows');
 const offline=setup();
 offline.c.fetch=()=>Promise.reject(new Error('bridge unavailable'));
-offline.render('(영상 찬양 시작)');
-assert.equal(offline.c.window.__promObsCue,'obs');
-console.log(`PASS ${valid.length} valid cues, ${invalid.length} false positives, deduplication, editing, empty document, unavailable bridge`);
+await offline.render('(영상 찬양 시작)');
+assert.equal(offline.c.window.__promObsCue,undefined,'failed requests must not be remembered as successful');
+assert.equal(offline.warnings.length,1,'connection failure must be visible');
+offline.c.fetch=()=>Promise.resolve({ok:true});
+offline.c.Date.now=()=>14000;
+await offline.render('(영상 찬양 시작)');
+assert.equal(offline.c.window.__promObsCue,'obs','retry must work after bridge is restored');
+const missing=setup();missing.c.fetch=()=>Promise.resolve({ok:false,status:409});
+await missing.render('(영상끝)');
+assert.equal(missing.c.window.__promObsCue,undefined,'missing windows must not count as successful');
+assert.equal(missing.warnings.length,1);
+const pending=setup();let finish;
+pending.c.fetch=(url)=>{pending.requests.push(url);return new Promise(resolve=>finish=resolve);};
+await pending.render('(영상 시작)');await pending.render('(영상 시작)');
+assert.equal(pending.requests.length,1,'in-flight requests must not be duplicated');
+pending.c.window.PromUI={render(){vm.runInContext(dispatch,pending.c);}};
+await pending.render('(영상 끝)');
+finish({ok:true});await new Promise(setImmediate);
+assert.equal(pending.requests.length,2,'latest cue must run when the previous request finishes');
+assert.ok(pending.requests[1].endsWith('/slideshow'));
+finish({ok:true});await new Promise(setImmediate);
+assert.equal(pending.c.window.__promObsCue,'slideshow');
+console.log(`PASS ${valid.length} valid cues, ${invalid.length} false positives, deduplication, editing, bridge failure/recovery, missing windows, queued cues`);
+})().catch(e=>{console.error(e);process.exitCode=1;});

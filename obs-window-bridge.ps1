@@ -1,12 +1,14 @@
-# Windows 10/11: 말씀 원고의 (영상)/(영상끝) 제어 표식을 받아 창을 전환합니다.
-# PowerShell에서 실행: powershell -NoProfile -ExecutionPolicy Bypass -File .\obs-window-bridge.ps1
-# OBS에서 '전체 화면 프로젝터(프로그램)'를 먼저 열고, Chrome에서 '슬라이드쇼' 창을 여세요.
+# Windows 10/11: switch an OBS fullscreen projector / Chrome slideshow.
+# Run: powershell -NoProfile -ExecutionPolicy Bypass -File .\obs-window-bridge.ps1
+# Keep this file ASCII so Windows PowerShell 5.1 can load it without a BOM.
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type @"
 using System;
 using System.Text;
 using System.Runtime.InteropServices;
 public static class PromWindow {
+  [StructLayout(LayoutKind.Sequential)] public struct Rect { public int Left, Top, Right, Bottom; }
+  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out Rect rect);
   public delegate bool Callback(IntPtr hWnd, IntPtr data);
   [DllImport("user32.dll")] public static extern bool EnumWindows(Callback cb, IntPtr data);
   [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int max);
@@ -18,6 +20,12 @@ public static class PromWindow {
   [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
 }
 "@
+function Test-Fullscreen([IntPtr]$hwnd) {
+  $rect=New-Object PromWindow+Rect
+  if(-not [PromWindow]::GetWindowRect($hwnd,[ref]$rect)){return $false}
+  $bounds=[System.Windows.Forms.Screen]::FromHandle($hwnd).Bounds
+  return ($rect.Left -le $bounds.Left+2 -and $rect.Top -le $bounds.Top+2 -and $rect.Right -ge $bounds.Right-2 -and $rect.Bottom -ge $bounds.Bottom-2)
+}
 function Find-Window([string]$kind) {
   $script:matches = [System.Collections.ArrayList]::new()
   $cb = [PromWindow+Callback] {
@@ -30,10 +38,12 @@ function Find-Window([string]$kind) {
     [uint32]$pidOfWindow=0
     [void][PromWindow]::GetWindowThreadProcessId($hwnd,[ref]$pidOfWindow)
     try{$proc=(Get-Process -Id $pidOfWindow -ErrorAction Stop).ProcessName}catch{return $true}
-    if($kind -eq 'obs' -and $proc -eq 'obs64' -and $title -match '(?i)(fullscreen projector|full.screen projector|projector.*program|전체.?화면.?프로젝터|전체.?화면.*프로젝터|프로젝터.*프로그램)'){
+    # OBS 32 may title fullscreen windows simply "Projector - Preview".
+    # Require both an OBS projector title and fullscreen geometry, never the editor.
+    if($kind -eq 'obs' -and $proc -eq 'obs64' -and $title -match '(?i)(projector|\uD504\uB85C\uC81D\uD130)' -and (Test-Fullscreen $hwnd)){
       [void]$script:matches.Add($hwnd)
     }
-    if($kind -eq 'slideshow' -and $proc -in @('chrome','msedge') -and $title -match '슬라이드쇼'){
+    if($kind -eq 'slideshow' -and $proc -in @('chrome','msedge') -and $title -match '\uC2AC\uB77C\uC774\uB4DC\uC1FC'){
       [void]$script:matches.Add($hwnd)
     }
     return $true
@@ -46,14 +56,15 @@ function Activate([string]$kind){
   $hwnd=Find-Window $kind
   if($hwnd -eq [IntPtr]::Zero){
     Write-Host "Window not found: $kind (check OBS projector / Chrome slideshow)"
-    return
+    return $false
   }
-  [void][PromWindow]::ShowWindow($hwnd,9)
-  # Windows 전면 표시 제한을 우회하도록 TOPMOST를 잠시 설정하고 즉시 해제
-  [void][PromWindow]::SetWindowPos($hwnd,[IntPtr](-1),0,0,0,0,0x0003)
-  [void][PromWindow]::SetWindowPos($hwnd,[IntPtr](-2),0,0,0,0,0x0003)
-  [void][PromWindow]::SetForegroundWindow($hwnd)
-  Write-Host "Switched: $kind"
+  [void][PromWindow]::ShowWindow($hwnd,4)
+  # Raise only the presentation window; keep keyboard focus on the operator.
+  $raised=[PromWindow]::SetWindowPos($hwnd,[IntPtr](-1),0,0,0,0,0x0013)
+  $released=[PromWindow]::SetWindowPos($hwnd,[IntPtr](-2),0,0,0,0,0x0013)
+  if($raised -and $released){Write-Host "Switched: $kind";return $true}
+  Write-Host "Could not raise window: $kind"
+  return $false
 }
 $listener=[System.Net.HttpListener]::new()
 $listener.Prefixes.Add('http://127.0.0.1:17986/')
@@ -64,16 +75,21 @@ try {
     $ctx=$listener.GetContext()
     $res=$ctx.Response
     $res.Headers.Add('Access-Control-Allow-Origin','https://patrickdfg.github.io')
-    $res.Headers.Add('Access-Control-Allow-Methods','POST, OPTIONS')
+    $res.Headers.Add('Access-Control-Allow-Methods','GET, POST, OPTIONS')
     $res.Headers.Add('Access-Control-Allow-Headers','Content-Type')
     $res.Headers.Add('Access-Control-Allow-Private-Network','true')
     $res.Headers.Add('Cache-Control','no-store')
     $path=$ctx.Request.Url.AbsolutePath.Trim('/')
     if($ctx.Request.HttpMethod -eq 'OPTIONS'){
       $res.StatusCode=204
+    } elseif($ctx.Request.HttpMethod -eq 'GET' -and $path -eq 'health'){
+      $res.ContentType='application/json'
+      $body=[System.Text.Encoding]::UTF8.GetBytes((@{ready=$true;obs=((Find-Window 'obs') -ne [IntPtr]::Zero);slideshow=((Find-Window 'slideshow') -ne [IntPtr]::Zero)} | ConvertTo-Json -Compress))
+      $res.OutputStream.Write($body,0,$body.Length)
     } elseif($ctx.Request.HttpMethod -eq 'POST' -and $ctx.Request.Headers['Origin'] -eq 'https://patrickdfg.github.io' -and $path -in @('obs','slideshow')){
-      Activate $path
-      $res.StatusCode=204
+      try {
+        if(Activate $path){$res.StatusCode=204}else{$res.StatusCode=409}
+      }catch{Write-Warning $_;$res.StatusCode=500}
     }else{
       $res.StatusCode=403
     }

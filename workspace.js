@@ -284,11 +284,24 @@
         const hits=[...cueText.matchAll(/\([ \t]*영상(?:[가-힣ㄱ-ㅎㅏ-ㅣ0-9 \t]*(시작|끝))?[ \t]*\)/g)];
         if(hits.length){
           const next=hits[hits.length-1][1]==='끝'?'slideshow':'obs';
-          if(window.__promObsCue!==next){
-            window.__promObsCue=next;
-            fetch('http://127.0.0.1:17986/'+next,{method:'POST',mode:'cors',credentials:'omit',signal:AbortSignal.timeout(1500)}).catch(()=>{});
+          window.__promObsDesired=next;
+          if(window.__promObsCue!==next && !window.__promObsPending && Date.now()>=(window.__promObsRetryAt||0)){
+            window.__promObsPending=next;
+            Promise.resolve().then(()=>fetch('http://127.0.0.1:17986/'+next,{method:'POST',mode:'cors',credentials:'omit',signal:AbortSignal.timeout(1500)})).then(response=>{
+              if(!response.ok)throw new Error('Window switch failed: '+response.status);
+              window.__promObsCue=next;window.__promObsWarned=null;window.__promObsRetryAt=0;
+            }).catch(()=>{
+              window.__promObsRetryAt=Date.now()+3000;
+              if(window.__promObsWarned!==next){
+                window.__promObsWarned=next;
+                toast('창 전환 실패: 전환 보조 프로그램과 OBS 전체화면 프로젝터·슬라이드쇼 창을 확인하세요.',6000);
+              }
+            }).finally(()=>{
+              window.__promObsPending=null;
+              if(window.__promObsDesired!==next)window.PromUI?.render();
+            });
           }
-        }
+        }else window.__promObsDesired=null;
       }
     },
     mic(cls) { $('micStatus').textContent=cls==='live'?'듣는 중':cls==='err'?'마이크 연결 확인':listening?'다시 연결 중':'마이크 꺼짐'; },
