@@ -4,7 +4,7 @@ const begin=source.indexOf('  function syncPresentationMode(){'),end=source.inde
 assert(begin>=0&&end>begin);
 const classes=new Set();let fitted=0,rendered=0,focused=0,hidden=0;
 const view={style:{display:'block'},classList:{contains:name=>classes.has(name),toggle(name,on){if(on)classes.add(name);else classes.delete(name);}},focus(){focused++;}};
-const c={document:{fullscreenElement:null},audience:null,listening:false,$:()=>view,hideControls(){hidden++;classes.delete('controls-open');},fit(){fitted++;},render(){rendered++;}};
+const c={ttsOn:false,revealControls(){classes.add('controls-open');},document:{fullscreenElement:null},audience:null,listening:false,$:()=>view,hideControls(){hidden++;classes.delete('controls-open');},fit(){fitted++;},render(){rendered++;}};
 vm.createContext(c);vm.runInContext(source.slice(begin,end),c);
 c.syncPresentationMode();assert(!classes.has('solo-presentation'));assert(!classes.has('operator-mode'));
 classes.add('overview-mode');classes.add('controls-open');c.document.fullscreenElement={};c.syncPresentationMode();
@@ -16,3 +16,5 @@ c.document.fullscreenElement=null;c.syncPresentationMode();assert(!classes.has('
 c.listening=true;c.audience.closed=false;c.syncPresentationMode();assert(classes.has('operator-mode'),'microphone operator mode must remain supported');
 view.style.display='none';c.document.fullscreenElement={};c.audience=null;c.syncPresentationMode();assert(!classes.has('solo-presentation'),'setup screen must not become a slide');
 console.log('PASS fullscreen solo, hidden controls, preserved overview, external operator, closed window recovery, escape, microphone mode, no render loop');
+
+view.style.display='block';c.audience=null;c.ttsOn=true;c.document.fullscreenElement=null;c.syncPresentationMode();c.document.fullscreenElement={};c.syncPresentationMode();assert(classes.has('controls-open'),'read-aloud speed controls stay available in solo fullscreen');

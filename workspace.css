@@ -179,3 +179,7 @@ button:hover{filter:brightness(1.12)}
 .obs-instructions{padding-left:24px;font-size:14px;line-height:1.8;color:var(--muted)}
 .obs-instructions li{margin:12px 0}
 .obs-download{display:block;position:sticky;bottom:0;text-decoration:none;text-align:center;margin-top:16px;box-shadow:0 -8px 18px #161e2a}
+
+#ttsRateControls{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+#ttsRateControls button{font:inherit;min-width:25px;padding:4px 6px}
+#ttsRateInline{min-width:26px;text-align:center;font-variant-numeric:tabular-nums}

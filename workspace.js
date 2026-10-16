@@ -46,6 +46,7 @@
     if(changed){
       hideControls();
       if(solo){view.tabIndex=-1;view.focus({preventScroll:true});}
+      if(ttsOn)revealControls();
       fit();render();
     }
   }
@@ -328,7 +329,7 @@
     presentation(){hideControls();showNote();},
     beforeBodyEdit(){if(localScroll){setLocalScroll(false);$('viewSingle').click();}finishNote();bodyNoteAnchor=noteKey(P[page]);},
     afterBodyEdit(){const key=noteKey(P[page]);if(bodyNoteAnchor&&bodyNoteAnchor!==key&&notes[bodyNoteAnchor]){notes[key]=notes[bodyNoteAnchor];delete notes[bodyNoteAnchor];}bodyNoteAnchor=null;showNote();},
-    reading(){finishNote();showNote();},
+    reading(){finishNote();showNote();if(ttsOn){revealControls();showBar();}else if($('view').classList.contains('solo-presentation'))hideControls();},
     opened(bg) {
       background=bg||null; if(restoring)return;
       applyMetadata();noteEditing=false;noteAnchor=null;noteBox=null;activeNote=null;$('note').textContent='발표 메모';syncTheme();
@@ -371,7 +372,7 @@
       }
     },
     mic(cls) { $('micStatus').textContent=cls==='live'?'듣는 중':cls==='err'?'마이크 연결 확인':listening?'다시 연결 중':'마이크 꺼짐'; },
-    holdControls() { return !menu.hidden || !!document.querySelector('dialog[open]') || ($('bar').contains(document.activeElement) && document.activeElement.matches(':focus-visible')) || editing || noteEditing; },
+    holdControls() { return ttsOn || !menu.hidden || !!document.querySelector('dialog[open]') || ($('bar').contains(document.activeElement) && document.activeElement.matches(':focus-visible')) || editing || noteEditing; },
     noteKey
   };
   try { const data=JSON.parse(localStorage.getItem(STORAGE)||'null'); if(data){parseSaved(JSON.stringify(data));cached=data;} }catch(_){}

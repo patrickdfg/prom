@@ -120,7 +120,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
-<link rel="stylesheet" href="workspace.css?v=20261017-obs-help1">
+<link rel="stylesheet" href="workspace.css?v=20261017-tts-inline1">
 <link rel="stylesheet" href="extras.css?v=20261017-paragraph1">
 <style>.app-switch{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;flex-shrink:0;padding:8px 12px;border:1px solid #506a88;border-radius:8px;background:#20344c;color:#d6f5ec!important;font:600 12px/1.4 sans-serif;text-decoration:none;pointer-events:auto}.app-switch:hover{background:#2b4963}.app-switch:focus-visible{outline:3px solid #5de2ca;outline-offset:2px}</style>
 </head>
@@ -191,7 +191,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <div id="micnote">음성인식은 크롬 기본 마이크로 듣습니다. 말할 때 막대가 움직이면 소리가 들어오는 것입니다. 마이크를 바꾸려면 위 버튼으로 주소를 복사해 새 탭 주소창에 붙여 넣고 Enter, 마이크를 고른 뒤 이 화면을 새로고침하세요. (크롬은 웹 페이지에서 설정 화면을 바로 열지 못하게 막습니다.)</div>
   </div>
   <div id="bar">
-    <div class="control-group"><button id="mic" title="원고만 전체화면으로 표시합니다. Esc 또는 M으로 끝냅니다.">마이크 켜기 (M)</button><button id="tts">읽어주기</button></div>
+    <div class="control-group"><button id="mic" title="원고만 전체화면으로 표시합니다. Esc 또는 M으로 끝냅니다.">마이크 켜기 (M)</button><button id="tts">읽어주기</button><span id="ttsRateControls" class="control-group" role="group" aria-label="읽기 속도" hidden><span>읽기 속도</span><button id="ttsRateMinus" type="button" aria-label="읽기 속도 줄이기">−</button><output id="ttsRateInline" aria-live="polite">1.0</output><button id="ttsRatePlus" type="button" aria-label="읽기 속도 높이기">＋</button></span></div>
     <div class="control-group"><button id="prev" aria-label="이전 쪽">◀</button><span id="pg">1 / 1</span><button id="find">검색</button><button id="next" aria-label="다음 쪽">▶</button></div>
     <div class="control-group view-switch" role="group" aria-label="원고 보기"><button id="viewSingle" aria-pressed="true">한 장</button><button id="viewMultiple" aria-pressed="false">여러 장</button><button id="viewScroll" aria-pressed="false" title="현재 창에서 원고를 부드럽게 스크롤합니다">스크롤 보기</button></div>
     <button id="fs">전체화면 (F)</button>
@@ -1533,7 +1533,7 @@ if(navigator.mediaDevices&&navigator.mediaDevices.addEventListener)navigator.med
 // 쪽마다 글을 소리 내 읽고 다 읽으면 다음 쪽으로 넘긴다. 읽는 중 화면을 누르면 조절 창이 뜬다.
 // 속도·음높이·목소리는 원고 읽어주기(read) 사이트와 같은 저장 공간(readSettings)을 함께 쓴다
 const SYN=window.speechSynthesis;
-let ttsOn=false, tPlaying=false, tTok=0, tChunks=[], tCi=0, tVoices=[], tInternal=false;
+let ttsOn=false, tPlaying=false, tTok=0, tChunks=[], tCi=0, tVoices=[], tInternal=false, tSpokenOffset=0;
 const TS={rate:1,pitch:1,voice:''};
 try{Object.assign(TS,JSON.parse(localStorage.getItem('readSettings')||'{}'))}catch(_){}
 function tSave(){try{const o=JSON.parse(localStorage.getItem('readSettings')||'{}');localStorage.setItem('readSettings',JSON.stringify(Object.assign(o,{rate:TS.rate,pitch:TS.pitch,voice:TS.voice})))}catch(_){}}
@@ -1546,6 +1546,7 @@ function tLoadVoices(){
 }
 if(SYN){tLoadVoices(); SYN.addEventListener&&SYN.addEventListener('voiceschanged',tLoadVoices)}
 function tShow(){
+  $('ttsRateControls').hidden=!ttsOn;$('ttsRateInline').textContent=(+TS.rate).toFixed(2).replace(/0$/,'');$('ttsRateMinus').disabled=TS.rate<=.5;$('ttsRatePlus').disabled=TS.rate>=2;
   $('tRate').value=TS.rate; $('tRateV').textContent=(+TS.rate).toFixed(2).replace(/0$/,'')+'배';
   $('tPitch').value=TS.pitch; $('tPitchV').textContent=(+TS.pitch).toFixed(2).replace(/0$/,'');
 }
@@ -1561,15 +1562,17 @@ function tSpeakPage(i){
   if(window.PromExtras)i=PromExtras.ttsPage(i);
   SYN.cancel(); const my=++tTok;
   while(i<P.length&&!/[가-힣A-Za-z0-9]/.test(pageSay(i)))i++;
-  if(i>=P.length){tPause(); toast('끝까지 읽었습니다.',4000); return}
+  if(i>=P.length){tStop(); toast('끝까지 읽었습니다.',4000); return}
   if(i!==page)tGo(i);
   tChunks=tSplit(pageSay(i)); tCi=0; tNext(my);
 }
 function tNext(my){
   if(my!==tTok||!tPlaying)return;
   if(tCi>=tChunks.length){tSpeakPage(page+1);return}
+  tSpokenOffset=0;
   const u=new SpeechSynthesisUtterance(tChunks[tCi]); u.lang='ko-KR'; u.rate=TS.rate; u.pitch=TS.pitch;
   const v=tVoices.find(v=>v.voiceURI===TS.voice); if(v)u.voice=v;
+  u.onboundary=e=>{if(my===tTok&&Number.isFinite(e.charIndex))tSpokenOffset=Math.max(tSpokenOffset,Math.min(tChunks[tCi].length,e.charIndex));};
   u.onend=()=>{if(my!==tTok)return; tCi++; tNext(my)};
   u.onerror=e=>{if(my!==tTok)return; if(e.error==='interrupted'||e.error==='canceled')return; tCi++; tNext(my)};
   SYN.speak(u);
@@ -1577,15 +1580,23 @@ function tNext(my){
 function tPlay(){
   if(!SYN){toast('이 브라우저는 읽어주기를 지원하지 않습니다. 크롬으로 열어 주세요.',5000);return}
   if(editing)endEdit(); if(listening)stopMic();
-  notifyUI('finishNote');ttsOn=true;notifyUI('reading'); tPlaying=true; $('tPP').textContent='⏸'; $('tts').classList.add('on'); $('tts').textContent='읽기 끝내기';
+  notifyUI('finishNote');ttsOn=true;tShow();notifyUI('reading'); tPlaying=true; $('tPP').textContent='⏸'; $('tts').classList.add('on'); $('tts').textContent='읽기 끝내기';
   if(!document.fullscreenElement&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{});
   keepAwake(); tSpeakPage(page);
 }
 function tPause(){tPlaying=false; tTok++; SYN&&SYN.cancel(); $('tPP').textContent='▶'}
 function tStop(){
-  tPause(); ttsOn=false;notifyUI('reading'); $('ttsPanel').classList.remove('open');
+  tPause(); ttsOn=false;tShow();notifyUI('reading'); $('ttsPanel').classList.remove('open');
   $('tts').classList.remove('on'); $('tts').textContent='읽어주기';
 }
+function tContinueRate(){
+  if(!tPlaying)return;
+  const offset=tSpokenOffset,my=++tTok;SYN.cancel();
+  if(offset>0&&tChunks[tCi]){if(offset>=tChunks[tCi].length)tCi++;else tChunks[tCi]=tChunks[tCi].slice(offset);}
+  tNext(my);
+}
+function tNudgeRate(delta){const next=Math.max(.5,Math.min(2,Math.round((Number(TS.rate)+delta)*100)/100));if(next===TS.rate)return;TS.rate=next;tShow();tSave();tContinueRate();}
+$('ttsRateMinus').onclick=()=>tNudgeRate(-.1);$('ttsRatePlus').onclick=()=>tNudgeRate(.1);
 function tRestartCur(){if(tPlaying)tSpeakPage(page)}
 $('tts').onclick=()=>ttsOn?tStop():tPlay();
 $('tPP').onclick=()=>tPlaying?tPause():(tPlaying=true,$('tPP').textContent='⏸',tSpeakPage(page));
@@ -1594,7 +1605,7 @@ $('tNextB').onclick=()=>{const i=Math.min(P.length-1,page+1); tPlaying?tSpeakPag
 $('tRestart').onclick=()=>tPlaying?tSpeakPage(0):tGo(0);
 $('tStop').onclick=tStop;
 $('tClose').onclick=()=>$('ttsPanel').classList.remove('open');
-$('tRate').oninput=e=>{TS.rate=+e.target.value;tShow();tSave()}; $('tRate').onchange=tRestartCur;
+$('tRate').oninput=e=>{TS.rate=+e.target.value;tShow();tSave()}; $('tRate').onchange=tContinueRate;
 $('tPitch').oninput=e=>{TS.pitch=+e.target.value;tShow();tSave()}; $('tPitch').onchange=tRestartCur;
 $('tVoice').onchange=e=>{TS.voice=e.target.value;tSave();tRestartCur()};
 // 읽어주는 중에는 화면을 누르면 조절 창을 열고 닫는다
@@ -1873,7 +1884,7 @@ if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 <script src="slide-layout.js?v=20261016-6"></script>
 <script src="smooth-scroll.js?v=20261017-line1"></script>
 <script src="scroll-view.js?v=20261017-cursor1"></script>
-<script src="workspace.js?v=20261017-cursor-bridge1"></script>
+<script src="workspace.js?v=20261017-tts-inline1"></script>
 <script src="overview.js?v=20261017-local1"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
 <script src="extras.js?v=20261017-video1"></script>
