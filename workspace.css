@@ -140,3 +140,32 @@ button:hover{filter:brightness(1.12)}
 
 #labOptWrap[hidden]{display:none}
 @media(max-width:900px){#statusbar{flex-wrap:wrap;height:auto}.theme-choices{flex-wrap:wrap;flex-shrink:1}}
+
+/* Compact single-row controls; narrow displays can scroll the row horizontally. */
+#bar{font-size:11px;gap:4px;padding:6px 8px;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;overflow-y:hidden;max-height:none}
+#bar>button,#bar>.control-group>button{font-size:11px;min-height:30px;padding:5px 7px;border-radius:7px;white-space:nowrap;flex-shrink:0}
+#bar>.control-group{gap:4px}
+#bar #prev,#bar #next{min-width:28px}#bar #pg{min-width:42px;font-size:11px;white-space:nowrap}
+#bar label,#bar #dimOptWrap,#bar #labOptWrap{font-size:11px;white-space:nowrap}
+#bar input[type=checkbox],#bar #dimOptWrap input{width:14px;height:14px;margin:0 3px 0 0}
+#moreTools{width:auto;flex-shrink:0;flex-wrap:nowrap;gap:6px;padding:0 0 0 6px;border-top:0;border-left:1px solid var(--line)}
+#moreTools button,#moreTools select{font-size:11px;min-height:28px;padding:4px 6px;white-space:nowrap}
+#moreTools label{font-size:11px;gap:3px}#heard{min-width:0;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#autosaveState{font-size:10px;white-space:nowrap}
+#statusbar{padding:6px 10px;gap:8px;font-size:11px}
+#statusbar .theme-choices{gap:4px}
+#statusbar .theme-choices button,#statusbar .theme-choices .app-switch{font-size:11px;min-height:28px;padding:5px 7px;white-space:nowrap}
+@media(max-width:1500px){#autosaveState{display:none}#heard{display:none}}
+@media(min-width:901px) and (max-width:1500px){#bar{font-size:10px;gap:3px}#bar>button,#bar>.control-group>button,#bar label,#bar #dimOptWrap,#bar #labOptWrap,#moreTools button,#moreTools select,#moreTools label{font-size:10px;padding:4px 5px}}
+#stage{inset:42px 0 46px}
+
+/* This page becomes the presentation when fullscreen has no separate audience window. */
+#view.solo-presentation #stage{inset:0;visibility:visible;pointer-events:auto}
+#view.solo-presentation #bar,#view.solo-presentation #statusbar,
+#view.solo-presentation.controls-open #bar,#view.solo-presentation.controls-open #statusbar,
+#view.solo-presentation #overview,#view.solo-presentation #overviewToolbar,
+#view.solo-presentation #voiceFeedback,#view.solo-presentation #toast,
+#view.solo-presentation #cap,#view.solo-presentation #noteLayer,#view.solo-presentation #noteTools,
+#view.solo-presentation #fontPanel,#view.solo-presentation #ttsPanel,#view.solo-presentation #setpanel,
+#view.solo-presentation #speedLayer{display:none!important}
+#view.solo-presentation .ln.current::before{display:none!important}

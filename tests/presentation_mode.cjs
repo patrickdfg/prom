@@ -1,0 +1,18 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync('workspace.js','utf8');
+const begin=source.indexOf('  function syncPresentationMode(){'),end=source.indexOf("  document.addEventListener('fullscreenchange',syncPresentationMode);",begin);
+assert(begin>=0&&end>begin);
+const classes=new Set();let fitted=0,rendered=0,focused=0,hidden=0;
+const view={style:{display:'block'},classList:{contains:name=>classes.has(name),toggle(name,on){if(on)classes.add(name);else classes.delete(name);}},focus(){focused++;}};
+const c={document:{fullscreenElement:null},audience:null,listening:false,$:()=>view,hideControls(){hidden++;classes.delete('controls-open');},fit(){fitted++;},render(){rendered++;}};
+vm.createContext(c);vm.runInContext(source.slice(begin,end),c);
+c.syncPresentationMode();assert(!classes.has('solo-presentation'));assert(!classes.has('operator-mode'));
+classes.add('overview-mode');classes.add('controls-open');c.document.fullscreenElement={};c.syncPresentationMode();
+assert(classes.has('solo-presentation'));assert(classes.has('overview-mode'),'overview preference must survive presentation');assert(!classes.has('controls-open'));assert.equal(focused,1);assert.equal(fitted,1);
+c.syncPresentationMode();assert.equal(fitted,1,'unchanged state must not cause render loops');
+c.audience={closed:false};c.syncPresentationMode();assert(!classes.has('solo-presentation'));assert(classes.has('operator-mode'),'fullscreen operator with external slideshow must retain controls');
+c.audience.closed=true;c.syncPresentationMode();assert(classes.has('solo-presentation'),'closed external window must restore solo presentation');
+c.document.fullscreenElement=null;c.syncPresentationMode();assert(!classes.has('solo-presentation'));assert(!classes.has('operator-mode'));assert(classes.has('overview-mode'));
+c.listening=true;c.audience.closed=false;c.syncPresentationMode();assert(classes.has('operator-mode'),'microphone operator mode must remain supported');
+view.style.display='none';c.document.fullscreenElement={};c.audience=null;c.syncPresentationMode();assert(!classes.has('solo-presentation'),'setup screen must not become a slide');
+console.log('PASS fullscreen solo, hidden controls, preserved overview, external operator, closed window recovery, escape, microphone mode, no render loop');

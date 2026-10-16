@@ -37,6 +37,19 @@
   $('layoutMode').value = chosenMode() === 'm' ? 'mobile' : 'desktop';
   $('desktopLines').hidden = chosenMode() === 'm';
   const menu = $('moreTools');
+  function syncPresentationMode(){
+    const view=$('view'),full=!!document.fullscreenElement,external=!!audience&&!audience.closed;
+    const solo=full&&!external&&view.style.display==='block';
+    const changed=view.classList.contains('solo-presentation')!==solo;
+    view.classList.toggle('solo-presentation',solo);
+    view.classList.toggle('operator-mode',external&&(listening||full));
+    if(changed){
+      hideControls();
+      if(solo){view.tabIndex=-1;view.focus({preventScroll:true});}
+      fit();render();
+    }
+  }
+  document.addEventListener('fullscreenchange',syncPresentationMode);
   let controlsTimer;
   function hideControls(){clearTimeout(controlsTimer);controlsTimer=null;$('view').classList.remove('controls-open');}
   function revealControls(){clearTimeout(controlsTimer);controlsTimer=null;$('view').classList.add('controls-open');}
@@ -261,7 +274,7 @@
   $('view').addEventListener('pointerdown',showBar);
   $('bar').addEventListener('focusin',showBar);
   window.PromUI = {
-    metadata, applyMetadata, finishNote,
+    metadata, applyMetadata, finishNote, syncPresentationMode,
     hasSlideshow(){return !!audience&&!audience.closed;},
     speedLayer:placeSpeed,
     presentation(){hideControls();showNote();},
@@ -275,6 +288,7 @@
       dirty=false; render(); scheduleSave();
     },
     render() {
+      syncPresentationMode();
       $('sessionTitle').textContent=baseName; $('sessionTitle').title=baseName;
       showNote();
       [...$('lines').children].forEach((el,i)=>{const r=lineRange[page]?.[i];el.classList.toggle('current',!editing && !!r && r[1]>r[0] && cursor>=r[0] && cursor<r[1]);});
@@ -315,5 +329,5 @@
   try { const data=JSON.parse(localStorage.getItem(STORAGE)||'null'); if(data){parseSaved(JSON.stringify(data));cached=data;} }catch(_){}
   refreshResume(); setTab('file');
   if(P.length){background=null;window.PromUI.render();}
-  setInterval(()=>{if(channel)channel.postMessage({type:'heartbeat'});if(audience && !audience.closed)audience.postMessage({type:'heartbeat'},location.origin);},3000);
+  setInterval(()=>{syncPresentationMode();if(channel)channel.postMessage({type:'heartbeat'});if(audience && !audience.closed)audience.postMessage({type:'heartbeat'},location.origin);},3000);
 })();
