@@ -18,3 +18,5 @@
 .scroll-flow{display:flex;flex-direction:column;align-items:stretch}
 .scroll-flow>.scroll-line{flex:none;width:100%;margin:0;padding:0}
 .scroll-page-number{display:none!important}
+
+.scroll-paragraph-gap{flex:none;width:100%;pointer-events:none}

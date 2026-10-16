@@ -1,6 +1,6 @@
 /* 쪽 사이의 빈 공간 없이 실제 원고 줄을 일정한 간격으로 잇는다. */
 window.PromScrollView=class {
-  constructor(host){this.host=host;this.key='';this.rows=[];this.position='';this.layout='';}
+  constructor(host){this.host=host;this.key='';this.rows=[];this.gaps=[];this.position='';this.layout='';}
   currentRow(data){
     const spoken=this.rows.filter(r=>{const range=data.ranges?.[r.pi]?.[r.li];return range&&range[1]>range[0];});
     // The page may advance early; only consumed text determines the scroll position.
@@ -9,10 +9,13 @@ window.PromScrollView=class {
   update(data){
     const key=JSON.stringify([data.lines,data.document||[]]);
     if(key!==this.key){
-      this.key=key;this.position='';this.layout='';this.host.replaceChildren();this.rows=[];
+      this.key=key;this.position='';this.layout='';this.host.replaceChildren();this.rows=[];this.gaps=[];
       const content=document.createElement('div');content.className='scroll-content';
       const body=document.createElement('div');body.className='scroll-flow';content.appendChild(body);
+      let pendingGap=false;
       (data.document||[]).forEach((pg,pi)=>{
+        const nonempty=pg.map((runs,i)=>runs.map(r=>r.t).join('').replace(/\s*>>\s*$/,'').trim()?i:-1).filter(i=>i>=0);
+        const first=nonempty[0],last=nonempty.at(-1);
         const count=pg.length;
         for(let li=0;li<count;li++){
           const row=document.createElement('div');row.className='scroll-line';
@@ -22,7 +25,16 @@ window.PromScrollView=class {
           let remaining=runs.map(r=>r.t).join('').replace(/\s*>>\s*$/,'').length;
           for(const r of runs){const text=r.t.slice(0,remaining);remaining=Math.max(0,remaining-r.t.length);if(!text)continue;const span=document.createElement('span');span.textContent=text;if(['b','r','n'].includes(r.c))span.className=r.c;wrap.appendChild(span);}
           const range=data.ranges?.[pi]?.[li];
-          if(!wrap.textContent.trim()||(range&&range[1]===range[0]))continue;
+          if(!wrap.textContent.trim()){
+            // Only an interior blank is source spacing; page edge padding is discarded.
+            if(li>first&&li<last)pendingGap=true;
+            continue;
+          }
+          if(range&&range[1]===range[0])continue;
+          if(this.rows.length&&(pendingGap||runs.some(r=>r.paragraphStart))){
+            const gap=document.createElement('div');gap.className='scroll-paragraph-gap';gap.setAttribute('aria-hidden','true');body.appendChild(gap);this.gaps.push(gap);
+          }
+          pendingGap=false;
           row.appendChild(wrap);body.appendChild(row);this.rows.push({el:row,wrap,pi,li});
         }
       });
@@ -41,6 +53,7 @@ window.PromScrollView=class {
       flow.style.width=metrics.width+'px';flow.style.margin='0 auto';
       flow.style.fontSize=metrics.font+'px';
       for(const row of this.rows)row.el.style.height=this.pitch+'px';
+      for(const gap of this.gaps)gap.style.height=this.pitch+'px';
       for(const row of this.rows){row.wrap.style.transform='';const width=row.wrap.scrollWidth,max=row.el.clientWidth;if(width>max&&max>0)row.wrap.style.transform=`scale(${max/width})`;}
     }
     this.host.classList.toggle('scroll-dark',data.dark);
