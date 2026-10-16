@@ -19,3 +19,33 @@ assert.equal(C.active(partialLinks,split[1].start),0);
 assert.equal(C.active(partialLinks,split[1].end),-1);
 assert.equal(split[2].start,partialLinks[0].end);
 console.log('PASS partial-line captions split at exact start/end without losing manuscript text');
+
+// Speech is often delivered in short chunks, and recognizer mistakes can break every 8-character anchor.
+const short=C.index(['이제 시작하겠습니다.','감사는 작은 일에서 시작됩니다.','다음으로 넘어가겠습니다.']);
+const shortCursor=short.ranges[1].start;
+assert(C.locateSpeech('감사는 작은',short.text,shortCursor));
+assert.equal(C.locateSpeech('하나님',short.text,shortCursor),null);
+const repeatedShort=C.index(['감사합니다. 감사합니다.']);
+assert.equal(C.locateSpeech('감사합니다',repeatedShort.text,0),null);
+const distantShort='가'.repeat(200)+'감사는작은일에서시작됩니다';
+assert.equal(C.locateSpeech('감사는작은',distantShort,0),null);
+const correct='오늘의말씀을마음속깊이새기면서서로사랑하며살아가겠습니다';
+const mistaken=[...correct];for(const i of [6,15,24])mistaken[i]='나';
+assert(C.locateSpeech(mistaken.join(''),correct,0));
+console.log('PASS nearby short speech, repeated/distant phrase rejection, distributed recognition errors');
+
+const jumpLines=['첫머리에서 오늘의 중요한 이야기를 시작하겠습니다.','가'.repeat(2200),'마지막부분에서는서로사랑하며도움을나누는방법을이야기합니다.'];
+const jump=C.index(jumpLines),forward=C.locateSpeech(jumpLines[2],jump.text,0);
+assert(forward?.reacquired);assert.equal(forward.pos,jump.text.length);
+const backward=C.locateSpeech(jumpLines[0],jump.text,jump.text.length);
+assert(backward?.reacquired);assert.equal(backward.pos,jump.ranges[0].end);
+assert.equal(C.locateSpeech('없는내용을즉흥으로이야기하고있습니다',jump.text,0),null);
+assert.equal(C.locateSpeech('사랑합니다',jump.text,0),null);
+console.log('PASS arbitrary forward/backward reacquisition with distinctive phrases, adlib/short phrase hold');
+const noisyTarget='마지막부분에서는서로사랑하며도움을나누는방법을이야기합니다';
+const noisy=[...C.normalize(noisyTarget)].slice(-28);noisy[7]='나';noisy[19]='무';
+const farText='가'.repeat(2200)+C.normalize(noisyTarget);
+const fuzzyJump=C.locateSpeech(noisy.join(''),farText,0);assert(fuzzyJump?.reacquired);assert.equal(fuzzyJump.pos,farText.length);
+const duplicateFar='가'.repeat(2200)+C.normalize(noisyTarget)+'가'.repeat(200)+C.normalize(noisyTarget);
+assert.equal(C.locateSpeech(noisy.join(''),duplicateFar,0),null);
+console.log('PASS distant recovery with recognition errors, ambiguous recovery rejected');

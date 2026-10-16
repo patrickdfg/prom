@@ -19,7 +19,7 @@ function segments(lines,links){
  return rows;
 }
 function distance(a,b,limit=Infinity){if(Math.abs(a.length-b.length)>limit)return limit+1;let prev=Array.from({length:b.length+1},(_,i)=>i);for(let i=1;i<=a.length;i++){const row=[i];let low=i;for(let j=1;j<=b.length;j++){row[j]=Math.min(row[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));low=Math.min(low,row[j]);}if(low>limit)return limit+1;prev=row;}return prev[b.length];}
-function candidates(needle,hay,offset=0){const out=new Set();for(const frac of [0,.25,.5,.75,1]){const at=Math.floor(Math.max(0,needle.length-8)*frac),anchor=needle.slice(at,at+8);if(anchor.length<6)continue;let start=0,n=0;while((start=hay.indexOf(anchor,start))>=0&&n++<100){for(let d=-2;d<=2;d++)if(start-at+d>=0)out.add(offset+start-at+d);start++;}}return [...out];}
+function candidates(needle,hay,offset=0,width=8){const out=new Set();for(const frac of [0,.25,.5,.75,1]){const at=Math.floor(Math.max(0,needle.length-width)*frac),anchor=needle.slice(at,at+width);if(anchor.length<width)continue;let start=0,n=0;while((start=hay.indexOf(anchor,start))>=0&&n++<100){for(let d=-2;d<=2;d++)if(start-at+d>=0)out.add(offset+start-at+d);start++;}}return [...out];}
 function align(lines,slides){const ix=index(lines),links=[];let after=0;
  for(const slide of slides){const needle=normalize(slide.text);let hit=-1;if(needle.length>=6)hit=ix.text.indexOf(needle,after);
   if(hit>=0){const another=ix.text.indexOf(needle,hit+1);links.push({start:hit,end:hit+needle.length,status:another<0?'exact':'review',score:1});after=hit+needle.length;continue;}
@@ -29,11 +29,25 @@ function align(lines,slides){const ix=index(lines),links=[];let after=0;
  return links;
 }
 function active(links,pos){return links.findIndex(l=>['exact','manual'].includes(l.status)&&Number.isFinite(l.start)&&pos>=l.start&&pos<l.end);}
-function locateSpeech(raw,text,cursor){const heard=normalize(raw).slice(-64);if(heard.length<8)return null;const begin=Math.max(0,cursor-100),end=Math.min(text.length,cursor+1400),hay=text.slice(begin,end);
- for(const size of [56,40,28,18,12,8]){if(heard.length<size)continue;const tail=heard.slice(-size);let at=hay.indexOf(tail);if(at<0)continue;const next=hay.indexOf(tail,at+1);if(next>=0)return null;const pos=begin+at+tail.length;if(pos>=cursor-3)return {pos:Math.max(cursor,pos),score:1};}
- const tail=heard.slice(-28);if(tail.length<16)return null;let best=null,second=0;
- for(const start of candidates(tail,hay,begin)){const pos=start+tail.length;if(pos<cursor-3)continue;const cost=distance(tail,text.slice(start,pos),3),score=1-cost/tail.length;if(score<.89)continue;if(!best||score>best.score){second=best?.score||0;best={pos,score};}else if(Math.abs(best.pos-pos)>5)second=Math.max(second,score);}
- return best&&best.score-second>=.04?best:null;
+function locateSpeech(raw,text,cursor){const heard=normalize(raw).slice(-64);if(heard.length<5)return null;const begin=Math.max(0,cursor-100),end=Math.min(text.length,cursor+1400),hay=text.slice(begin,end);
+ // Prefer the longest matching phrase across the manuscript before trying shorter local fragments.
+ for(const size of [56,40,28,18,12]){
+  if(heard.length<size)continue;const tail=heard.slice(-size),at=hay.indexOf(tail);
+  if(at>=0&&hay.indexOf(tail,at+1)<0){const pos=begin+at+size;if(pos>=cursor-3)return {pos:Math.max(cursor,pos),score:1};}
+  if(size>=12){const globalAt=text.indexOf(tail);if(globalAt>=0&&text.indexOf(tail,globalAt+1)<0)return {pos:globalAt+size,score:1,reacquired:true};}
+ }
+ const tail=heard.slice(-28);let best=null,second=0;
+ for(const start of tail.length>=16?candidates(tail,hay,begin,4):[]){const pos=start+tail.length;if(pos<cursor-3)continue;const cost=distance(tail,text.slice(start,pos),3),score=1-cost/tail.length;if(score<.89)continue;if(!best||score>best.score){second=best?.score||0;best={pos,score};}else if(Math.abs(best.pos-pos)>5)second=Math.max(second,score);}
+ if(best&&best.score-second>=.04)return best;
+ // Recover a distant position with small recognition errors only when it clearly beats every other passage.
+ const global=[];
+ for(const start of tail.length>=24?candidates(tail,text,0,6):[]){const pos=start+tail.length;if(pos>text.length)continue;const cost=distance(tail,text.slice(start,pos),2),score=1-cost/tail.length;if(score>=.92)global.push({pos,score,reacquired:true});}
+ global.sort((a,b)=>b.score-a.score);const first=global[0],other=first&&global.find(hit=>Math.abs(hit.pos-first.pos)>8);
+ if(first&&(!other||first.score-other.score>=.04))return first;
+ // Short fragments may advance only near the current reading position, uniquely.
+ const nearBegin=Math.max(0,cursor-40),nearEnd=Math.min(text.length,cursor+120),near=text.slice(nearBegin,nearEnd);
+ for(const size of [8,7,6,5]){if(heard.length<size)continue;const tail=heard.slice(-size),at=near.indexOf(tail);if(at<0||near.indexOf(tail,at+1)>=0)continue;const pos=nearBegin+at+size;if(pos>cursor)return {pos,score:1};}
+ return null;
 }
 const api={normalize,index,segments,align,active,locateSpeech,distance};if(typeof module==='object'&&module.exports)module.exports=api;else root.CaptionCore=api;
 })(typeof window==='object'?window:globalThis);
