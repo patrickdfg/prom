@@ -53,10 +53,11 @@
   const fullButton=document.getElementById('fullscreen');
   function syncFullscreen(){fullButton.hidden=!!document.fullscreenElement;}
   let requestingFullscreen=false;
-  async function enterFullscreen(){
+  async function enterFullscreen(target){
+    if(!target||!Number.isFinite(target.left)){try{target=window.opener?.PromAudienceScreens?.target()||null;}catch{target=null;}}
     if(document.fullscreenElement||requestingFullscreen)return;
     requestingFullscreen=true;
-    try{await document.documentElement.requestFullscreen();syncFullscreen();}
+    try{await document.documentElement.requestFullscreen(target?{screen:target,navigationUI:'hide'}:{navigationUI:'hide'});syncFullscreen();}
     catch(_){fullButton.hidden=false;fullButton.textContent='화면을 클릭하면 전체화면으로 시작';}
     finally{requestingFullscreen=false;}
   }
