@@ -1,3 +1,1 @@
 #fullscreen.fullscreen-start{position:fixed;inset:auto!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%);z-index:50;width:min(600px,calc(100vw - 40px));padding:26px 32px;border:2px solid #80e7ce;border-radius:16px;background:#142333f2!important;color:#fff!important;box-shadow:0 12px 60px #0009;font:bold clamp(20px,3vw,32px)/1.6 'Malgun Gothic',sans-serif;white-space:pre-line;text-align:center;cursor:pointer}#fullscreen.fullscreen-start[hidden],:fullscreen #fullscreen.fullscreen-start{display:none!important}
-
-html[data-prom-browser-fullscreen="true"] #fullscreen.fullscreen-start{display:none!important}
