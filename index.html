@@ -126,7 +126,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 <link rel="stylesheet" href="display-screens.css?v=20261017-screen1"></head>
 <body>
 <div id="setup">
-  <header class="brandrow"><span class="brandmark">SERMON PROMPTER</span><a class="app-switch" href="ppt/" target="_blank" rel="noopener" title="PPT 자막 조작화면을 새 탭에서 열기">PPT 자막 ↗</a></header>
+  <header class="brandrow"><span class="brandmark">SERMON PROMPTER</span><a class="app-switch" href="ppt/" target="_blank" rel="noopener" title="방송용 PPT 조작화면을 새 탭에서 열기">방송용 PPT ↗</a></header>
   <h1>프롬프터 제작부터<br>자동 넘김·읽어주기까지</h1>
   <p class="intro">원고를 프롬프터로 만들고, 말하는 흐름에 맞춰 넘기거나 음성으로 들어보세요.</p>
   <div id="resumeCard" hidden><div><b id="resumeTitle"></b><p id="resumeInfo"></p></div><button class="btn" id="resume">이어서 시작</button></div>
@@ -155,13 +155,13 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <div class="row startrow"><span id="fname">원고를 고른 뒤 시작하세요.</span><button class="btn" id="start" disabled>프롬프터 시작 →</button></div>
     <button id="usePaste" hidden>붙여 넣은 글로 시작</button>
   </section>
-  <div class="setup-footer"><button class="btn" id="demo">예시 원고로 체험</button><div class="row" id="installRow"><button class="btn ghost" id="install">앱으로 설치</button><span id="installNote" style="color:var(--muted);font-size:13px"></span></div></div>
+  <div class="setup-footer"><button class="btn" id="demo">예시 원고로 체험</button></div>
   <p class="format-note" style="margin-top:16px">최근 원고와 메모는 이 기기의 브라우저에 자동 저장됩니다. 공용 기기에서는 사용 후 사이트 데이터를 지워 주세요.</p>
   <div id="loadmsg"></div>
 </div>
 
 <div id="view">
-  <div id="statusbar"><div class="status-left"><button id="back" class="status-home" type="button" title="처음 화면으로 돌아가기">⌂ 홈</button><div class="mic-state"><span id="dot"></span><span id="micStatus" role="status">마이크 꺼짐</span></div></div><span id="sessionTitle"></span><div class="theme-choices" role="group" aria-label="화면 도구"><button id="audience" type="button">슬라이드쇼 ↗</button><button id="scrollAudience" type="button">스크롤 슬라이드쇼 ↗</button><a class="app-switch" href="ppt/" target="_blank" rel="noopener" title="PPT 자막 조작화면을 새 탭에서 열기">PPT 자막 ↗</a><button id="theme-dark" type="button" aria-pressed="true">검정 배경</button><button id="theme-cloud" type="button" aria-pressed="false">하늘·구름 배경</button><select id="theme" aria-label="배경" hidden><option value="dark" selected>검정화면</option><option value="cloud">구름 배경</option></select></div></div>
+  <div id="statusbar"><div class="status-left"><button id="back" class="status-home" type="button" title="처음 화면으로 돌아가기">⌂ 홈</button><div class="mic-state"><span id="dot"></span><span id="micStatus" role="status">마이크 꺼짐</span></div></div><span id="sessionTitle"></span><div class="theme-choices" role="group" aria-label="화면 도구"><button id="audience" type="button">슬라이드쇼 ↗</button><button id="scrollAudience" type="button">스크롤 슬라이드쇼 ↗</button><a class="app-switch" href="ppt/" target="_blank" rel="noopener" title="방송용 PPT 조작화면을 새 탭에서 열기">방송용 PPT ↗</a><button id="theme-dark" type="button" aria-pressed="true">검정 배경</button><button id="theme-cloud" type="button" aria-pressed="false">하늘·구름 배경</button><select id="theme" aria-label="배경" hidden><option value="dark" selected>검정화면</option><option value="cloud">구름 배경</option></select></div></div>
   <div id="voiceFeedback" hidden></div>
   <div id="stage"><div id="page"><div id="lines"></div><div id="nextCue" hidden aria-label="다음 장 첫 줄"></div></div></div>
   <div id="overviewToolbar" hidden>
@@ -1887,20 +1887,9 @@ let barT;
 function showBar(){if(listening){$('bar').classList.add('hide');return;}$('bar').classList.remove('hide');clearTimeout(barT);barT=setTimeout(()=>{if(!panelOpen()&&!notifyUI('holdControls'))$('bar').classList.add('hide')},4000)}
 addEventListener('mousemove',showBar);
 // 시험용: 콘솔에서 __feed('들은 말')로 음성인식 결과를 흉내 낼 수 있다
-/* ---------- 바탕화면·홈 화면에 설치 ---------- */
-// 크롬·엣지는 설치 창을 띄우고, 그 밖(아이폰 사파리 등)은 메뉴로 추가하는 방법을 알려 준다
-let installEvt=null;
+/* Keep offline support without an app-install action. */
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
-addEventListener('beforeinstallprompt',e=>{e.preventDefault(); installEvt=e; $('installNote').textContent=''});
-addEventListener('appinstalled',()=>{installEvt=null; $('installRow').style.display='none'; toast('설치했습니다. 바탕화면(홈 화면)의 아이콘으로 여세요.',6000)});
-if(matchMedia('(display-mode: standalone)').matches||navigator.standalone)$('installRow').style.display='none';
-$('install').onclick=async()=>{
-  if(installEvt){installEvt.prompt(); try{await installEvt.userChoice}catch(_){} installEvt=null; return}
-  const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent);
-  $('installNote').textContent=ios?'사파리 아래쪽 공유 버튼 → "홈 화면에 추가"를 누르세요.'
-    :location.protocol!=='https:'?'인터넷 주소(https://patrickdfg.github.io/prom/)로 열어야 설치할 수 있습니다.'
-    :'크롬 주소창 오른쪽의 설치 아이콘이나 ⋮ 메뉴 → "앱 설치"(폰은 "홈 화면에 추가")를 누르세요.';
-};
+addEventListener('beforeinstallprompt',e=>e.preventDefault());
 window.__feed=t=>onHeard(t);
 window.__state=()=>({page,cursor,total:P.length});
 // 원고 읽어주기(read)에서 넘어온 원고를 7줄 프롬프터로 바로 연다

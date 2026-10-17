@@ -143,7 +143,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <label><input type="radio" name="lines2" value="m"> 모바일</label></div>
   <div class="row"><button class="btn ghost" id="usePaste">붙여 넣은 글로 시작</button></div>
   <button class="btn" id="demo">설교 프롬프터 테스트</button>
-  <div class="row" id="installRow"><button class="btn ghost" id="install">바탕화면에 설치</button><span id="installNote" style="color:var(--muted);font-size:13px"></span></div>
+  
   <details id="obsHelp"><summary>방송 장비(캡처보드·마이크)와 함께 쓸 때 설정법</summary>
     <div>
       <p>프롬프터는 크롬이 고른 마이크 소리를 듣고 쪽을 넘깁니다. 방송 소리를 쓰려면 크롬 마이크만 알맞게 고르면 됩니다. 크롬 마이크는 프롬프터 화면의 설정 → "크롬 마이크 설정 주소 복사"로 열어 고르고, 고른 뒤 프롬프터를 새로고침합니다.</p>
@@ -1679,20 +1679,9 @@ let barT;
 function showBar(){$('bar').classList.remove('hide');clearTimeout(barT);barT=setTimeout(()=>{if(!panelOpen())$('bar').classList.add('hide')},4000)}
 addEventListener('mousemove',showBar);
 // 시험용: 콘솔에서 __feed('들은 말')로 음성인식 결과를 흉내 낼 수 있다
-/* ---------- 바탕화면·홈 화면에 설치 ---------- */
-// 크롬·엣지는 설치 창을 띄우고, 그 밖(아이폰 사파리 등)은 메뉴로 추가하는 방법을 알려 준다
-let installEvt=null;
+/* Keep offline support without an app-install action. */
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
-addEventListener('beforeinstallprompt',e=>{e.preventDefault(); installEvt=e; $('installNote').textContent=''});
-addEventListener('appinstalled',()=>{installEvt=null; $('installRow').style.display='none'; toast('설치했습니다. 바탕화면(홈 화면)의 아이콘으로 여세요.',6000)});
-if(matchMedia('(display-mode: standalone)').matches||navigator.standalone)$('installRow').style.display='none';
-$('install').onclick=async()=>{
-  if(installEvt){installEvt.prompt(); try{await installEvt.userChoice}catch(_){} installEvt=null; return}
-  const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent);
-  $('installNote').textContent=ios?'사파리 아래쪽 공유 버튼 → "홈 화면에 추가"를 누르세요.'
-    :location.protocol!=='https:'?'인터넷 주소(https://patrickdfg.github.io/prom/)로 열어야 설치할 수 있습니다.'
-    :'크롬 주소창 오른쪽의 설치 아이콘이나 ⋮ 메뉴 → "앱 설치"(폰은 "홈 화면에 추가")를 누르세요.';
-};
+addEventListener('beforeinstallprompt',e=>e.preventDefault());
 window.__feed=t=>onHeard(t);
 window.__state=()=>({page,cursor,total:P.length});
 // 원고 읽어주기(read)에서 넘어온 원고를 7줄 프롬프터로 바로 연다
