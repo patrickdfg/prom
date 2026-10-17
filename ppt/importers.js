@@ -79,7 +79,7 @@ async function deck(file){if(!/\.pptx$/i.test(file.name))throw Error('PPTX 파�
   if(first(slide,'graphicFrame')||first(slide,'oleObj')||first(slide,'videoFile'))warnings.add('표·차트·동영상은 원본 이미지로 바꿔 넣으면 더 정확합니다.');
   slides.push({renderVersion:2,text:text.join('\n').trim(),background,width,height,shapes});
  }
- let cues=null;const cuesFile=z.file('prom/cues.json');if(cuesFile){try{cues=JSON.parse(await cuesFile.async('string'));if(cues.version===1&&cues.editors?.length===slides.length)cues.editors.forEach((e,i)=>{slides[i].uid=e.uid;slides[i].editor=e.editor;slides[i].bodyIndex=e.bodyIndex;});}catch{warnings.add('저장된 원고 연결 정보는 읽지 못했습니다.');}}
+ let cues=null;const cuesFile=z.file('prom/cues.json');if(cuesFile){try{cues=JSON.parse(await cuesFile.async('string'));if(cues.version===1&&cues.editors?.length===slides.length)cues.editors.forEach((e,i)=>{slides[i].uid=e.uid;slides[i].editor=e.editor;slides[i].bodyIndex=e.bodyIndex;slides[i].masterId=e.masterId;for(const at of e.manualShapes||[])if(slides[i].shapes[at])slides[i].shapes[at].manualGeometry=true;});}catch{warnings.add('저장된 원고 연결 정보는 읽지 못했습니다.');}}
  return {slides,warnings:[...warnings],cues};
 }
 return {manuscript,manuscriptRich,deck};

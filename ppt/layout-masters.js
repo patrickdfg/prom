@@ -1,0 +1,14 @@
+/* Project-local layout inheritance. Text and manuscript links never form part of a style patch. */
+window.CaptionMasters=(()=>{
+'use strict';const clone=x=>structuredClone(x),geo=['x','y','w','h','anchor','padding'],style=['font','size','bold','color','align','lineSpacing'];
+function hash(text){let h=2166136261;for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(36);}
+const assets=new Map();function asset(src){if(!assets.has(src))assets.set(src,hash(src||''));return assets.get(src);}
+function key(s){if(s.masterId)return s.masterId;if(s.editor?.layout)return 'generated:'+s.editor.layout;return 'ppt:'+hash(JSON.stringify([s.width,s.height,s.background,(s.shapes||[]).map(sh=>[sh.type,sh.x,sh.y,sh.w,sh.h,sh.src?asset(sh.src):''])]));}
+function values(sh){const p=sh.paragraphs?.[0]||{},r=p.runs?.find(r=>r.size)||{};return {...Object.fromEntries(geo.map(k=>[k,sh[k]])),font:r.font,size:r.size,bold:r.bold,color:r.color,align:p.align,lineSpacing:p.lineSpacing};}
+function diff(before,after){const patches={};after.shapes.forEach((sh,i)=>{if(!before.shapes[i])return;const a=values(before.shapes[i]),b=values(sh),patch={};for(const k of [...geo,...style])if(b[k]!==undefined&&JSON.stringify(a[k])!==JSON.stringify(b[k]))patch[k]=clone(b[k]);if(Object.keys(patch).length)patches[i]=patch;});return patches;}
+function apply(scene,patches){const s=clone(scene);for(const [i,p] of Object.entries(patches||{})){const sh=s.shapes[i];if(!sh)continue;const old=values(sh);for(const k of geo)if(p[k]!==undefined)sh[k]=clone(p[k]);if(['x','y','w','h'].some(k=>p[k]!==undefined))sh.manualGeometry=true;if(sh.type==='text')for(const para of sh.paragraphs||[]){for(const k of ['align','lineSpacing'])if(p[k]!==undefined)para[k]=clone(p[k]);if(p.size!==undefined)para.defaultSize=p.size;para.runs=(para.runs||[]).map(r=>{const next={...r};for(const k of ['font','size','bold'])if(p[k]!==undefined)next[k]=p[k];if(p.color!==undefined&&(!r.color||r.color===old.color))next.color=p.color;return next;});}if(sh.type==='text'&&p.lineSpacing)sh.lineReduction=0;}
+ if(s.editor){const v=values(s.shapes[s.bodyIndex]);for(const k of [...geo,...style])if(v[k]!==undefined)s.editor[k]=clone(v[k]);}return s;}
+function merge(a={},b={}){const out=clone(a);for(const [k,patches] of Object.entries(b)){out[k]||={};for(const [i,p] of Object.entries(patches))out[k][i]={...(out[k][i]||{}),...clone(p)};}return out;}
+function inherit(scene,template={},options={}){const records=merge(template,window.CaptionWorkspace?.layoutMasters?.()||{}),patches=clone(records[key(scene)]||{});if(scene.editor&&patches[scene.bodyIndex])for(const k of [...geo,...style])if(options[k]!==undefined)delete patches[scene.bodyIndex][k];return apply(scene,patches);}
+return {key,values,diff,apply,merge,inherit};
+})();

@@ -7,7 +7,7 @@ function show(host,slide,green='#00ff00'){
   if(shape.type==='image'){
    const edgeX=slide.width*.1,edgeY=slide.height*.1;
    // A nearly full-slide background must cover the green canvas at every edge.
-   if(shape.background||(!shape.rotate&&Math.abs(shape.x)<=edgeX&&Math.abs(shape.y)<=edgeY&&Math.abs(slide.width-shape.x-shape.w)<=edgeX&&Math.abs(slide.height-shape.y-shape.h)<=edgeY)){Object.assign(el.style,{left:'0px',top:'0px',width:slide.width+'px',height:slide.height+'px'});el.dataset.fullBleed='true';}
+   if(!shape.manualGeometry&&(shape.background||(!shape.rotate&&Math.abs(shape.x)<=edgeX&&Math.abs(shape.y)<=edgeY&&Math.abs(slide.width-shape.x-shape.w)<=edgeX&&Math.abs(slide.height-shape.y-shape.h)<=edgeY))){Object.assign(el.style,{left:'0px',top:'0px',width:slide.width+'px',height:slide.height+'px'});el.dataset.fullBleed='true';}
    if(!/^data:image\/(png|jpeg|gif|webp|bmp|svg\+xml);base64,/.test(shape.src||''))continue;const img=document.createElement('img');img.src=shape.src;img.alt='';el.appendChild(img);}
   if(shape.type==='rect')el.style.background=shape.color;
   if(shape.type==='text'){el.classList.add('slide-text');el.style.justifyContent=shape.anchor==='ctr'?'center':shape.anchor==='b'?'flex-end':'flex-start';el.style.padding=(shape.padding||[0,0,0,0]).map(n=>n+'px').join(' ');
