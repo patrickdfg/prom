@@ -1,9 +1,9 @@
-/* 발표 도구. 기본값은 기존 원고/음성 방식이며 추가 기능은 명시적으로 선택한다. */
+/* 실험실. 기본값은 기존 원고/음성 방식이며 추가 기능은 명시적으로 선택한다. */
 (() => {
  'use strict';
- const button=document.createElement('button');button.id='extrasButton';button.textContent='발표 도구';$('more').before(button);
+ const button=document.createElement('button');button.id='extrasButton';button.textContent='실험실';$('more').before(button);
  const dialog=document.createElement('dialog');dialog.id='extrasDialog';dialog.className='tool-dialog';
- dialog.innerHTML=`<div class="dialog-head"><h2>발표 · 연습 도구</h2><button id="extrasClose">닫기</button></div>
+ dialog.innerHTML=`<div class="dialog-head"><h2>실험실</h2><button id="extrasClose">닫기</button></div>
  <fieldset><legend>음성 추적 실험실</legend><label><input type="checkbox" id="voiceLab"> 숫자·장절 인식 / 애드리브 복귀 보강</label><p>원고 밖 발화는 대기합니다. 먼 위치로 복귀할 때는 이어지는 문장까지 읽어 주세요. 기기별 실제 인식 결과는 다를 수 있습니다.</p></fieldset>
  <fieldset id="nextLineTools"><legend>실험실 · 다음 장 첫 줄</legend><p>본문 줄 간격을 먼저 좁혀 다음 장 첫 줄을 하단에 표시합니다.</p></fieldset>
  <fieldset><legend>슬라이드쇼 전용</legend><div class="extras-row"><label><input type="checkbox" id="mirrorX"> 좌우 반전</label><label><input type="checkbox" id="mirrorY"> 상하 반전</label></div><p>반사 유리 장비용입니다. 조작창은 반전하지 않습니다.</p><label for="stageMessage">긴급 안내</label><input id="stageMessage" type="text" maxlength="140" placeholder="예: 5분 남았습니다"><div class="extras-row"><button id="sendStageMessage">안내 표시</button><button id="clearStageMessage">안내 지우기</button></div><p id="stageMessageStatus" role="status">슬라이드쇼 창에 표시할 안내를 입력하세요.</p></fieldset>
@@ -51,7 +51,7 @@
  };
  const originalMic=startMic;
  startMic=function(...args){if(ANDROID&&(recordPending||recorder?.state==='recording')){toast('연습 녹음을 종료한 뒤 마이크 자동 넘김을 켜 주세요.');return;}pending=null;lastSample='';lastPage=-1;return originalMic(...args);};
- function recordingUI(active){$('recordStart').disabled=active;$('recordStop').disabled=!active;button.textContent=active?'● 녹음 중 · 발표 도구':'발표 도구';}
+ function recordingUI(active){$('recordStart').disabled=active;$('recordStop').disabled=!active;button.textContent=active?'● 녹음 중 · 실험실':'실험실';}
  function stopTracks(){recordStream?.getTracks().forEach(t=>t.stop());recordStream=null;}
  $('recordStart').onclick=async()=>{
    if(recordPending||recorder?.state==='recording')return;
