@@ -186,3 +186,9 @@ button:hover{filter:brightness(1.12)}
 
 .status-left{display:flex;align-items:center;gap:10px;flex-shrink:0;white-space:nowrap}
 #statusbar .status-home{pointer-events:auto;flex-shrink:0;background:#202b3a;color:#dce8f8;border:1px solid #52647c;border-radius:8px;font:inherit;min-height:28px;padding:5px 7px;cursor:pointer;white-space:nowrap}
+
+/* Keep the fullscreen action at the physical lower-right edge, outside the scrolling toolbar. */
+#view>#fs{position:fixed;right:8px;bottom:8px;z-index:35;display:block;min-height:32px;padding:6px 10px;border:1px solid #52647c;border-radius:8px;background:#202b3a;color:#e8eef6;font:12px 'Malgun Gothic',sans-serif;cursor:pointer;white-space:nowrap}
+#bar{right:112px}
+#view.solo-presentation>#fs{opacity:0;pointer-events:none}
+#view.solo-presentation.controls-open>#fs,#view.solo-presentation>#fs:focus-visible{opacity:1;pointer-events:auto}

@@ -120,7 +120,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
-<link rel="stylesheet" href="workspace.css?v=20261017-home-left1">
+<link rel="stylesheet" href="workspace.css?v=20261017-manual-full1">
 <link rel="stylesheet" href="extras.css?v=20261017-follow3">
 <style>.app-switch{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;flex-shrink:0;padding:8px 12px;border:1px solid #506a88;border-radius:8px;background:#20344c;color:#d6f5ec!important;font:600 12px/1.4 sans-serif;text-decoration:none;pointer-events:auto}.app-switch:hover{background:#2b4963}.app-switch:focus-visible{outline:3px solid #5de2ca;outline-offset:2px}</style>
 </head>
@@ -191,10 +191,9 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <div id="micnote">음성인식은 크롬 기본 마이크로 듣습니다. 말할 때 막대가 움직이면 소리가 들어오는 것입니다. 마이크를 바꾸려면 위 버튼으로 주소를 복사해 새 탭 주소창에 붙여 넣고 Enter, 마이크를 고른 뒤 이 화면을 새로고침하세요. (크롬은 웹 페이지에서 설정 화면을 바로 열지 못하게 막습니다.)</div>
   </div>
   <div id="bar">
-    <div class="control-group"><button id="mic" title="원고만 전체화면으로 표시합니다. Esc 또는 M으로 끝냅니다.">마이크 켜기 (M)</button><button id="tts">읽어주기</button><span id="ttsRateControls" class="control-group" role="group" aria-label="읽기 속도" hidden><span>읽기 속도</span><button id="ttsRateMinus" type="button" aria-label="읽기 속도 줄이기">−</button><output id="ttsRateInline" aria-live="polite">1.0</output><button id="ttsRatePlus" type="button" aria-label="읽기 속도 높이기">＋</button></span></div>
+    <div class="control-group"><button id="mic" title="현재 화면에서 음성으로 원고를 따라갑니다. M으로 켜고 끕니다.">마이크 켜기 (M)</button><button id="tts">읽어주기</button><span id="ttsRateControls" class="control-group" role="group" aria-label="읽기 속도" hidden><span>읽기 속도</span><button id="ttsRateMinus" type="button" aria-label="읽기 속도 줄이기">−</button><output id="ttsRateInline" aria-live="polite">1.0</output><button id="ttsRatePlus" type="button" aria-label="읽기 속도 높이기">＋</button></span></div>
     <div class="control-group"><button id="prev" aria-label="이전 쪽">◀</button><span id="pg">1 / 1</span><button id="find">검색</button><button id="next" aria-label="다음 쪽">▶</button></div>
     <div class="control-group view-switch" role="group" aria-label="원고 보기"><button id="viewSingle" aria-pressed="true">한 장</button><button id="viewMultiple" aria-pressed="false">여러 장</button><button id="viewScroll" aria-pressed="false" title="현재 창에서 원고를 부드럽게 스크롤합니다">스크롤 보기</button></div>
-    <button id="fs">전체화면 (F)</button>
     <div class="control-group"><label id="speedOptWrap" title="마이크를 켰을 때 오른쪽 위에 말하는 속도(현수 목소리=100)를 띄웁니다"><input type="checkbox" id="speedOpt" checked>속도<span class="wide"> 표시</span></label><label id="dimOptWrap"><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label></div>
     <div class="control-group"><button id="note">발표 메모</button><button id="edit">편집 (E)</button><button id="save">저장</button><button id="openf">열기</button></div>
     <label hidden id="labOptWrap" title="줄 간격을 좁히고 다음 장 첫 줄을 하단에 표시합니다"><input type="checkbox" id="labNextLine"> 실험실 · 다음 장 첫 줄</label>
@@ -209,6 +208,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
       <span id="heard"></span>
     </div>
   </div>
+  <button id="fs" type="button" title="전체화면 켜기·끄기 (F)">전체화면 (F)</button>
   <dialog id="obsFullscreenDialog" class="tool-dialog" aria-labelledby="obsFullscreenTitle">
     <div class="dialog-head"><h2 id="obsFullscreenTitle">OBS 풀스크린 전환 안내</h2><button type="button" data-close="obsFullscreenDialog" aria-label="OBS 안내 닫기">닫기</button></div>
     <p><strong>어떤 용도인가요?</strong><br>같은 모니터에 띄운 OBS 전체화면 프로젝터와 슬라이드쇼를 번갈아 보여 주는 Windows용 보조 프로그램입니다. OBS 전체화면을 앞으로 가져오거나 뒤로 보내며, 조작창은 그대로 유지합니다.</p>
@@ -1293,7 +1293,7 @@ function go(p,manual){
 
 /* ---------- 음성 인식 ---------- */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-let rec=null, listening=false, heardCarry='', sessionText='', lastTail='', micFullscreen=false;
+let rec=null, listening=false, heardCarry='', sessionText='', lastTail='';
 let speechFloor=0,speechResultCount=0;
 function toast(msg,ms=3000){const t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',ms)}
 function setDot(cls){$('dot').className=cls||''; notifyUI('mic',cls)}
@@ -1409,9 +1409,6 @@ async function startMic(){
   if(!SR){toast('이 브라우저는 음성인식을 지원하지 않습니다. 크롬으로 열어 주세요.',6000);return}
   notifyUI('finishNote');closePanel(); stopMeter();
   const hasSlideshow=!!notifyUI('hasSlideshow');
-  if(!hasSlideshow&&!document.fullscreenElement&&document.documentElement.requestFullscreen){
-    document.documentElement.requestFullscreen().then(()=>{micFullscreen=true}).catch(()=>{});
-  }
   await holdMic();
   rec=new SR(); rec.lang='ko-KR'; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
   const activeRec=rec;
@@ -1449,7 +1446,7 @@ async function startMic(){
   if(ANDROID){makeWaitAC(); lastResultAt=0;emptySessions=0;}
   if(ANDROID&&panelOpen())closePanel();      // 소리 막대가 마이크를 같이 잡지 않게
   cursor=recognitionStart(); heardCarry=''; sessionText=''; lastTail='';speechFloor=0;speechResultCount=0;     // 스크롤 보기에서는 현재 읽는 위치부터 이어 간다
-  listening=true; $('view').classList.toggle('presenting',!hasSlideshow);$('view').classList.toggle('operator-mode',hasSlideshow);notifyUI('presentation');
+  listening=true; $('view').classList.remove('presenting');$('view').classList.toggle('operator-mode',hasSlideshow);notifyUI('presentation');
   $('fontPanel').classList.remove('open');$('ttsPanel').classList.remove('open');
   document.activeElement?.blur();fit();render();
   setDot(''); cap('마이크 여는 중…'); startRec();
@@ -1458,7 +1455,6 @@ async function startMic(){
 }
 function stopMic(){ speedStop(); endWait();
   listening=false;$('view').classList.remove('presenting','controls-open','operator-mode');fit();render();showBar();
-  if(micFullscreen){micFullscreen=false;if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});}
   cap(''); releaseMic(); if(rec)try{rec.stop()}catch(_){}
   $('mic').classList.remove('on'); $('mic').textContent='마이크 켜기 (M)'; setDot('');
 }
@@ -1866,7 +1862,6 @@ $('theme').onchange=applyTheme;
 $('fs').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();else toast('이 브라우저에서는 메뉴에서 전체화면으로 열어 주세요.')}catch(_){toast('전체화면으로 바꾸지 못했습니다. 다시 눌러 주세요.')}};
 $('back').onclick=()=>{endEdit();stopMic();closePanel();tStop();$('fontPanel').classList.remove('open');$('view').style.display='none';$('setup').style.display='block'};
 addEventListener('resize',()=>{fit(); if(!editing)render(); if(panelOpen())placePanel()});
-addEventListener('fullscreenchange',()=>{if(listening&&micFullscreen&&!document.fullscreenElement)stopMic();});
 addEventListener('keydown',e=>{
   if(e.key==='Escape'&&listening){e.preventDefault();stopMic();return;}
   if(e.key==='Escape'&&panelOpen()){closePanel(); showBar(); return}
