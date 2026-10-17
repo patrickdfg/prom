@@ -267,7 +267,7 @@
     if(!channel) {
       if(!('BroadcastChannel' in window)){toast('이 브라우저는 슬라이드쇼을 지원하지 않습니다.');return;}
       channelId=crypto.randomUUID(); channel=new BroadcastChannel('prom-display-'+channelId);
-      channel.onmessage=e=>{ if(e.data?.type==='ready')publish(true); };
+      channel.onmessage=e=>{if(e.data?.type==='fullscreen-state'){const active=!!e.data.active;$('audience').title=$('scrollAudience').title=active?'송출창 전체화면 중':'송출창의 전체화면 시작 버튼을 클릭하세요';if(!active)toast('송출창에서 큰 전체화면 시작 버튼을 한 번 클릭해 주세요.',7000);}if(e.data?.type==='ready')publish(true);};
     }
     if(audience&&!audience.closed){
       audienceScreens.place(audience,'startSlideshowFullscreen');

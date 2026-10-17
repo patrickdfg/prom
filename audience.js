@@ -51,14 +51,13 @@
   // 글꼴 로딩이 끝난 뒤 긴 줄의 폭과 스크롤 위치를 다시 맞춘다.
   document.fonts?.ready.then(fit);
   const fullButton=document.getElementById('fullscreen');
-  function syncFullscreen(){fullButton.hidden=!!document.fullscreenElement;}
+  function syncFullscreen(){const active=!!document.fullscreenElement;fullButton.hidden=active;fullButton.classList.add('fullscreen-start');fullButton.textContent='여기를 클릭하여 전체화면 시작\n조작창은 기존 모니터에 유지됩니다';channel.postMessage({type:'fullscreen-state',active});}
   let requestingFullscreen=false;
   async function enterFullscreen(target){
     if(!target||!Number.isFinite(target.left)){try{target=window.opener?.PromAudienceScreens?.target()||null;}catch{target=null;}}
     if(document.fullscreenElement||requestingFullscreen)return;
     requestingFullscreen=true;
-    try{await document.documentElement.requestFullscreen(target?{screen:target,navigationUI:'hide'}:{navigationUI:'hide'});syncFullscreen();}
-    catch(_){fullButton.hidden=false;fullButton.textContent='화면을 클릭하면 전체화면으로 시작';}
+    try{await PromOutputFullscreen.enter(target);syncFullscreen();}
     finally{requestingFullscreen=false;}
   }
   window.startSlideshowFullscreen=enterFullscreen;
