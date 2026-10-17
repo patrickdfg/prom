@@ -1,0 +1,22 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const elements=new Map();
+function element(){return {value:'',children:[],hidden:false,disabled:false,checked:false,open:false,textContent:'',parentElement:{hidden:false,nextElementSibling:{hidden:false}},closest(){return {hidden:false}},replaceChildren(){this.children=[]},append(x){this.children.push(x)},addEventListener(type,fn){this[type]=fn},showModal(){this.open=true},close(){this.open=false;this.closeEvent?.()},focus(){},select(){}};}
+const $=id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id)};
+const slide=(uid,text)=>({uid,width:960,height:540,text,shapes:[{type:'text',x:0,y:0,w:960,h:100,paragraphs:[{align:'center',runs:[{text,size:32,font:'Original Font',color:'#111111'}]}]}]});
+const project={slides:[slide('a','First caption'),slide('b','Second caption'),slide('c','Third caption')],links:Array.from({length:3},()=>({status:'unlinked',start:null,end:null})),lines:[]};
+let preview,applyCount=0;
+const context={window:{},document:{getElementById:$,createElement:element},structuredClone,crypto:require('node:crypto').webcrypto,confirm:()=>true,
+ CaptionCore:{},CaptionBuilder:{colorType:()=>'',plain:s=>s,styledRuns:(text,options)=>[{...options,text}]},
+ CaptionMasters:{key:()=> 'original'},CaptionRender:{show:(host,s)=>preview=structuredClone(s),release(){}},
+ CaptionWorkspace:{prepareEdit(){},snapshot:()=>structuredClone(project),rows:()=>[],currentRange:()=>null,message:s=>{throw Error(s)},apply(slides,links){applyCount++;project.slides=slides;project.links=links;}}};
+vm.runInNewContext(fs.readFileSync('ppt/editor.js','utf8'),context);
+(async()=>{
+ const editor=context.window.CaptionEditor;
+ await editor.open(0);assert.equal($('editText').value,'First caption');assert.equal($('editEarlier').disabled,true);
+ await $('editLater').onclick();assert.equal($('editText').value,'Second caption');assert.equal(preview.uid,'b');assert.equal($('editorTitle').textContent,'2번 자막 편집');assert.equal(applyCount,0,'browsing must not rewrite imported shapes');
+ await $('editEarlier').onclick();assert.equal($('editText').value,'First caption');assert.equal(preview.uid,'a');assert.equal(project.slides.map(s=>s.uid).join(','),'a,b,c','navigation must not reorder slides');
+ $('editText').value='Edited first';$('editText').input();await $('editLater').onclick();assert.equal(project.slides[0].shapes[0].paragraphs[0].runs[0].text,'Edited first','save pending edits before navigation');assert.equal($('editText').value,'Second caption');
+ $('editText').value='Edited copy';$('editText').input();await $('editDuplicate').onclick();assert.equal($('editorTitle').textContent,'3번 자막 편집');assert.equal($('editText').value,'Edited copy');assert.notEqual(preview.uid,'b');assert.equal(project.slides[2].shapes[0].paragraphs[0].runs[0].text,'Edited copy');assert.equal(project.links[2].status,'unlinked');assert.equal($('editorDialog').open,true);
+ await $('editLater').onclick();assert.equal($('editText').value,'Third caption');assert.equal($('editLater').disabled,true);
+ console.log('PASS previous/next contents and preview, stable order, no rewrite on browse, pending edit save, edited duplicate, boundary controls');
+})();
