@@ -2,8 +2,8 @@
 if(!/^[a-f0-9-]{36}$/.test(id)||!('BroadcastChannel'in window)){notice.textContent='조작창의 송출창 열기 버튼으로 열어 주세요.';return;}
 const channel=new BroadcastChannel('prom-ppt-'+id);channel.onmessage=e=>{const d=e.data;if(d?.type==='heartbeat'){last=Date.now();channel.postMessage({type:'alive'});if(stale)channel.postMessage({type:'ready'});return;}if(d?.type!=='frame')return;last=Date.now();stale=false;notice.hidden=true;transition.show(d.slide,d.index,d.green,!d.slide&&d.immediate);document.title=d.index<0?'녹색 대기 · 설교 자막':`${d.index+1}번 · 설교 자막`;};channel.postMessage({type:'ready'});
 setInterval(()=>{if(Date.now()-last>8000&&!stale){stale=true;transition.show(null,-1,'#00ff00',true);notice.hidden=false;notice.textContent='조작창 연결 끊김 · 녹색 화면';}},2000);
-function syncFullscreen(){const active=!!document.fullscreenElement;button.hidden=active;button.classList.add('fullscreen-start');button.textContent='여기를 클릭하여 전체화면 시작\n조작창은 기존 모니터에 유지됩니다';channel.postMessage({type:'fullscreen-state',active});}
+function syncFullscreen(){const active=!!document.fullscreenElement||document.documentElement.dataset.promBrowserFullscreen==='true';button.hidden=active;button.classList.add('fullscreen-start');button.textContent='여기를 클릭하여 전체화면 시작\n조작창은 기존 모니터에 유지됩니다';channel.postMessage({type:'fullscreen-state',active});}
 async function fullscreen(target){if(!target||!Number.isFinite(target.left)){try{target=window.opener?.CaptionOutputScreens?.target()||null;}catch{target=null;}}if(document.fullscreenElement||requested)return;requested=true;try{await PromOutputFullscreen.enter(target);syncFullscreen();}finally{requested=false;}}
-document.addEventListener('fullscreenchange',syncFullscreen);syncFullscreen();
+document.addEventListener('fullscreenchange',syncFullscreen);document.addEventListener('prom-browser-fullscreen',syncFullscreen);syncFullscreen();
 window.captionFullscreen=fullscreen;button.onclick=fullscreen;host.onclick=fullscreen;fullscreen();
 })();

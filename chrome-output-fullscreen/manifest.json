@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "PROM 송출창 자동 전체화면",
+  "version": "1.0.0",
+  "description": "PROM·PPT 송출 팝업만 자동 전체화면으로 전환합니다. 조작창은 유지합니다.",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://patrickdfg.github.io/prom/audience.html*",
+        "https://patrickdfg.github.io/prom/ppt/output.html*",
+        "http://127.0.0.1/audience.html*",
+        "http://127.0.0.1/ppt/output.html*",
+        "http://localhost/audience.html*",
+        "http://localhost/ppt/output.html*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ]
+}
