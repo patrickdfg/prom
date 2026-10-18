@@ -81,3 +81,9 @@ body.mic-on .control-pane #status{height:31px;min-height:31px;flex-shrink:0;whit
 #showSelected,#mappingToggle,body [data-prom-support] button{font-size:13px}
 
 #editorPreview{cursor:grab;touch-action:none;user-select:none}
+
+/* 템플릿 만들기와 자막 만들기는 같은 대화상자를 쓰되 필요한 칸만 보여 준다. */
+#generateDialog[data-mode=register] .mode-make,#generateDialog[data-mode=make] .mode-register,#generateDialog #applyTemplatePair{display:none!important}
+#registerFinish{margin-top:12px}#registerFinish[hidden]{display:none}
+.pair-fixed td{vertical-align:middle}.pair-fixed input[type=checkbox]{width:auto;margin-right:6px}
+.pair-thumb{width:168px;margin:0;border:1px solid #52647d;border-radius:4px}
