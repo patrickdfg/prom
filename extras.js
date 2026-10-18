@@ -30,6 +30,8 @@
  onHeard=function(text){
    if(!$('voiceLab').checked)return originalHeard(text);
    if(PromOptionalSpeech.match(normStr(heardCarry+text),optionalSpeech,cursor)!==null||(typeof PromSpeechMatch!=='undefined'&&PromSpeechMatch.optional(normStr(heardCarry+text),optionalSpeech,cursor)))return originalHeard(text);
+   const scripture=typeof PromScriptureSpeech==='undefined'?null:PromScriptureSpeech.match(normStr(heardCarry+text),scriptureSpeech,cursor);
+   if(scripture){pending=null;cursor=scripture.pos;const target=pageOf(cursor);cap('성경 본문·해설 위치 확인');if(target!==page)go(target);else render();return;}
    indexVoice();if(lastPage!==page){pending=null;lastSample='';lastPage=page;}
    const recognized=PromVoiceLab.mapped(heardCarry+text).text,sample=recognized.slice(-22);$('heard').textContent=text.slice(-40);
    const sampleKey=recognized.slice(-96);if(sampleKey===lastSample)return;lastSample=sampleKey;

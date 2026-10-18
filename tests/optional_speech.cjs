@@ -18,7 +18,7 @@ assert.equal(O.match('감사',O.build('(긴 설명) 감사합니다'),0),null,'s
 const end=examples[0],full=norm(end[0]);assert.equal(O.match(norm(end[1]),O.build(end[0]),full.length),null,'stale speech cannot rewind');
 // Exercise the actual production index and onHeard handlers, including row/page-wrapped parentheses.
 for(const file of ['index.html','classic.html']){
- const html=fs.readFileSync(file,'utf8'),context={PromVideoCues:V,PromOptionalSpeech:O,page:0,cursor:0,heardCarry:'',lastTail:'',cap(){},cueMatch:()=>null,render(){},go(p){context.page=p},$:id=>id==='lead'?{value:'0'}:{textContent:''}};
+ const html=fs.readFileSync(file,'utf8'),context={PromVideoCues:V,PromOptionalSpeech:O,PromScriptureSpeech:require('../scripture-speech.js'),page:0,cursor:0,heardCarry:'',lastTail:'',cap(){},cueMatch:()=>null,render(){},go(p){context.page=p},$:id=>id==='lead'?{value:'0'}:{textContent:''}};
  vm.createContext(context);vm.runInContext(html.slice(html.indexOf('const keep=ch=>'),html.indexOf('/* ---------- 화면 ---------- */')),context);
  const start=html.indexOf('function onHeard(text){'),end=html.indexOf('// 마이크를 한 번',start);vm.runInContext(html.slice(start,end),context);
  for(const [raw,heard] of examples){context.pages=raw.split('\n').map(line=>[[{t:line,c:'k'}]]);vm.runInContext('P=pages;page=0;cursor=0;heardCarry="";lastTail="";index();',context);context.heard=heard;vm.runInContext('onHeard(heard)',context);assert.equal(context.cursor,norm(raw).length,file+' omitted '+raw.slice(0,25));assert.equal(vm.runInContext('norm.length',context),norm(raw).length,'canonical index remains unchanged');}
