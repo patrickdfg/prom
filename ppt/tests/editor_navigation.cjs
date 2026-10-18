@@ -8,7 +8,7 @@ let preview,applyCount=0;
 const context={window:{},document:{getElementById:$,createElement:element},structuredClone,crypto:require('node:crypto').webcrypto,confirm:()=>true,
  CaptionCore:{},CaptionBuilder:{colorType:()=>'',plain:s=>s,styledRuns:(text,options)=>[{...options,text}]},
  CaptionMasters:{key:()=> 'original'},CaptionRender:{show:(host,s)=>preview=structuredClone(s),release(){}},
- CaptionWorkspace:{prepareEdit(){},snapshot:()=>structuredClone(project),rows:()=>[],currentRange:()=>null,message:s=>{throw Error(s)},apply(slides,links){applyCount++;project.slides=slides;project.links=links;}}};
+ CaptionRecipes:{async sync(){}},CaptionWorkspace:{prepareEdit(){},snapshot:()=>structuredClone(project),rows:()=>[],currentRange:()=>null,message:s=>{throw Error(s)},apply(slides,links){applyCount++;project.slides=slides;project.links=links;}}};
 vm.runInNewContext(fs.readFileSync('ppt/editor.js','utf8'),context);
 (async()=>{
  const editor=context.window.CaptionEditor;

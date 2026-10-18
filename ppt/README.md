@@ -175,3 +175,6 @@ PROM과 방송용 PPT 하단의 **사용법**, **문의 및 건의**에서 안�
 - "방송용 PPT 만들기"는 저장된 템플릿을 골라 자막을 만드는 화면입니다. 표지 제목·날짜는 이 화면에서만 입력하며 템플릿에는 저장하지 않습니다.
 - 같은 이름의 템플릿이 있으면 덮어쓸지 묻습니다.
 - 시험은 `REG_SCRIPT=원고 REG_DECK=PPT CHROMIUM_PATH=/opt/pw-browsers/chromium node ppt/tests/register_flow_browser.cjs`입니다.
+
+## 편집창이 저장된 템플릿의 레이아웃 사용 (2026-10-18)
+- 새로 고침 뒤처럼 디자인이 기본으로 돌아가 있어도, 편집창을 열거나 "원본 서식 적용"을 누르기 전에 작업에 저장된 템플릿의 디자인을 먼저 적용합니다. 시험은 `node ppt/tests/template_sync_browser.cjs`(Chromium 필요)입니다.
