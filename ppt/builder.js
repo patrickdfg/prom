@@ -20,12 +20,14 @@ async function scene(layout,text,options={}){
 }
 function colorType(hex){const h=String(hex||'').replace('#','');if(!/^[a-f\d]{6}$/i.test(h))return 'black';const [r,g,b]=[0,2,4].map(i=>parseInt(h.slice(i,i+2),16));if(b>90&&b>r*1.3&&b>g*1.15)return 'blue';if(g>65&&g>r*1.25&&g>b*1.15)return 'green';if(r>130&&r>g*1.5&&r>b*1.5)return 'red';return 'black';}
 function blocks(project,allText=false){
- const rich=project.richLines?.length===project.lines.length?project.richLines:project.lines.map(text=>({text,runs:[{text,hex:'000000'}]}));const out=[];let offset=0,current=null;
+ const rich=project.richLines?.length===project.lines.length?project.richLines:project.lines.map(text=>({text,runs:[{text,hex:'000000'}]}));const out=[];let offset=0,current=null,prevBlack='';
  const flush=()=>{if(current?.chars.some(c=>C.normalize(c.ch)))out.push(current);current=null;};
- for(const row of rich){const runs=row.runs||[{text:row.text,hex:'000000'}],types=runs.map(r=>colorType(r.hex));let pos=offset;for(let i=0;i<runs.length;i++){const r=runs[i],type=allText?'blue':types[i]==='red'?(types.slice(0,i).reverse().find(t=>['blue','green'].includes(t))||types.slice(i+1).find(t=>['blue','green'].includes(t))||'black'):types[i];if(type==='black'){flush();pos+=C.normalize(r.text).length;continue;}const layout=type==='blue'?'caption':'word';if(current?.layout!==layout)flush();if(!current)current={layout,chars:[]};for(const ch of r.text){const n=C.normalize(ch).length;current.chars.push({ch,red:types[i]==='red',start:pos,end:pos+n});pos+=n;}}offset+=C.normalize(row.text).length;if(current)current.chars.push({ch:'\n',red:false,start:offset,end:offset});}
+ for(const row of rich){const runs=row.runs||[{text:row.text,hex:'000000'}],types=runs.map(r=>colorType(r.hex));let pos=offset;for(let i=0;i<runs.length;i++){const r=runs[i],type=allText?'blue':types[i]==='red'?(types.slice(0,i).reverse().find(t=>['blue','green'].includes(t))||types.slice(i+1).find(t=>['blue','green'].includes(t))||'black'):types[i];if(type==='black'){flush();prevBlack=(prevBlack+r.text).slice(-60);pos+=C.normalize(r.text).length;continue;}const layout=type==='blue'?'caption':'word';if(current?.layout!==layout)flush();if(!current){current={layout,chars:[],before:prevBlack};prevBlack='';}for(const ch of r.text){const n=C.normalize(ch).length;current.chars.push({ch,red:types[i]==='red',start:pos,end:pos+n});pos+=n;}}offset+=C.normalize(row.text).length;if(current)current.chars.push({ch:'\n',red:false,start:offset,end:offset});}
  flush();return out;
 }
 function trim(chars){let a=0,b=chars.length;while(a<b&&/\s/.test(chars[a].ch))a++;while(b>a&&/\s/.test(chars[b-1].ch))b--;return chars.slice(a,b);}
+// 인용문 바로 앞 검정 글씨("성령님 말씀입니다." 등)에서 화자를 찾는다. 이름이 둘 이상이면 판정하지 않는다.
+function contextSpeaker(before){const found=new Set();for(const m of String(before||'').slice(-40).matchAll(/성령님?|하나님|예수님?|성자(?:님)?|선생(?:님)?/g))found.add(/성령/.test(m[0])?'wordSpirit':/하나님/.test(m[0])?'wordGod':/선생/.test(m[0])?'wordTeacher':'wordSon');return found.size===1?[...found][0]:'';}
 function speakerLayout(text,fallback='word'){
  const head=plain(text).split(/\r?\n/).filter(s=>s.trim()).slice(0,2).join('\n'),match=head.match(/성령님?|하나님|성자(?:님)?|예수님?|선생님/);
  return match?(/성령/.test(match[0])?'wordSpirit':/하나님/.test(match[0])?'wordGod':/선생님/.test(match[0])?'wordTeacher':'wordSon'):fallback;
@@ -35,12 +37,45 @@ function metrics(layout,bank=templateBank){
  const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d'),font=/마루\s*부리|maru\s*buri/i.test(r.font)?'"PROM MaruBuri"':JSON.stringify(r.font||'Malgun Gothic');ctx.font=`${r.bold?700:400} ${r.size}px ${font}, "Malgun Gothic", serif`;
  return {width:(b?.w||900)-pad[1]-pad[3]-2,measure:text=>ctx.measureText(text).width+Math.max(0,text.length-1)*(r.spacing||0),maxLines:Math.max(1,Math.min(layout==='caption'?2:layout==='verse'?8:5,Math.floor(((b?.h||406)-pad[0]-pad[2])/(p?.lineSpacing?.unit==='px'?p.lineSpacing.value:r.size*(p?.lineSpacing?.value||1.3)))))};
 }
-function wrap(chars,m){const rows=[];let rest=trim(chars);while(rest.length){let end=0,text='';while(end<rest.length&&rest[end].ch!=='\n'){const next=text+rest[end].ch;if(end&&m.measure(next)>m.width)break;text=next;end++;}if(end<rest.length&&rest[end].ch!=='\n'){let cut=-1;for(let i=0;i<end;i++)if(/[\s,，]/.test(rest[i].ch)&&m.measure(rest.slice(0,i+1).map(c=>c.ch).join(''))>=m.width*.6)cut=i+1;if(cut>0)end=cut;}const row=trim(rest.slice(0,end));if(row.length)rows.push(row);rest=trim(rest.slice(Math.max(1,end)));}return rows;}
+// 최소 줄 수는 유지하면서 줄 길이가 고르게 되도록 단어 경계에서 나눈다. 마지막 줄에 한두 글자만 남는 것을 막는다.
+function balance(chars,m,rowCount){
+ const words=[];let s=0;for(let i=0;i<=chars.length;i++)if(i===chars.length||/\s/.test(chars[i].ch)){if(i>s)words.push([s,i]);s=i+1;}
+ const n=words.length;if(n<rowCount)return null;
+ const cache=new Map(),text=(a,b)=>chars.slice(words[a][0],words[b-1][1]).map(c=>c.ch).join('');
+ const cost=(a,b)=>{const key=a*1000+b;if(cache.has(key))return cache.get(key);const str=text(a,b),w=m.measure(str);let v=w>m.width?Infinity:(m.width-w)**2*(/[,，]$/.test(str)?.5:1);cache.set(key,v);return v;};
+ const dp=Array.from({length:rowCount+1},()=>Array(n+1).fill(Infinity)),from=Array.from({length:rowCount+1},()=>Array(n+1).fill(0));dp[0][0]=0;
+ for(let k=1;k<=rowCount;k++)for(let j=k;j<=n;j++)for(let a=k-1;a<j;a++){if(dp[k-1][a]===Infinity)continue;const v=dp[k-1][a]+cost(a,j);if(v<dp[k][j]){dp[k][j]=v;from[k][j]=a;}}
+ if(dp[rowCount][n]===Infinity)return null;
+ const rows=[];for(let k=rowCount,j=n;k>0;k--){const a=from[k][j];rows.unshift(trim(chars.slice(words[a][0],words[j-1][1])));j=a;}
+ return rows.every(r=>r.length)?rows:null;
+}
+function wrap(chars,m){const greedy=wrapGreedy(chars,m);if(greedy.length<2||chars.some(c=>c.ch==='\n'))return greedy;return balance(trim(chars),m,greedy.length)||greedy;}
+function wrapGreedy(chars,m){const rows=[];let rest=trim(chars);while(rest.length){let end=0,text='';while(end<rest.length&&rest[end].ch!=='\n'){const next=text+rest[end].ch;if(end&&m.measure(next)>m.width)break;text=next;end++;}if(end<rest.length&&rest[end].ch!=='\n'){let cut=-1;for(let i=0;i<end;i++)if(/[\s,，]/.test(rest[i].ch)&&m.measure(rest.slice(0,i+1).map(c=>c.ch).join(''))>=m.width*.6)cut=i+1;if(cut>0)end=cut;}const row=trim(rest.slice(0,end));if(row.length)rows.push(row);rest=trim(rest.slice(Math.max(1,end)));}return rows;}
 function markup(chars){let text='',red=false;for(const c of chars){if(c.red!==red){text+=c.red?'<r>':'</r>';red=c.red;}text+=c.ch;}return text+(red?'</r>':'');}
+// 문장 단위로 자른다. 닫는 따옴표·괄호는 앞 문장에 붙이고, 문장 중간의 원고 줄바꿈은 공백으로 잇는다.
+function sentences(chars){
+ const closeQ=/[”’"'）)\]」』]/,sentEnd=/[.!?。]/,out=[];let chunk=[],hold=false;
+ const cut=()=>{const t=trim(chunk);if(t.length)out.push(t);chunk=[];hold=false;};
+ const endsSentence=()=>{let k=chunk.length-1;while(k>=0&&/\s/.test(chunk[k].ch))k--;while(k>=0&&closeQ.test(chunk[k].ch))k--;return k>=0&&sentEnd.test(chunk[k].ch);};
+ for(let i=0;i<chars.length;i++){const c=chars[i];
+  if(c.ch==='\n'){if(!hold&&endsSentence())cut();else if(chunk.length)chunk.push({...c,ch:' '});hold=false;continue;}
+  chunk.push(c);if(!sentEnd.test(c.ch))continue;
+  let j=i;while(chars[j+1]&&closeQ.test(chars[j+1].ch))j++;
+  const nx=chars[j+1],prev=chars[i-1];
+  const boundary=!nx||/\s/.test(nx.ch)||((/[가-힣]/.test(nx.ch)||/[“‘"'(（]/.test(nx.ch))&&!(prev&&/\d/.test(prev.ch)));
+  if(!boundary)continue;
+  for(let k=i+1;k<=j;k++)chunk.push(chars[k]);
+  const closed=j>i&&chars[j].ch==='’';i=j;
+  if(closed&&nx){const s=chunk.map(x=>x.ch).join('');if(s.indexOf('‘')>0&&(s.match(/’/g)||[]).length<=(s.match(/‘/g)||[]).length){hold=true;continue;}}
+  cut();
+ }
+ if(trim(chunk).length)out.push(trim(chunk));
+ return out;
+}
 function analyze(project,options={}){
  const result=[];for(const block of blocks(project,options.allText)){
-  const text=block.chars.map(c=>c.ch).join(''),verse=block.layout==='word'&&/[（(]?[가-힣]{1,8}\s*\d+\s*[:장]\s*\d+/.test(text);let layout=verse?'verse':block.layout==='word'?speakerLayout(text,options.greenLayout||'word'):block.layout;
-  const chunks=[];let chunk=[];for(let i=0;i<block.chars.length;i++){const c=block.chars[i];chunk.push(c);if(c.ch==='\n'||/[.!?。]/.test(c.ch)&&(!block.chars[i+1]||/[\s”’"']/.test(block.chars[i+1].ch))){const t=trim(chunk);if(t.length)chunks.push(t);chunk=[];}}if(trim(chunk).length)chunks.push(trim(chunk));
+  const text=block.chars.map(c=>c.ch).join(''),verse=block.layout==='word'&&/[（(]?[가-힣]{1,8}\s*\d+\s*[:장]\s*\d+/.test(text);let layout=verse?'verse':block.layout==='word'?speakerLayout(text,contextSpeaker(block.before)||options.greenLayout||'word'):block.layout;
+  const chunks=sentences(block.chars);
   const pages=[];let page=[],count=0;const flush=()=>{if(page.length)pages.push({page,layout});page=[];count=0;};for(const ch of chunks){const next=block.layout==='word'&&!verse?speakerLayout(ch.map(c=>c.ch).join(''),layout):layout;if(next!==layout){flush();layout=next;}const m=metrics(layout,options.bank),maxLines=m.maxLines,lines=wrap(ch,m);for(let start=0;start<lines.length;start+=maxLines){const part=lines.slice(start,start+maxLines);if(count+part.length>maxLines&&page.length)flush();page.push(part);count+=part.length;}}flush();
   for(const item of pages){const {page,layout}=item,group=crypto.randomUUID(),finalLines=page.flat().length,cumulative=options.cumulative!==false&&page.length>1;for(let step=cumulative?1:page.length;step<=page.length;step++){
    const shown=page.slice(0,step).flat(),newLines=cumulative?page[step-1]:page.flat(),chars=newLines.flat(),start=chars.find(c=>c.end>c.start)?.start,end=[...chars].reverse().find(c=>c.end>c.start)?.end;if(!Number.isInteger(start)||!(end>start))continue;
