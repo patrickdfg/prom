@@ -21,7 +21,7 @@ button:hover{filter:brightness(1.12)}
 .btn{padding:13px 22px;border-radius:11px;background:#99beff;color:#101c30;font-weight:700}
 .btn:disabled{opacity:.4;cursor:default}
 .setup-footer a.btn{text-decoration:none;font-size:14px}
-#voiceFeedback{position:absolute;bottom:86px;left:16px;right:16px;z-index:8;text-align:center;color:#b8d4f6;background:#10151de8;border-radius:8px;padding:7px 12px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+#voiceFeedback{position:absolute;top:42px;left:16px;right:16px;z-index:8;text-align:center;color:#b8d4f6;background:#10151de8;border-radius:8px;padding:7px 12px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
 #paste{height:200px;margin:0;padding:16px;background:#101722;border-radius:14px;resize:vertical}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
 .mode-row{display:flex;gap:10px;align-items:center;margin-top:22px;font-size:14px}
@@ -80,6 +80,8 @@ button:hover{filter:brightness(1.12)}
 #statusbar label{display:flex;align-items:center;gap:8px;pointer-events:auto;font-size:14px}
 #statusbar select{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit}
 #view.presenting #stage{inset:0}
+/* 한 장 보기에서는 인식 문구를 글 위가 아니라 맨 위(상태줄 바로 아래)에 둔다. 여러 장·스크롤 보기는 예전처럼 아래에 둔다. */
+#view.overview-mode #voiceFeedback,#view.local-scroll #voiceFeedback{top:auto;bottom:86px}
 #view.presenting #statusbar,#view.presenting #bar,#view.presenting #voiceFeedback,#view.presenting #toast,#view.presenting #cap,#view.presenting #noteLayer,#view.presenting #noteTools,#view.presenting #fontPanel,#view.presenting #ttsPanel,#view.presenting #setpanel{display:none!important}
 #view.presenting .ln.current::before{display:none!important}
 #view.presenting.controls-open #bar,#view.presenting.controls-open #statusbar{display:flex!important;opacity:1!important;pointer-events:auto!important}
