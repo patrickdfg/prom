@@ -723,9 +723,9 @@ function lineSpeech(heard,target,cursor,offset=0,map=null){
   }
   return null;
 }
-function confirmedSpeech(heard,target,cursor,offset=0,map=null){
+function confirmedSpeech(heard,target,cursor,offset=0,map=null,minLength=28){
   const position=end=>map?map[end-1]:offset+end;
-  for(let length=Math.min(64,heard.length);length>=28;length--){
+  for(let length=Math.min(64,heard.length);length>=minLength;length--){
     const tail=heard.slice(-length),first=target.indexOf(tail);
     if(first<0)continue;
     if(target.indexOf(tail,first+1)>=0)continue;
@@ -1352,6 +1352,8 @@ function onHeard(text){
   const from=Math.max(0,cursor-64),end=pEnd[Math.min(nextPage,P.length-1)]||norm.length;
   const confirmed=confirmedSpeech(all,norm.slice(from,end),cursor,from);
   const local=lineSpeech(all,norm.slice(from,end),cursor,from);
+  // 읽지 않는 태그·설명 줄을 건너뛰고 이어 읽을 때: 쪽 끝을 넘는 앞쪽 450자 안에서 20자 이상 한 곳에만 맞는 글이면 바로 따라간다.
+  const skipAhead=confirmedSpeech(all,norm.slice(from,Math.min(norm.length,cursor+450)),cursor,from,null,20);
   const optional=PromOptionalSpeech.match(all,optionalSpeech,cursor)??(typeof PromSpeechMatch==='undefined'?null:PromSpeechMatch.optional(all,optionalSpeech,cursor)?.pos??null);
   const scripture=typeof PromScriptureSpeech==='undefined'?null:PromScriptureSpeech.match(all,scriptureSpeech,cursor);
   let to;
@@ -1362,6 +1364,7 @@ function onHeard(text){
   else if(h.near&&h.near.d<=lim){
     if(h.near.pos<cursor&&h.near.d>1){cap(base+' · 앞쪽이라 그대로');return}
     to=h.near.pos; pend=null;
+  }else if(skipAhead!==null){to=skipAhead;pend=null;
   }else if(h.back&&h.back.d<=2&&(!h.far||h.back.d<=h.far.d)){
     pend=null; cap(base+' · 이미 읽은 곳을 다시 읽는 중 · 그대로'); return;
   }else if(h.far&&h.far.d<=2&&S.length>=12){
