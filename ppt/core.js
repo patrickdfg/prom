@@ -1,6 +1,7 @@
 /* Matching positions are in normalized manuscript characters, never slide numbers. */
 (function(root){
 'use strict';
+const Optional=typeof module==='object'&&module.exports?require('../optional-speech.js'):root.PromOptionalSpeech;
 const normalize=s=>String(s||'').normalize('NFKC').toLowerCase().replace(/[^가-힣a-z0-9]/g,'');
 function index(lines){let text='';const ranges=lines.map(line=>{const start=text.length;text+=normalize(line);return {start,end:text.length};});return {text,ranges};}
 function segments(lines,links){
@@ -37,7 +38,7 @@ function align(lines,slides){const ix=index(lines),links=[],needles=slides.map(s
  return links;
 }
 function active(links,pos){return links.findIndex(l=>['exact','manual'].includes(l.status)&&Number.isFinite(l.start)&&pos>=l.start&&pos<l.end);}
-function locateSpeech(raw,text,cursor){const heard=normalize(raw).slice(-64);if(heard.length<5)return null;const begin=Math.max(0,cursor-100),end=Math.min(text.length,cursor+1400),hay=text.slice(begin,end);
+function locateSpeech(raw,text,cursor,optional=null){const skipped=Optional?.match(normalize(raw),optional,cursor);if(skipped!==null&&skipped!==undefined)return {pos:skipped,score:1,optional:true};const heard=normalize(raw).slice(-64);if(heard.length<5)return null;const begin=Math.max(0,cursor-100),end=Math.min(text.length,cursor+1400),hay=text.slice(begin,end);
  // Prefer the longest matching phrase across the manuscript before trying shorter local fragments.
  for(const size of [56,40,28,18,12]){
   if(heard.length<size)continue;const tail=heard.slice(-size),at=hay.indexOf(tail);
@@ -59,3 +60,4 @@ function locateSpeech(raw,text,cursor){const heard=normalize(raw).slice(-64);if(
 }
 const api={normalize,index,segments,align,active,locateSpeech,distance};if(typeof module==='object'&&module.exports)module.exports=api;else root.CaptionCore=api;
 })(typeof window==='object'?window:globalThis);
+

@@ -29,6 +29,7 @@
  const originalHeard=onHeard;
  onHeard=function(text){
    if(!$('voiceLab').checked)return originalHeard(text);
+   if(PromOptionalSpeech.match(normStr(heardCarry+text),optionalSpeech,cursor)!==null)return originalHeard(text);
    indexVoice();if(lastPage!==page){pending=null;lastSample='';lastPage=page;}
    const recognized=PromVoiceLab.mapped(heardCarry+text).text,sample=recognized.slice(-22);$('heard').textContent=text.slice(-40);
    const sampleKey=recognized.slice(-64);if(sampleKey===lastSample)return;lastSample=sampleKey;
@@ -82,3 +83,4 @@
  addEventListener('beforeunload',e=>{if(recordPending||recorder?.state==='recording'||unsavedRecording){e.preventDefault();e.returnValue='';}});
  window.PromExtras={settings,ttsPage,resetVoice(){pending=null;lastSample='';lastPage=-1;}};
 })();
+
