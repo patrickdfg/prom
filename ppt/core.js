@@ -1,6 +1,7 @@
 /* Matching positions are in normalized manuscript characters, never slide numbers. */
 (function(root){
 'use strict';
+const Robust=typeof module==='object'&&module.exports?require('../speech-match.js'):root.PromSpeechMatch;
 const Optional=typeof module==='object'&&module.exports?require('../optional-speech.js'):root.PromOptionalSpeech;
 const normalize=s=>String(s||'').normalize('NFKC').toLowerCase().replace(/[^가-힣a-z0-9]/g,'');
 function index(lines){let text='';const ranges=lines.map(line=>{const start=text.length;text+=normalize(line);return {start,end:text.length};});return {text,ranges};}
@@ -45,6 +46,7 @@ function locateSpeech(raw,text,cursor,optional=null){const skipped=Optional?.mat
   if(at>=0&&hay.indexOf(tail,at+1)<0){const pos=begin+at+size;if(pos>=cursor-3)return {pos:Math.max(cursor,pos),score:1};}
   if(size>=12){const globalAt=text.indexOf(tail);if(globalAt>=0&&text.indexOf(tail,globalAt+1)<0)return {pos:globalAt+size,score:1,reacquired:true};}
  }
+ const resilient=Robust?.match(heard,hay,cursor,{offset:begin})||Robust?.optional(heard,optional,cursor);if(resilient)return {...resilient,resilient:true};
  const tail=heard.slice(-28);let best=null,second=0;
  for(const start of tail.length>=16?candidates(tail,hay,begin,4):[]){const pos=start+tail.length;if(pos<cursor-3)continue;const cost=distance(tail,text.slice(start,pos),3),score=1-cost/tail.length;if(score<.89)continue;if(!best||score>best.score){second=best?.score||0;best={pos,score};}else if(Math.abs(best.pos-pos)>5)second=Math.max(second,score);}
  if(best&&best.score-second>=.04)return best;

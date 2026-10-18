@@ -29,10 +29,10 @@
  const originalHeard=onHeard;
  onHeard=function(text){
    if(!$('voiceLab').checked)return originalHeard(text);
-   if(PromOptionalSpeech.match(normStr(heardCarry+text),optionalSpeech,cursor)!==null)return originalHeard(text);
+   if(PromOptionalSpeech.match(normStr(heardCarry+text),optionalSpeech,cursor)!==null||(typeof PromSpeechMatch!=='undefined'&&PromSpeechMatch.optional(normStr(heardCarry+text),optionalSpeech,cursor)))return originalHeard(text);
    indexVoice();if(lastPage!==page){pending=null;lastSample='';lastPage=page;}
    const recognized=PromVoiceLab.mapped(heardCarry+text).text,sample=recognized.slice(-22);$('heard').textContent=text.slice(-40);
-   const sampleKey=recognized.slice(-64);if(sampleKey===lastSample)return;lastSample=sampleKey;
+   const sampleKey=recognized.slice(-96);if(sampleKey===lastSample)return;lastSample=sampleKey;
    const readingPage=pageOf(cursor),current=voicePages[readingPage];if(!current)return;
    // 다음 장의 첫 본문 줄까지만 살펴본다. 임의의 먼 장으로는 이동하지 않는다.
    let nextPage=readingPage+1,next=-1;
