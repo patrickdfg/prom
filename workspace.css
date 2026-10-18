@@ -29,6 +29,7 @@ button:hover{filter:brightness(1.12)}
 #optrow{align-items:center;gap:12px;padding:16px 0;margin-top:0;font-size:14px}
 #optrow label{padding:7px 9px;border:1px solid var(--line);border-radius:8px;cursor:pointer}
 #optnote{display:block;width:100%;color:var(--muted);font-size:12px}
+.paren-opt{display:block;width:100%;font-size:13px;margin:4px 0}
 .startrow{align-items:center;border-top:1px solid var(--line);padding-top:18px}
 #fname{font-size:13px;color:var(--muted);flex:1;min-width:150px}
 #start{min-width:160px}

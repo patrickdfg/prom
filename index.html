@@ -120,7 +120,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
-<link rel="stylesheet" href="workspace.css?v=20261017-manual-full1">
+<link rel="stylesheet" href="workspace.css?v=20261018-paren1">
 <link rel="stylesheet" href="extras.css?v=20261017-follow3">
 <style>.app-switch{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;flex-shrink:0;padding:8px 12px;border:1px solid #506a88;border-radius:8px;background:#20344c;color:#d6f5ec!important;font:600 12px/1.4 sans-serif;text-decoration:none;pointer-events:auto}.app-switch:hover{background:#2b4963}.app-switch:focus-visible{outline:3px solid #5de2ca;outline-offset:2px}</style>
 <link rel="stylesheet" href="display-screens.css?v=20261017-screen1"></head>
@@ -150,6 +150,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
       <label><input type="radio" name="lines" value="6"> 6줄</label>
       <label><input type="radio" name="lines" value="7"> 7줄</label></div>
       <input type="radio" name="lines" value="m" aria-label="모바일 자동 줄 수" hidden>
+      <label id="skipParenWrap" class="paren-opt" title="원고의 ( ) 또는 （ ） 안에 있는 글은 프롬프터에 넣지 않습니다. 성경 구절 표기 (요 3:16)도 함께 빠집니다."><input type="checkbox" id="skipParen"> ( ) 안의 글은 프롬프터에 넣지 않기</label>
       <span id="optnote">PC는 줄 수가 적을수록 글자가 커집니다. 모바일은 화면 크기에 맞춥니다.</span>
     </div>
     <div class="row startrow"><span id="fname">원고를 고른 뒤 시작하세요.</span><button class="btn" id="start" disabled>프롬프터 시작 →</button></div>
@@ -1114,7 +1115,19 @@ function pagesToMs(pages){
   flush(); return ms;
 }
 let lastSrc=null;
+// 소괄호 ( ) （ ） 안의 글을 뺀다. 문단·쪽 안에서만 괄호를 짝지으며, 괄호만 있던 줄은 줄째 없앤다.
+function stripParen(pages){
+  const cut=(runs,st)=>runs.map(r=>{let t='';for(const ch of String(r.t)){if(ch==='('||ch==='（'){st.d++;continue}if((ch===')'||ch==='）')&&st.d>0){st.d--;continue}if(!st.d)t+=ch}return {...r,t:t.replace(/[ \u00a0]{2,}/g,' ')}}).filter(r=>r.t!=='');
+  const has=runs=>runs.some(r=>String(r.t).trim());
+  let out;
+  if(pages.ms){const ms=[];for(const para of pages.ms){if(!has(para.runs)){ms.push(para);continue}const r=cut(para.runs,{d:0});if(has(r))ms.push({...para,runs:r})}out=[];out.ms=ms}
+  else out=pages.map(pg=>{const st={d:0};return pg.map(ln=>{if(!has(ln))return ln;const r=cut(ln,st);return has(r)?r:null}).filter(ln=>ln!==null)});
+  for(const k of Object.keys(pages))if(!/^\d+$/.test(k)&&k!=='ms')out[k]=pages[k];
+  return out;
+}
 function startWith(pages,bg){
+  try{localStorage.setItem('prompterSkipParen',$('skipParen').checked?'1':'0')}catch(_){}
+  if($('skipParen').checked)pages=stripParen(pages);
   lastSrc={pages,bg};
   const mode=chosenMode(); try{localStorage.setItem('prompterLines',mode)}catch(_){}
   setMode(mode==='m'); const n=chosenLines();
@@ -1815,6 +1828,7 @@ async function loadFile(f){
   }catch(e){$('loadmsg').textContent=e.message; if($('view').style.display==='block')toast(e.message,6000)}
 }
 $('start').onclick=()=>{ if(pending)startWith(pending.pages,pending.bg) };
+try{$('skipParen').checked=localStorage.getItem('prompterSkipParen')==='1'}catch(_){}
 $('pick').onclick=()=>$('file').click();
 $('file').onchange=e=>{const f=e.target.files[0]; e.target.value=''; if(f)loadFile(f)};
 const drop=$('drop');
