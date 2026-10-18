@@ -82,7 +82,8 @@ divider.onkeydown=e=>{if(['ArrowLeft','ArrowRight','Home'].includes(e.key)){e.pr
 window.CaptionWorkspace={
  standby(value){if(arguments.length){if(busy)throw Error('파일 읽기가 끝나면 다시 시도하세요.');if(value&&(!CaptionStandbyCore.valid(value.slide)||typeof value.name!=='string'))throw Error('기본예배화면을 읽지 못했습니다.');project.standby=structuredClone(value);save();if(live<0&&!forceGreen)showLive(-1);}return structuredClone(project.standby||null);},
  showStandby(){if(!project.standby)throw Error('가져오기로 기본예배화면을 먼저 지정하세요.');setAuto(false);showLive(-1);status('기본예배화면 수동 유지 중 · 자동 송출을 켜면 원고 위치에 맞춰 전환합니다.');},
- layoutMasters(){return structuredClone(project.layoutMasters||{});},
+ // 값을 넘기면 이 작업에 임시로 쌓인 레이아웃 마스터 수정을 바꾼다. 템플릿을 바꿀 때 이전 수정이 섞이지 않게 비우는 데 쓴다.
+ layoutMasters(value){if(arguments.length){project.layoutMasters=structuredClone(value||{});save();}return structuredClone(project.layoutMasters||{});},
  pack:packProject,
  generationTemplate(value){if(arguments.length){project.generationTemplate=structuredClone(value);save();}return structuredClone(project.generationTemplate||null);},
  rememberRich(rich){if(rich.lines.length!==project.lines.length||rich.lines.some((line,i)=>line!==project.lines[i]))throw Error('원고를 한 번 다시 불러와 주세요.');project.richLines=rich.richLines;save();},
