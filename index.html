@@ -150,7 +150,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
       <label><input type="radio" name="lines" value="6"> 6줄</label>
       <label><input type="radio" name="lines" value="7"> 7줄</label></div>
       <input type="radio" name="lines" value="m" aria-label="모바일 자동 줄 수" hidden>
-      <label id="skipParenWrap" class="paren-opt" title="원고의 ( ) 또는 （ ） 안에 있는 글은 프롬프터에 넣지 않습니다. 성경 구절 표기 (요 3:16)도 함께 빠집니다."><input type="checkbox" id="skipParen"> ( ) 안의 글은 프롬프터에 넣지 않기</label>
+      <label id="skipParenWrap" class="paren-opt" title="원고의 ( ) 또는 （ ） 안에 있는 글은 프롬프터에 넣지 않습니다. (요 3:16) 같은 성경 구절 표기는 남깁니다."><input type="checkbox" id="skipParen"> ( ) 안의 글은 프롬프터에 넣지 않기</label>
       <span id="optnote">PC는 줄 수가 적을수록 글자가 커집니다. 모바일은 화면 크기에 맞춥니다.</span>
     </div>
     <div class="row startrow"><span id="fname">원고를 고른 뒤 시작하세요.</span><button class="btn" id="start" disabled>프롬프터 시작 →</button></div>
@@ -1116,12 +1116,26 @@ function pagesToMs(pages){
 }
 let lastSrc=null;
 // 소괄호 ( ) （ ） 안의 글을 뺀다. 문단·쪽 안에서만 괄호를 짝지으며, 괄호만 있던 줄은 줄째 없앤다.
+// (요 3:16) 같은 성경 구절 표기는 남긴다. 닫히지 않은 괄호도 그대로 둔다.
+const R_PAREN_VERSE=/^[가-힣]{1,8}\s*\d+\s*[:장]\s*\d+(?:\s*[-~]\s*\d+)?(?:\s*절)?$/;
+function stripParenTexts(texts){
+  const SEP='\u0001',all=texts.join(SEP),drop=new Array(all.length).fill(false);
+  for(let i=0;i<all.length;i++){
+    if(all[i]!=='('&&all[i]!=='（')continue;
+    let d=0,j=i;for(;j<all.length;j++){const c=all[j];if(c==='('||c==='（')d++;else if((c===')'||c==='）')&&--d===0)break}
+    if(j>=all.length)break;                       // 닫히지 않은 괄호
+    const inner=all.slice(i+1,j).replace(/\u0001/g,' ').trim();
+    if(!R_PAREN_VERSE.test(inner))for(let k=i;k<=j;k++)drop[k]=true;
+    i=j;
+  }
+  let pos=0;return texts.map(t=>{let o='';for(let k=0;k<t.length;k++)if(!drop[pos+k])o+=t[k];pos+=t.length+1;return o.replace(/[ \u00a0]{2,}/g,' ')});
+}
 function stripParen(pages){
-  const cut=(runs,st)=>runs.map(r=>{let t='';for(const ch of String(r.t)){if(ch==='('||ch==='（'){st.d++;continue}if((ch===')'||ch==='）')&&st.d>0){st.d--;continue}if(!st.d)t+=ch}return {...r,t:t.replace(/[ \u00a0]{2,}/g,' ')}}).filter(r=>r.t!=='');
   const has=runs=>runs.some(r=>String(r.t).trim());
+  const apply=runsList=>{const flat=runsList.flat(),cut=stripParenTexts(flat.map(r=>String(r.t)));let n=0;return runsList.map(runs=>runs.map(r=>({...r,t:cut[n++]})).filter(r=>r.t!==''))};
   let out;
-  if(pages.ms){const ms=[];for(const para of pages.ms){if(!has(para.runs)){ms.push(para);continue}const r=cut(para.runs,{d:0});if(has(r))ms.push({...para,runs:r})}out=[];out.ms=ms}
-  else out=pages.map(pg=>{const st={d:0};return pg.map(ln=>{if(!has(ln))return ln;const r=cut(ln,st);return has(r)?r:null}).filter(ln=>ln!==null)});
+  if(pages.ms){const ms=[];for(const para of pages.ms){if(!has(para.runs)){ms.push(para);continue}const r=apply([para.runs])[0];if(has(r))ms.push({...para,runs:r})}out=[];out.ms=ms}
+  else out=pages.map(pg=>{const cut=apply(pg);return pg.map((ln,i)=>has(ln)&&!has(cut[i])?null:cut[i]).filter(ln=>ln!==null)});
   for(const k of Object.keys(pages))if(!/^\d+$/.test(k)&&k!=='ms')out[k]=pages[k];
   return out;
 }
