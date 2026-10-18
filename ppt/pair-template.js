@@ -24,8 +24,11 @@ function analyze(manuscript,deck){
   const base=[...counts.values()].sort((a,b)=>b.n-a.n)[0]?.run||{};
   candidates.push({slideIndex:i,bodyIndex:row.bodyIndex,layout,text,start:links[i].start,end:links[i].end,cumulative:links[i].reason==='cumulative',font:base.font||'',size:base.size||0,style:structuredClone(base),lines:text.split('\n').length});
  });
+ // 원고에 연결되지 않은 장은 매주 들어가는 고정 장(표지·찬양·광고·마무리 등)으로 보고 템플릿에 함께 담는다.
+ const total=links.filter(l=>l.status==='exact').length,fixed=[];let before=0;
+ rows.forEach((row,i)=>{if(links[i].status==='exact'){before++;return;}const t=slides[i].shapes.filter(s=>s.type==='text').map(textOf).join(' ').replace(/\s+/g,' ').trim();fixed.push({slideIndex:i,before,total,status:links[i].status,label:t.slice(0,40),keep:true});});
  if(!candidates.length)throw Error('원고와 정확히 일치하는 편집 가능한 PPT 본문을 찾지 못했습니다. 같은 원고로 만든 PPT인지 확인하세요. 이미지로 된 글자와 중복·유사 문장은 자동 학습하지 않습니다.');
- return {version:1,scriptName:manuscript.name||'',deckName:deck.name||'',totalSlides:slides.length,matchedSlides:candidates.length,candidates,warnings:deck.warnings||[]};
+ return {version:1,scriptName:manuscript.name||'',deckName:deck.name||'',totalSlides:slides.length,matchedSlides:candidates.length,candidates,fixed,warnings:deck.warnings||[]};
 }
 function build(analysis,slides,design){
  const selected=analysis.candidates.filter(c=>Object.hasOwn(choices,c.layout));
@@ -44,7 +47,17 @@ function build(analysis,slides,design){
  }
  const cumulative=selected.some(c=>c.cumulative);
  notes.push(cumulative?'이전 문구 뒤에 본문이 늘어나는 누적 공개 확인: 누적 공개 옵션 켬.':'누적 공개를 확정할 근거 없음: 기존 누적 공개 선택 유지.','PPT의 예전 본문·날짜·제목은 서식에 고정하지 않고 비워 둠. 새 원고의 글자는 편집 가능한 본문으로 생성.','글자가 이미지에 포함된 배경, 표·차트·그룹의 원본 재현은 별도 확인 필요. 자유 메모는 자동 실행되지 않음.');
- return {design:output,instructions:notes.join('\n'),options:cumulative?{cumulative:true}:{},evidence:{...structuredClone(analysis),candidates:structuredClone(selected)}};
+ const fixedSlides=(analysis.fixed||[]).filter(f=>f.keep!==false).map(f=>{const slide=structuredClone(slides[f.slideIndex]);delete slide.uid;delete slide.masterId;delete slide.editor;return {before:f.before,total:f.total,label:f.label,slide};});
+ if(fixedSlides.length)notes.push(`원고에 연결되지 않은 고정 슬라이드 ${fixedSlides.length}장(${fixedSlides.map(f=>f.label||'그림·장식').slice(0,6).join(' / ')})은 새 원고로 만들 때도 그대로 유지.`);
+ return {design:output,fixedSlides,instructions:notes.join('\n'),options:cumulative?{cumulative:true}:{},evidence:{...structuredClone(analysis),candidates:structuredClone(selected)}};
 }
-const api={analyze,build,choices};if(typeof module==='object'&&module.exports)module.exports=api;else root.CaptionPairTemplate=api;
+// 고정 슬라이드를 새로 만든 자막 사이에 되돌려 넣는다. 맨 앞·맨 뒤는 그대로, 중간은 원래 위치의 비율로 놓고 누적 묶음은 쪼개지 않는다.
+function weave(fixed,slides,links){
+ if(!fixed?.length)return {slides,links};
+ const n=slides.length,out=[],outLinks=[],uid=()=>root.crypto?.randomUUID?.()||String(Math.random()).slice(2);
+ const at=fixed.map(f=>{if(f.before<=0)return 0;if(f.before>=f.total)return n;let k=Math.round(f.before/f.total*n);while(k>0&&k<n&&slides[k-1].editor?.group&&slides[k-1].editor.group===slides[k].editor?.group)k++;return k;});
+ for(let k=0;k<=n;k++){fixed.forEach((f,i)=>{if(at[i]!==k)return;const s=structuredClone(f.slide);s.uid=uid();out.push(s);outLinks.push({status:'unlinked',start:null,end:null,score:0});});if(k<n){out.push(slides[k]);outLinks.push(links[k]);}}
+ return {slides:out,links:outLinks};
+}
+const api={analyze,build,choices,weave};if(typeof module==='object'&&module.exports)module.exports=api;else root.CaptionPairTemplate=api;
 })(typeof window==='object'?window:globalThis);
