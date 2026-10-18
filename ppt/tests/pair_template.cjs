@@ -33,3 +33,13 @@ const coloredReport=P.analyze({lines:[a]},{slides:[colored]});assert.equal(P.bui
  assert.equal(P.weave([],gen,links).slides,gen);
  console.log('PASS 고정 슬라이드 저장·복원');
 }
+// 번호로 시작하는 전체 화면 장은 '하나님'이 들어 있어도 잠언 항목으로 분류하고, 말씀 장 디자인을 덮어쓰지 않는다.
+{
+ const full=(t,y)=>({width:960,height:540,shapes:[{type:'image',src:'data:image/png;base64,AA',x:0,y:0,w:960,h:540},{type:'text',x:20,y:y,w:920,h:480,paragraphs:[{align:'center',runs:[{text:t,font:'HY견고딕',size:48,bold:true,color:'#333'}]}]}]});
+ const p1='1. 하나님은 항상 이치에 합당하게 말씀하신다.\n그 말씀을 제대로 깨닫고 행하는 것이 깊은 신앙이다.',w1='지금은 하나님의 창조 목적을 이루는 시대요,\n신앙의 신부로서 사랑의 대상이 되어 같이 살아가면서';
+ const deck=[full(w1,10),full(p1,10)],r=P.analyze({lines:[w1.replace('\n',''),p1.replace('\n','')],name:'원고'},{slides:deck,name:'완성'});
+ assert.deepEqual(r.candidates.map(c=>c.layout),['wordGod','proverb']);
+ const b=P.build(r,deck,{layouts:{caption:full('x',410),word:full('y',10)},layoutMasters:{}});
+ assert.ok(b.design.layouts.proverb&&b.design.layouts.wordGod&&b.design.layouts.proverb!==b.design.layouts.wordGod);
+ console.log('PASS 잠언 항목 분류');
+}

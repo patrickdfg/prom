@@ -1,14 +1,15 @@
 window.CaptionBuilder=(()=>{
 'use strict';
 const C=CaptionCore,clone=x=>structuredClone(x);let templatePromise,themeXml,templateBank,defaultBank,defaultTheme,masterOverrides={};const templateUrl=new URL('template-data.json?v=2',document.currentScript.src);
-const layouts={caption:'하단 자막',word:'말씀',wordGod:'하나님 말씀',wordSon:'성자 말씀',wordSpirit:'성령 말씀',wordTeacher:'선생님 말씀 (인물 없음)',verse:'성경 구절',emphasis:'큰 글씨 강조',cover:'표지',passage:'본문 성구'};
+const layouts={caption:'하단 자막',word:'말씀',wordGod:'하나님 말씀',wordSon:'성자 말씀',wordSpirit:'성령 말씀',wordTeacher:'선생님 말씀 (인물 없음)',verse:'성경 구절',emphasis:'큰 글씨 강조',cover:'표지',passage:'본문 성구',proverb:'잠언 항목'};
+const layoutFallback={proverb:'emphasis'};// 잠언 디자인이 없는 템플릿은 큰 글씨 장으로 대신한다.
 async function templates(){if(templateBank)return templateBank;return templatePromise||(templatePromise=fetch(templateUrl).then(r=>{if(!r.ok)throw Error('자막 디자인을 불러오지 못했습니다. 인터넷 연결을 확인하세요.');return r.json();}).then(data=>{themeXml=data.themeXml;for(const scene of Object.values(data.layouts))for(const shape of scene.shapes)if(shape.src?.startsWith('@'))shape.src=data.assets[shape.src.slice(1)];templateBank=data.layouts;defaultBank=clone(templateBank);defaultTheme=themeXml;return data.layouts;}).catch(e=>{templatePromise=null;throw e;}));}
 async function snapshotTemplate(includeProject=true){await templates();return {layouts:clone(templateBank),themeXml,layoutMasters:window.CaptionMasters&&includeProject?CaptionMasters.merge(masterOverrides,window.CaptionWorkspace?.layoutMasters?.()||{}):clone(masterOverrides)};}
-async function useTemplate(data){await templates();if(!data){masterOverrides={};templateBank=clone(defaultBank);themeXml=defaultTheme;return;}for(const key of Object.keys(layouts)){const s=data.layouts?.[key];if(!s||!Array.isArray(s.shapes)||s.shapes[s.bodyIndex]?.type!=='text'||!(s.width>0&&s.height>0))throw Error('저장된 디자인 템플릿을 읽지 못했습니다.');}if(typeof data.themeXml!=='string')throw Error('저장된 테마가 올바르지 않습니다.');masterOverrides=clone(data.layoutMasters||{});templateBank=clone(data.layouts);themeXml=data.themeXml;}
+async function useTemplate(data){await templates();if(!data){masterOverrides={};templateBank=clone(defaultBank);themeXml=defaultTheme;return;}for(const key of Object.keys(layouts)){if(key==='proverb'&&!data.layouts?.[key])continue;const s=data.layouts?.[key];if(!s||!Array.isArray(s.shapes)||s.shapes[s.bodyIndex]?.type!=='text'||!(s.width>0&&s.height>0))throw Error('저장된 디자인 템플릿을 읽지 못했습니다.');}if(typeof data.themeXml!=='string')throw Error('저장된 테마가 올바르지 않습니다.');masterOverrides=clone(data.layoutMasters||{});templateBank=clone(data.layouts);themeXml=data.themeXml;}
 const plain=s=>String(s||'').replace(/<\/?[rb]>/g,'');
 function styledRuns(text,base){let color=base.color||'#111111';const runs=[];for(const t of String(text).split(/(<\/?[rb]>)/g)){if(t==='<r>')color='#ff0000';else if(t==='<b>')color='#2683c6';else if(/^<\/[rb]>$/.test(t))color=base.color||'#111111';else if(t)runs.push({...clone(base),text:t,color});}return runs;}
 async function scene(layout,text,options={}){
- const bank=await templates(),result=clone(bank[layout]||bank.caption),bodyIndex=result.bodyIndex,body=result.shapes[bodyIndex],para=body.paragraphs[0]||{runs:[]},base=clone(para.runs.find(r=>r.size)||{size:32,bold:true,font:'마루 부리OTF 굵은',color:'#111111'});
+ const bank=await templates(),result=clone(bank[layout]||bank[layoutFallback[layout]]||bank.caption),bodyIndex=result.bodyIndex,body=result.shapes[bodyIndex],para=body.paragraphs[0]||{runs:[]},base=clone(para.runs.find(r=>r.size)||{size:32,bold:true,font:'마루 부리OTF 굵은',color:'#111111'});
  for(const key of ['font','size','bold','color'])if(options[key]!==undefined)base[key]=options[key];
  Object.assign(body,{x:options.x??body.x,y:options.y??body.y,w:options.w??body.w,h:options.h??body.h,anchor:options.anchor||body.anchor,wrap:true,lineReduction:0});
  let textLines=String(text).split('\n');if(options.padToLines)while(textLines.length<options.padToLines)textLines.push(' ');// 줄 높이를 맞추는 빈 줄. 특수 공백(U+00A0)은 일부 글꼴에서 네모로 보인다.
@@ -20,9 +21,13 @@ async function scene(layout,text,options={}){
 }
 function colorType(hex){const h=String(hex||'').replace('#','');if(!/^[a-f\d]{6}$/i.test(h))return 'black';const [r,g,b]=[0,2,4].map(i=>parseInt(h.slice(i,i+2),16));if(b>90&&b>r*1.3&&b>g*1.15)return 'blue';if(g>65&&g>r*1.25&&g>b*1.15)return 'green';if(r>130&&r>g*1.5&&r>b*1.5)return 'red';return 'black';}
 function blocks(project,allText=false){
- const rich=project.richLines?.length===project.lines.length?project.richLines:project.lines.map(text=>({text,runs:[{text,hex:'000000'}]}));const out=[];let offset=0,current=null,prevBlack='';
+ const rich=project.richLines?.length===project.lines.length?project.richLines:project.lines.map(text=>({text,runs:[{text,hex:'000000'}]}));const out=[];let offset=0,current=null,prevBlack='',proverb=false;
  const flush=()=>{if(current?.chars.some(c=>C.normalize(c.ch)))out.push(current);current=null;};
- for(const row of rich){const runs=row.runs||[{text:row.text,hex:'000000'}],types=runs.map(r=>colorType(r.hex));let pos=offset;for(let i=0;i<runs.length;i++){const r=runs[i],type=allText?'blue':types[i]==='red'?(types.slice(0,i).reverse().find(t=>['blue','green'].includes(t))||types.slice(i+1).find(t=>['blue','green'].includes(t))||'black'):types[i];if(type==='black'){flush();prevBlack=(prevBlack+r.text).slice(-60);pos+=C.normalize(r.text).length;continue;}const layout=type==='blue'?'caption':'word';if(current?.layout!==layout)flush();if(!current){current={layout,chars:[],before:prevBlack};prevBlack='';}for(const ch of r.text){const n=C.normalize(ch).length;current.chars.push({ch,red:types[i]==='red',start:pos,end:pos+n});pos+=n;}}offset+=C.normalize(row.text).length;if(current)current.chars.push({ch:'\n',red:false,start:offset,end:offset});}
+ for(const row of rich){const runs=row.runs||[{text:row.text,hex:'000000'}],types=runs.map(r=>colorType(r.hex));let pos=offset;
+  // 잠언 구간. '잠언'이 나온 뒤 파랑·초록 글씨가 나오기 전까지, 번호로 시작하는 검정 줄은 한 줄이 한 장이다.
+  if(types.some(t=>t==='blue'||t==='green'))proverb=false;else if(/잠언/.test(row.text)&&!/^\s*\d+\s*[.)]/.test(row.text))proverb=true;
+  if(proverb&&!allText&&types.every(t=>t==='black'||t==='red')&&/^\s*\d+\s*[.)]\s*\S/.test(row.text)){flush();const chars=[];for(const ch of row.text){const n=C.normalize(ch).length;chars.push({ch,red:false,start:pos,end:pos+n});pos+=n;}out.push({layout:'proverb',chars,before:prevBlack});prevBlack='';offset+=C.normalize(row.text).length;chars.push({ch:'\n',red:false,start:offset,end:offset});continue;}
+ for(let i=0;i<runs.length;i++){const r=runs[i],type=allText?'blue':types[i]==='red'?(types.slice(0,i).reverse().find(t=>['blue','green'].includes(t))||types.slice(i+1).find(t=>['blue','green'].includes(t))||'black'):types[i];if(type==='black'){flush();prevBlack=(prevBlack+r.text).slice(-60);pos+=C.normalize(r.text).length;continue;}const layout=type==='blue'?'caption':'word';if(current?.layout!==layout)flush();if(!current){current={layout,chars:[],before:prevBlack};prevBlack='';}for(const ch of r.text){const n=C.normalize(ch).length;current.chars.push({ch,red:types[i]==='red',start:pos,end:pos+n});pos+=n;}}offset+=C.normalize(row.text).length;if(current)current.chars.push({ch:'\n',red:false,start:offset,end:offset});}
  flush();return out;
 }
 function trim(chars){let a=0,b=chars.length;while(a<b&&/\s/.test(chars[a].ch))a++;while(b>a&&/\s/.test(chars[b-1].ch))b--;return chars.slice(a,b);}
@@ -33,9 +38,9 @@ function speakerLayout(text,fallback='word'){
  return match?(/성령/.test(match[0])?'wordSpirit':/하나님/.test(match[0])?'wordGod':/선생님/.test(match[0])?'wordTeacher':'wordSon'):fallback;
 }
 function metrics(layout,bank=templateBank){
- const original=bank?.[layout],s=original&&window.CaptionMasters?CaptionMasters.inherit({...original,editor:{layout}},masterOverrides):original,b=s?.shapes[s.bodyIndex],p=b?.paragraphs[0],r=p?.runs.find(r=>r.size)||{size:30.6667,font:'마루 부리OTF 굵은',bold:true},pad=b?.padding||[4.8,9.6,4.8,9.6];
+ const original=bank?.[layout]||bank?.[layoutFallback[layout]],s=original&&window.CaptionMasters?CaptionMasters.inherit({...original,editor:{layout}},masterOverrides):original,b=s?.shapes[s.bodyIndex],p=b?.paragraphs[0],r=p?.runs.find(r=>r.size)||{size:30.6667,font:'마루 부리OTF 굵은',bold:true},pad=b?.padding||[4.8,9.6,4.8,9.6];
  const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d'),font=/마루\s*부리|maru\s*buri/i.test(r.font)?'"PROM MaruBuri"':JSON.stringify(r.font||'Malgun Gothic');ctx.font=`${r.bold?700:400} ${r.size}px ${font}, "Malgun Gothic", serif`;
- return {width:(b?.w||900)-pad[1]-pad[3]-2,measure:text=>ctx.measureText(text).width+Math.max(0,text.length-1)*(r.spacing||0),maxLines:Math.max(1,Math.min(layout==='caption'?2:layout==='verse'?8:5,Math.floor(((b?.h||406)-pad[0]-pad[2])/(p?.lineSpacing?.unit==='px'?p.lineSpacing.value:r.size*(p?.lineSpacing?.value||1.3)))))};
+ return {width:(b?.w||900)-pad[1]-pad[3]-2,measure:text=>ctx.measureText(text).width+Math.max(0,text.length-1)*(r.spacing||0),maxLines:Math.max(1,Math.min(layout==='caption'?2:layout==='verse'?8:layout==='proverb'?99:5,Math.floor(((b?.h||406)-pad[0]-pad[2])/(p?.lineSpacing?.unit==='px'?p.lineSpacing.value:r.size*(p?.lineSpacing?.value||1.3)))))};
 }
 // 최소 줄 수는 유지하면서 줄 길이가 고르게 되도록 단어 경계에서 나눈다. 마지막 줄에 한두 글자만 남는 것을 막는다.
 function balance(chars,m,rowCount){
@@ -72,8 +77,20 @@ function sentences(chars){
  if(trim(chunk).length)out.push(trim(chunk));
  return out;
 }
+// 잠언 한 항목을 한 장으로 만든다. 줄이 넘치면 앞 장은 3줄과 ">>"로 끝내고 남은 글을 다음 장에 이어 넣는다.
+// "1." 처럼 번호만 떨어져 나온 첫 문장을 다음 문장에 붙인다.
+function glueNumber(chunks){if(chunks.length>1&&/^\d+\s*[.)]$/.test(chunks[0].map(c=>c.ch).join('').trim()))return [[...chunks[0],{ch:' ',red:false,start:chunks[0].at(-1).end,end:chunks[0].at(-1).end},...chunks[1]],...chunks.slice(2)];return chunks;}
+function proverbSpecs(block,options){
+ const m=metrics('proverb',options.bank),cap=m.maxLines,items=glueNumber(sentences(block.chars)).map(ch=>wrap(ch,m)),pages=[];let rest=items.flat(),queue=items.map(x=>[...x]);
+ const take=n=>{const page=[];while(queue.length&&page.length<n){const head=queue[0];if(page.length&&page.length+head.length>n)break;const k=Math.min(n-page.length,head.length);page.push(...head.splice(0,k));if(!head.length)queue.shift();}return page;};
+ const total=()=>queue.reduce((a,x)=>a+x.length,0);
+ while(total()>cap)pages.push(take(Math.max(1,cap-1)));if(total())pages.push(take(cap));
+ const group=crypto.randomUUID();
+ return pages.map((lines,i)=>{const chars=lines.flat(),start=chars.find(c=>c.end>c.start)?.start,end=[...chars].reverse().find(c=>c.end>c.start)?.end;return {layout:'proverb',text:lines.map(markup).join('\n')+(i<pages.length-1?'\n>>':''),start,end,padToLines:0,group:crypto.randomUUID(),cumulative:false,step:1};}).filter(x=>Number.isInteger(x.start)&&x.end>x.start);
+}
 function analyze(project,options={}){
  const result=[];for(const block of blocks(project,options.allText)){
+  if(block.layout==='proverb'){result.push(...proverbSpecs(block,options));continue;}
   const text=block.chars.map(c=>c.ch).join(''),verse=block.layout==='word'&&/[（(]?[가-힣]{1,8}\s*\d+\s*[:장]\s*\d+/.test(text);let layout=verse?'verse':block.layout==='word'?speakerLayout(text,contextSpeaker(block.before)||options.greenLayout||'word'):block.layout;
   const chunks=sentences(block.chars);
   const pages=[];let page=[],count=0;const flush=()=>{if(page.length)pages.push({page,layout});page=[];count=0;};for(const ch of chunks){const next=block.layout==='word'&&!verse?speakerLayout(ch.map(c=>c.ch).join(''),layout):layout;if(next!==layout){flush();layout=next;}const m=metrics(layout,options.bank),maxLines=m.maxLines,lines=wrap(ch,m);for(let start=0;start<lines.length;start+=maxLines){const part=lines.slice(start,start+maxLines);if(count+part.length>maxLines&&page.length)flush();page.push(part);count+=part.length;}}flush();
@@ -84,7 +101,7 @@ function analyze(project,options={}){
  }
  return result;
 }
-async function prepare(){const bank=await templates();await Promise.all(Object.values(bank).map(s=>{const r=s.shapes[s.bodyIndex].paragraphs[0].runs.find(r=>r.size);return /마루\s*부리/i.test(r?.font||'')?document.fonts.load(`${r.bold?700:400} ${r.size}px "PROM MaruBuri"`):Promise.resolve();}));return bank;}
+async function prepare(){const bank=await templates();await Promise.all(Object.values(bank).map(s=>{const r=s.shapes[s.bodyIndex].paragraphs[0].runs.find(r=>r.size);return /마루\s*부리/i.test(r?.font||'')?document.fonts.load(`${r.bold?700:400} ${r.size}px "PROM MaruBuri"`).catch(()=>{}):Promise.resolve();}));return bank;}
 async function generate(project,options={}){const bank=await prepare(),specs=analyze(project,{...options,bank});if(!specs.length)throw Error('파란색·초록색 자막 구간을 찾지 못했습니다. 원고의 색을 확인하거나 전체 원고 만들기를 선택하세요.');const slides=[],links=[];if(options.title){slides.push(await scene('cover',options.title,{date:options.date}));links.push({status:'unlinked',start:null,end:null,score:0,reason:'cover'});}for(const spec of specs){const slide=await scene(spec.layout,spec.text,{padToLines:spec.padToLines});slide.editor.group=spec.group;slide.editor.cumulative=spec.cumulative;slide.editor.step=spec.step;slides.push(slide);links.push({status:'exact',start:spec.start,end:spec.end,score:1,reason:'source'});}return {slides,links};}
 async function restyle(slides){await prepare();const groups=new Map();for(const s of slides)if(s.editor?.group)groups.set(s.editor.group,s);const out=[];for(const s of slides){if(!s.editor){out.push(s);continue;}const e=s.editor,final=groups.get(e.group)||s,layout=e.layout.startsWith('word')?speakerLayout(final.editor.text,e.layout):e.layout,rebuilt=await scene(layout,e.text,{uid:s.uid,ref:e.ref,date:e.date,padToLines:e.padToLines});for(const key of ['group','cumulative','step'])if(e[key]!==undefined)rebuilt.editor[key]=e[key];rebuilt.shapes.push(...s.shapes.filter(sh=>sh.extraText).map(clone));out.push(rebuilt);}return out;}
 return {templates,snapshotTemplate,useTemplate,theme:async()=>{await templates();return themeXml;},scene,generate,analyze,restyle,speakerLayout,metrics,plain,styledRuns,colorType,layouts};
