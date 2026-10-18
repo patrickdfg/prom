@@ -11,7 +11,7 @@ async function scene(layout,text,options={}){
  const bank=await templates(),result=clone(bank[layout]||bank.caption),bodyIndex=result.bodyIndex,body=result.shapes[bodyIndex],para=body.paragraphs[0]||{runs:[]},base=clone(para.runs.find(r=>r.size)||{size:32,bold:true,font:'마루 부리OTF 굵은',color:'#111111'});
  for(const key of ['font','size','bold','color'])if(options[key]!==undefined)base[key]=options[key];
  Object.assign(body,{x:options.x??body.x,y:options.y??body.y,w:options.w??body.w,h:options.h??body.h,anchor:options.anchor||body.anchor,wrap:true,lineReduction:0});
- let textLines=String(text).split('\n');if(options.padToLines)while(textLines.length<options.padToLines)textLines.push('\u00a0');
+ let textLines=String(text).split('\n');if(options.padToLines)while(textLines.length<options.padToLines)textLines.push(' ');// 줄 높이를 맞추는 빈 줄. 특수 공백(U+00A0)은 일부 글꼴에서 네모로 보인다.
  body.paragraphs=textLines.map(line=>({...clone(para),align:options.align||para.align||'center',lineSpacing:clone(options.lineSpacing||{unit:'ratio',value:1.3}),runs:styledRuns(line,base),defaultSize:base.size}));
  // The template's empty placeholders stay empty; only body/reference/date fields are populated.
  if((layout==='verse'||layout==='passage')&&options.ref){const refRun={...base,color:layout==='verse'?'#2683c6':'#000000'};if(layout==='passage'){const ref=result.shapes[4],rp=clone(ref.paragraphs[0]),rr=rp.runs.find(r=>r.size)||refRun;ref.paragraphs=[{...rp,runs:styledRuns(options.ref,rr)}];}else body.paragraphs.unshift({...clone(para),align:'left',lineSpacing:clone(options.lineSpacing||{unit:'ratio',value:1.3}),runs:styledRuns(options.ref,refRun)});}

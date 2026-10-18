@@ -19,7 +19,7 @@ function show(host,slide,green='#00ff00'){
     const line=para.lineSpacing;
     Object.assign(p.style,{textAlign:para.align||'left',fontSize:size+'px',lineHeight:line?(line.unit==='px'?Math.max(1,line.value*(1-(shape.lineReduction||0)))+'px':String(Math.max(.1,line.value-(shape.lineReduction||0)))):'normal',marginTop:pixels(para.spaceBefore)+'px',marginBottom:pixels(para.spaceAfter)+'px',paddingLeft:(para.marginLeft||0)+'px',paddingRight:(para.marginRight||0)+'px',textIndent:(para.indent||0)+'px',tabSize:(para.tabSize||96)+'px'});
     for(const run of para.runs||[]){
-     const span=document.createElement('span');span.textContent=run.text;
+     const span=document.createElement('span');span.textContent=/^\u00a0+$/.test(run.text||'')?' '.repeat(run.text.length):run.text;// 줄 채움용 특수 공백이 글꼴에 없어 네모로 보이는 것을 막는다.
      const font=String(run.font||'Malgun Gothic').replace(/[%"\\]/g,'');
      // These are separate named faces in PowerPoint, not browser-synthesized bold.
      const maru=/마루\s*부리|maru\s*buri/i.test(font),weight=maru?(/굵은|bold/i.test(font)&&!/semi/i.test(font)?700:/중간|semi/i.test(font)?600:/아주|extra/i.test(font)?200:/가는|light/i.test(font)?300:run.bold?700:400):run.bold?700:400;
