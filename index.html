@@ -1317,7 +1317,7 @@ function go(p,manual){
   notifyUI('finishNote');
   if(editing){const b=page,d=commitEdit(); if(p>b)p+=d}
   p=Math.max(0,Math.min(P.length-1,p));
-  if(manual){ cursor=pStart[p]; heardCarry=''; sessionText=''; lastTail=''; pend=null; vlogAdd({k:'nav',page:p+1,to:cursor}); }
+  if(manual){ cursor=pStart[p]; heardCarry=''; sessionText=''; lastTail=''; pend=null; typeof vlogAdd==='function'&&vlogAdd({k:'nav',page:p+1,to:cursor}); }
   page=p; render();
   if(editing)focusLine(0);
   if(manual&&tPlaying&&!tInternal)setTimeout(()=>tSpeakPage(page),0);
@@ -1347,6 +1347,7 @@ function saveVoiceLog(){
   document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
   toast('인식 기록 '+vlog.length+'건을 저장했습니다. 이 파일을 보내 주세요.',6000);
 }
+$('saveVoiceLog').onclick=saveVoiceLog;
 function cap(msg,force){
   lastCap=msg||'';
   const feedback=$('voiceFeedback');
@@ -1465,7 +1466,6 @@ async function androidWait(){
 }
 function releaseMic(){if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null}}
 function recognitionStart(){const selected=notifyUI('readingStart');return Number.isFinite(selected)?Math.max(0,Math.min(norm.length,selected)):(pStart[page]||0);}
-$('saveVoiceLog').onclick=saveVoiceLog;
 async function startMic(){
   if(ttsOn)tStop();
   if(editing){toast('편집을 끝낸 뒤(Esc) 마이크를 켜세요.',4000);return}
@@ -1473,7 +1473,7 @@ async function startMic(){
   notifyUI('finishNote');closePanel(); stopMeter();
   const hasSlideshow=!!notifyUI('hasSlideshow');
   await holdMic();
-  vlogAdd({k:'mic',v:'start',cursor});
+  typeof vlogAdd==='function'&&vlogAdd({k:'mic',v:'start',cursor});
   rec=new SR(); rec.lang='ko-KR'; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
   const activeRec=rec;
   rec.onresult=e=>{
@@ -1484,7 +1484,7 @@ async function startMic(){
   };
   rec.onerror=e=>{
     if(!listening||rec!==activeRec)return;
-    vlogAdd({k:'error',v:e.error});
+    typeof vlogAdd==='function'&&vlogAdd({k:'error',v:e.error});
     if(e.error==='no-speech'){cap('말소리가 인식되지 않습니다 · 마이크 입력을 확인해 주세요.');return}
     if(e.error==='aborted')return;
 
@@ -1497,7 +1497,7 @@ async function startMic(){
     cap('오류('+e.error+') '+msg,true);
   };
   // 폰에서는 종료마다 즉시 다시 켜지 않고 입력을 기다린다. PC는 바로 재연결한다.
-  rec.onend=()=>{vlogAdd({k:"end"});
+  rec.onend=()=>{typeof vlogAdd==='function'&&vlogAdd({k:"end"});
     if(rec!==activeRec||!listening)return;
     if(ANDROID){emptySessions=sessionText.trim()?0:emptySessions+1;if(emptySessions>=3){stopMic();toast('말소리를 인식하지 못해 반복 연결을 멈췄습니다. 마이크를 확인한 뒤 다시 켜 주세요.',7000);return}}
     heardCarry=(heardCarry+sessionText).slice(-60); sessionText=''; speechFloor=0;speechResultCount=0;spLast=0;
@@ -1518,7 +1518,7 @@ async function startMic(){
   $('mic').classList.add('on'); $('mic').textContent='마이크 끄기 (M)';
   keepAwake(); speedStart();
 }
-function stopMic(){ vlogAdd({k:'mic',v:'stop'});vlogSave(); speedStop(); endWait();
+function stopMic(){ typeof vlogAdd==='function'&&(vlogAdd({k:'mic',v:'stop'}),vlogSave()); speedStop(); endWait();
   listening=false;$('view').classList.remove('presenting','controls-open','operator-mode');fit();render();showBar();
   cap(''); releaseMic(); if(rec)try{rec.stop()}catch(_){}
   $('mic').classList.remove('on'); $('mic').textContent='마이크 켜기 (M)'; setDot('');
