@@ -79,3 +79,5 @@ body.mic-on .control-pane #status{height:31px;min-height:31px;flex-shrink:0;whit
 .control-pane #openOutput,.control-pane header .app-switch,.control-pane header button,.control-pane header .display-screen-button,.control-pane .imports button,.control-pane .drive-bar button,.control-pane .transport button{padding:7px 10px}
 .overview-toolbar button,.overview-toolbar label,.pane-heading button,.link-summary button{font-size:13px}
 #showSelected,#mappingToggle,body [data-prom-support] button{font-size:13px}
+
+#editorPreview{cursor:grab;touch-action:none;user-select:none}
