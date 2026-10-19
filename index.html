@@ -1448,6 +1448,11 @@ function startRec(){
    폰 크롬은 음성인식을 켤 때마다 '띵' 소리를 낸다(웹에서 못 끈다). 말이 없으면 몇 초마다 꺼져서
    바로 다시 켜면 띵이 계속 난다. 그래서 폰에서는 말이 없어 꺼졌을 때 다시 켜지 않고,
    마이크 소리 크기만 지켜보다가 말소리가 나면 그때 다시 켠다. PC는 예전처럼 바로 다시 켠다. */
+/* 인식이 오류 없이 멈춘 경우(실제 시험에서 58초) 대비: PC에서 마이크가 켜져 있는데 30초 동안 결과·종료가 없으면 인식기를 다시 켠다. */
+let recWatchAt=0;
+function recWatchdog(now){if(!listening||ANDROID||!rec)return false;if(now-Math.max(lastResultAt,recWatchAt)<30000)return false;recWatchAt=now;
+  typeof vlogAdd==='function'&&vlogAdd({k:'watchdog',v:'restart'});try{rec.abort()}catch(_){}return true}
+setInterval(()=>recWatchdog(Date.now()),5000);
 let lastResultAt=0, waitAC=null, waitStream=null, waitIv=null, waitGeneration=0, restartTimer=null, waitPending=false;
 function makeWaitAC(){try{if(!waitAC){const AC=window.AudioContext||window.webkitAudioContext; if(AC)waitAC=new AC()} waitAC&&waitAC.resume().catch(()=>{})}catch(_){waitAC=null}}
 function endWait(){
@@ -1508,6 +1513,9 @@ async function startMic(){
     typeof vlogAdd==='function'&&vlogAdd({k:'error',v:e.error});
     if(e.error==='no-speech'){cap('말소리가 인식되지 않습니다 · 마이크 입력을 확인해 주세요.');return}
     if(e.error==='aborted')return;
+    // 실제 예배 시험: 크롬은 약 5분(300초)마다 'network'로 인식을 끊고 PC는 1~3초 안에 다시 이어진다.
+    // 방금까지 글자가 들어오던 중이면 정상 갱신이므로 오류 안내를 띄우지 않는다(기록은 남김).
+    if(e.error==='network'&&!ANDROID&&Date.now()-lastResultAt<20000)return;
 
     setDot('err');
     const msg={'not-allowed':'마이크 권한이 막혔습니다. 주소창 왼쪽 아이콘에서 마이크를 허용해 주세요.',
@@ -1526,7 +1534,7 @@ async function startMic(){
     if(listening){setDot('');try{startRec()}catch(_){setTimeout(()=>{if(listening)try{startRec()}catch(__){}},300)}}
     else setDot('');
   };
-  rec.onstart=()=>{setDot('live'); cap('음성인식 연결됨 · 현재 화면의 글을 읽어 주세요.')};
+  rec.onstart=()=>{recWatchAt=Date.now();setDot('live'); cap('음성인식 연결됨 · 현재 화면의 글을 읽어 주세요.')};
   rec.onaudiostart=()=>cap('마이크 소리가 들어옵니다 · 말씀해 보세요');
   rec.onspeechstart=()=>cap('말소리 감지 · 글자로 바꾸는 중');
   if(ANDROID){makeWaitAC(); lastResultAt=0;emptySessions=0;}
