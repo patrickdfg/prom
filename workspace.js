@@ -329,6 +329,7 @@
   $('view').addEventListener('pointerdown',showBar);
   $('bar').addEventListener('focusin',showBar);
   window.PromUI = {
+    visibleRange(){return localRenderer.visibleRange(lineRange);},
     metadata, applyMetadata, finishNote, syncPresentationMode,
     hasSlideshow(){return !!audience&&!audience.closed;},
     readingStart(){return (localScroll||(continuous&&audience&&!audience.closed))?cursor:undefined;},

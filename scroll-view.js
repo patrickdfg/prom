@@ -1,5 +1,13 @@
 /* 쪽 사이의 빈 공간 없이 실제 원고 줄을 일정한 간격으로 잇는다. */
 window.PromScrollView=class {
+  // 지금 화면에 보이는 줄들의 원고 글자 범위 [시작, 끝]. 보이지 않으면 null.
+  visibleRange(ranges){
+    if(!this.host||this.host.hidden||!this.rows?.length)return null;
+    const box=this.host.getBoundingClientRect();if(!box.height)return null;
+    let lo=Infinity,hi=-1;
+    for(const r of this.rows){const b=r.el.getBoundingClientRect();if(b.bottom<=box.top||b.top>=box.bottom)continue;const g=ranges?.[r.pi]?.[r.li];if(!g||g[1]<=g[0])continue;lo=Math.min(lo,g[0]);hi=Math.max(hi,g[1]);}
+    return hi<0?null:[lo,hi];
+  }
   static getScale(){try{const n=Number(localStorage.getItem('promScrollTextScale'));if(n>=60&&n<=180)return n;}catch(_){}return this.zoom||100;}
   static setScale(value){const n=Math.max(60,Math.min(180,Math.round(Number(value)/10)*10||100));this.zoom=n;try{localStorage.setItem('promScrollTextScale',String(n));}catch(_){}return n;}
   static getAnchor(){try{const n=localStorage.getItem("promScrollAnchor");if(n!==null&&Number(n)>=.15&&Number(n)<=.5)return Number(n);}catch(_){}return .35;}

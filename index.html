@@ -727,6 +727,17 @@ function lineSpeech(heard,target,cursor,offset=0,map=null){
   }
   return null;
 }
+// 스크롤 보기: 화면에 보이는 줄 안에서 들은 말 끝 10자 이상이 한 곳에만 맞으면 그 줄로 바로 간다
+function shownSpeech(heard,shown,cursor){
+  if(!shown||shown[1]<=cursor)return null;
+  const lo=Math.max(0,Math.min(shown[0],cursor-64)),win=norm.slice(lo,shown[1]);
+  for(let n=Math.min(24,heard.length);n>=10;n--){
+    const tail=heard.slice(-n),at=win.indexOf(tail);
+    if(at<0||win.indexOf(tail,at+1)>=0)continue;
+    const pos=lo+at+n;return pos>cursor?pos:null;
+  }
+  return null;
+}
 function confirmedSpeech(heard,target,cursor,offset=0,map=null,minLength=28){
   const position=end=>map?map[end-1]:offset+end;
   for(let length=Math.min(64,heard.length);length>=minLength;length--){
@@ -1380,9 +1391,12 @@ function onHeard(text){
   const h=locate3(S,cursor), lim=Math.floor(S.length*0.3);
   const readingPage=pageOf(cursor);let nextPage=readingPage+1;
   while(nextPage<P.length&&pEnd[nextPage]===pEnd[readingPage])nextPage++;
-  const from=Math.max(0,cursor-64),end=pEnd[Math.min(nextPage,P.length-1)]||norm.length;
+  // 스크롤 보기에서는 쪽이 아니라 화면에 보이는 줄 끝까지 찾는다 (보이는 줄은 어디로 건너뛰어 읽어도 따라간다)
+  const shown=globalThis.PromUI?.visibleRange?.()||null;
+  const from=Math.max(0,cursor-64),end=Math.max(pEnd[Math.min(nextPage,P.length-1)]||norm.length,shown&&shown[1]>cursor?shown[1]:0);
   const confirmed=confirmedSpeech(all,norm.slice(from,end),cursor,from);
   const local=lineSpeech(all,norm.slice(from,end),cursor,from);
+  const seen=shown&&typeof shownSpeech==='function'?shownSpeech(all,shown,cursor):null;
   // 읽지 않는 태그·설명 줄을 건너뛰고 이어 읽을 때: 쪽 끝을 넘는 앞쪽 450자 안에서 20자 이상 한 곳에만 맞는 글이면 바로 따라간다.
   const skipAhead=confirmedSpeech(all,norm.slice(from,Math.min(norm.length,cursor+450)),cursor,from,null,20);
   const optional=PromOptionalSpeech.match(all,optionalSpeech,cursor)??(typeof PromSpeechMatch==='undefined'?null:PromSpeechMatch.optional(all,optionalSpeech,cursor)?.pos??null);
@@ -1392,6 +1406,7 @@ function onHeard(text){
   else if(optional!==null){to=optional;pend=null;}
   else if(confirmed!==null){to=confirmed;pend=null;}
   else if(local!==null){to=local;pend=null;}
+  else if(seen!==null){to=seen;pend=null;}
   else if(h.near&&h.near.d<=lim){
     if(h.near.pos<cursor&&h.near.d>1){cap(base+' · 앞쪽이라 그대로');return}
     to=h.near.pos; pend=null;
@@ -1980,8 +1995,8 @@ if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 </script>
 <script src="slide-layout.js?v=20261016-6"></script>
 <script src="smooth-scroll.js?v=20261017-line1"></script>
-<script src="scroll-view.js?v=20261018-jump2"></script>
-<script src="display-screens.js?v=20261017-screen1"></script><script src="workspace.js?v=20261017-full-retry1"></script>
+<script src="scroll-view.js?v=20261019-vis1"></script>
+<script src="display-screens.js?v=20261017-screen1"></script><script src="workspace.js?v=20261019-vis1"></script>
 <script src="overview.js?v=20261017-local1"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
 <script src="extras.js?v=20261019-nolab1"></script>
