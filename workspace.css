@@ -205,3 +205,5 @@ button:hover{filter:brightness(1.12)}
   #toast{top:auto;bottom:72px;max-width:calc(100vw - 32px);text-align:center}
   body:has(#view[style*="display: block"]) .prom-support-floating{display:none!important}
 }
+/* 전체화면에서 읽어주기 중 화면을 누르면 속도 조절 창이 보이게 한다 */
+#view.solo-presentation #ttsPanel.open,#view.presenting #ttsPanel.open{display:block!important}
