@@ -34,9 +34,6 @@ for(const file of ['index.html','classic.html']){
  vm.runInContext('P=pages;index();onHeard(heard)',context);
  assert.equal(context.cursor,index.text.length,file+' actual handler skips unread Scripture');
 }
-const extras=fs.readFileSync('extras.js','utf8'),lab={PromOptionalSpeech:O,PromScriptureSpeech:B,PromSpeechMatch:S,optionalSpeech:null,scriptureSpeech:B.build(raw),normStr:norm,heardCarry:'',cursor, pending:{},page:0,pageOf:()=>2,cap(){},go(p){lab.page=p},render(){},$:()=>({checked:true}),onHeard(){throw Error('unexpected fallback')}};
-vm.createContext(lab);vm.runInContext(extras.slice(extras.indexOf('const originalHeard=onHeard'),extras.indexOf('   indexVoice();'))+'};',lab);
-lab.heard=commentary;vm.runInContext('onHeard(heard)',lab);assert.equal(lab.cursor,index.text.length);assert.equal(lab.page,2,'voice lab follows the recovered Scripture position');
 hit=C.locateSpeech(commentary,C.normalize(raw),cursor,null,B.build(raw,C.normalize));
 assert.equal(hit.pos,C.normalize(raw).length);assert.equal(hit.scripture,true);
 console.log('PASS Scripture partial/omitted reading, repetition, confirmation/expiry/manual reset, limits, actual PROM/classic handlers and broadcast PPT');

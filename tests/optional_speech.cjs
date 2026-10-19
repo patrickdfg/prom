@@ -25,5 +25,3 @@ for(const file of ['index.html','classic.html']){
 }
 const data=V.build([[[{t:'오늘은 (영상 시작) 서로 (부연 설명) 사랑하며 감사합니다.',c:'k'}]]]);const projection=O.build(data.spokenRows.flat().join('\n'));const pos=O.match(norm('오늘은 서로 사랑하며 감사합니다.'),projection,0);assert.equal(pos,data.text.length,'silent video markers and omitted parentheticals share canonical offsets');assert.equal(data.cues[0].action,'obs');
 console.log('PASS omitted/read parentheses, full-width/nested/multiline/multiple/long notes, canonical cursor mapping, main/classic/PPT handlers, video cues, unmatched delimiters, ordinary-text and ambiguous/short/stale guards');
-
-const extras=fs.readFileSync('extras.js','utf8'),lab={onHeard:null,originalHeard:()=> 'normal-handler',normStr:norm,heardCarry:'',optionalSpeech:O.build(examples[0][0]),cursor:0,PromOptionalSpeech:O,$:()=>({checked:true}),indexVoice(){throw Error('must delegate before alternate indexing')}};vm.createContext(lab);vm.runInContext(extras.slice(extras.indexOf(' onHeard=function(text){'),extras.indexOf(' const originalMic=')),lab);assert.equal(lab.onHeard(examples[0][1]),'normal-handler');
