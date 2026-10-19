@@ -124,7 +124,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 <link rel="stylesheet" href="extras.css?v=20261017-follow3">
 <style>.app-switch{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;flex-shrink:0;padding:8px 12px;border:1px solid #506a88;border-radius:8px;background:#20344c;color:#d6f5ec!important;font:600 12px/1.4 sans-serif;text-decoration:none;pointer-events:auto}.app-switch:hover{background:#2b4963}.app-switch:focus-visible{outline:3px solid #5de2ca;outline-offset:2px}</style>
 <link rel="stylesheet" href="display-screens.css?v=20261017-screen1">
-<style>.drive-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:14px;font-size:14px}.drive-row label{display:inline-flex;align-items:center;gap:6px}#driveState{opacity:.8}</style></head>
+</head>
 <body>
 <div id="setup">
   <header class="brandrow"><span class="brandmark">SERMON PROMPTER</span><a class="app-switch" href="ppt/" target="_blank" rel="noopener" title="방송용 PPT 조작화면을 새 탭에서 열기">방송용 PPT ↗</a></header>
@@ -157,7 +157,6 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <div class="row startrow"><span id="fname">원고를 고른 뒤 시작하세요.</span><button class="btn" id="start" disabled>프롬프터 시작 →</button></div>
     <button id="usePaste" hidden>붙여 넣은 글로 시작</button>
   </section>
-  <section class="drive-row" aria-label="구글 드라이브 자동 저장"><button class="btn" id="driveLogin" type="button">구글 로그인</button><label><input type="checkbox" id="driveAuto"> 마이크를 끄면 원고와 인식 기록을 드라이브에 저장</label><span id="driveState" role="status"></span></section>
   <div class="setup-footer"><button class="btn" id="demo">예시 원고로 체험</button></div>
   <p class="format-note" style="margin-top:16px">최근 원고와 메모는 이 기기의 브라우저에 자동 저장됩니다. 공용 기기에서는 사용 후 사이트 데이터를 지워 주세요.</p>
   <div id="loadmsg"></div>
@@ -204,7 +203,6 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <span id="autosaveState" role="status">기기에 저장됨</span>
     <div id="moreTools" hidden>
       <button id="set">마이크 설정</button>
-      <button id="driveSaveNow" type="button" title="원고와 음성 인식 기록을 지금 구글 드라이브에 저장합니다.">드라이브 저장</button>
       <button id="saveVoiceLog" type="button" title="들은 글자와 위치 판정 기록을 파일로 저장합니다. 따라오지 못한 때 원인을 분석하는 데 씁니다.">인식 기록 저장</button>
       <button id="obsFullscreenSetup" type="button" title="OBS 전체화면 전환 용도·사용법·다운로드">OBS풀스크린설명</button>
       <label>넘김 <select id="lead"><option value="6">빠르게</option><option value="3" selected>보통</option><option value="1">늦게</option></select></label>
@@ -1564,7 +1562,7 @@ async function startMic(){
   $('mic').classList.add('on'); $('mic').textContent='마이크 끄기 (M)';
   keepAwake(); speedStart();
 }
-function stopMic(){ const wasListening=listening; typeof vlogAdd==='function'&&(vlogAdd({k:'mic',v:'stop'}),vlogSave()); if(wasListening&&window.PromDrive)setTimeout(()=>PromDrive.autoSave(),0); speedStop(); endWait();
+function stopMic(){ typeof vlogAdd==='function'&&(vlogAdd({k:'mic',v:'stop'}),vlogSave()); speedStop(); endWait();
   listening=false;$('view').classList.remove('presenting','controls-open','operator-mode');fit();render();showBar();
   cap(''); releaseMic(); if(rec)try{rec.stop()}catch(_){}
   $('mic').classList.remove('on'); $('mic').textContent='마이크 켜기 (M)'; setDot('');
@@ -1881,7 +1879,6 @@ async function htmlRendered(src){
   }finally{fr.remove()}
 }
 async function loadFile(f){
-  window.promSource={name:f.name,blob:f};
   remClear(); pending=null; $('start').disabled=true; $('fname').textContent=''; $('loadmsg').textContent='읽는 중…';
   baseName=f.name.replace(/\.[^.]+$/,'').replace(/_프롬프터$/,'')||'대본';
   try{
@@ -1960,10 +1957,10 @@ const DEMO=`
 <B>다른 원고</B>를 눌러
 내 원고를 불러오세요.
 `;
-$('demo').onclick=()=>{window.promSource=null;remClear(); baseName='테스트'; startWith(parseTxt(DEMO)); toast('테스트 원고입니다. 마이크 켜기를 누르고 화면 글을 읽어 보세요.',7000)};
+$('demo').onclick=()=>{remClear(); baseName='테스트'; startWith(parseTxt(DEMO)); toast('테스트 원고입니다. 마이크 켜기를 누르고 화면 글을 읽어 보세요.',7000)};
 function syncLines(from,to){document.querySelectorAll('input[name='+from+']').forEach(r=>r.addEventListener('change',()=>{const t=document.querySelector('input[name='+to+'][value="'+r.value+'"]');if(t)t.checked=true}))}
 syncLines('lines','lines2'); syncLines('lines2','lines');
-$('usePaste').onclick=()=>{const t=$('paste').value.trim();remClear();if(t){window.promSource={name:'붙여넣은 원고.txt',blob:new Blob([t],{type:'text/plain;charset=utf-8'})};startWith(parseTxt(t));const rr=remReport();if(rr)toast(rr,10000)}else $('loadmsg').textContent='붙여 넣은 글이 없습니다.'};
+$('usePaste').onclick=()=>{const t=$('paste').value.trim();remClear();if(t){startWith(parseTxt(t));const rr=remReport();if(rr)toast(rr,10000)}else $('loadmsg').textContent='붙여 넣은 글이 없습니다.'};
 $('mic').onclick=()=>listening?stopMic():startMic();
 $('prev').onclick=()=>go(page-1,true);
 $('next').onclick=()=>go(page+1,true);
@@ -2025,7 +2022,7 @@ if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 <script src="overview.js?v=20261017-local1"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
 <script src="extras.js?v=20261019-nolab1"></script>
-<script src="ppt/drive-config.js?v=20261018-drive1"></script><script src="drive-save.js?v=20261018-drive1"></script>
+
 <div data-prom-support class="prom-support-floating" aria-label="사용자 도움말"></div><script src="support.js?v=20261017-support1"></script></body>
 </html>
 
