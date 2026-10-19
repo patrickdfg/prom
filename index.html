@@ -1371,10 +1371,10 @@ function cap(msg,force){
   if(feedback){feedback.textContent=msg||'';feedback.hidden=!msg||(!listening&&!force)}
 }
 
-function heardLogged(text){
+function heardLogged(text,fin){
   const before=cursor;lastCap='';let err='';
   try{onHeard(text)}catch(e){err=String(e&&e.message||e);throw e}
-  finally{if(typeof vlogAdd==='function'){const rb=rowAt(before),ra=rowAt(cursor);vlogAdd({k:'heard',lab:!!document.getElementById('voiceLab')?.checked,heard:String(text).slice(-80),carry:heardCarry.slice(-30),from:before,to:cursor,row0:rb,row1:ra,page:page+1,msg:lastCap,err})}}
+  finally{if(typeof vlogAdd==='function'){const rb=rowAt(before),ra=rowAt(cursor);vlogAdd({k:'heard',fin:fin===undefined?null:fin,heard:String(text).slice(-80),carry:heardCarry.slice(-30),from:before,to:cursor,row0:rb,row1:ra,page:page+1,msg:lastCap,err})}}
 }
 function onHeard(text){
   // The displayed page may lead the reading position. Manual navigation already resets cursor.
@@ -1501,7 +1501,7 @@ async function startMic(){
     if(!listening||rec!==activeRec)return;
     speechResultCount=e.results.length;
     let t=''; for(let i=speechFloor;i<e.results.length;i++) t+=e.results[i][0].transcript;
-    sessionText=t; heardLogged(t); speedFeed(e.results); lastResultAt=Date.now();emptySessions=0;
+    sessionText=t; heardLogged(t,!!e.results[e.results.length-1]?.isFinal); speedFeed(e.results); lastResultAt=Date.now();emptySessions=0;
   };
   rec.onerror=e=>{
     if(!listening||rec!==activeRec)return;

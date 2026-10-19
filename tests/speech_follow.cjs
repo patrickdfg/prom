@@ -15,6 +15,6 @@ const map=Array.from({length:text.length},(_,i)=>(i+1)*2);assert.equal(c.confirm
 console.log('PASS local rows, short phrase guard, bundled result, recognition error, ambiguous recovery, echo and source mapping');
 
 const workspace=fs.readFileSync('workspace.js','utf8');const state={localRenderer:{},lineRange:[ranges],cursor:100,pend:{pos:120},lastTail:'old',heardCarry:'old',sessionText:'old',speechResultCount:3,speechFloor:0,window:{PromExtras:{resetVoice(){}}},go:()=>{},render:()=>{}};vm.createContext(state);vm.runInContext(workspace.match(/  localRenderer.onSelect=.*;\r?\n/)[0],state);state.localRenderer.onSelect(0,1);assert.equal(state.cursor,ranges[1][0]);assert.equal(state.speechFloor,3);assert.equal(state.heardCarry,'');assert.equal(state.sessionText,'');
-const result=html.slice(html.indexOf('    speechResultCount=e.results.length;'),html.indexOf('    sessionText=t; heardLogged(t);'));state.e={results:[[{transcript:'old one'}],[{transcript:'old two'}],[{transcript:'old interim'}],[{transcript:'새 줄 읽기'}]]};assert.equal(vm.runInContext(result+'t',state),'새 줄 읽기','click discards cumulative old results');
+const result=html.slice(html.indexOf('    speechResultCount=e.results.length;'),html.indexOf('    sessionText=t; heardLogged('));state.e={results:[[{transcript:'old one'}],[{transcript:'old two'}],[{transcript:'old interim'}],[{transcript:'새 줄 읽기'}]]};assert.equal(vm.runInContext(result+'t',state),'새 줄 읽기','click discards cumulative old results');
 console.log('PASS clicked row cursor, pending state reset and stale cumulative result filtering');
 
