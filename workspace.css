@@ -215,3 +215,7 @@ button:hover{filter:brightness(1.12)}
 @media(max-width:700px){#note,#extrasButton{display:none!important}}
 /* 폰 화면: 하늘·구름 배경 버튼 숨김 (이미 고른 경우 '검정 배경'으로 돌아갈 수 있게 그 버튼은 남김) */
 @media(max-width:700px){#theme-cloud{display:none!important}}
+/* 흰색 배경은 폰에서만 버튼을 보인다 (PC는 검정·하늘구름) */
+#theme-white{display:none}
+@media(max-width:700px){#theme-white{display:inline-flex}}
+@media(max-width:700px){#statusbar{background:#10151d}}

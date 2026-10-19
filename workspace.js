@@ -80,7 +80,7 @@
     syncScrollText();if(!localScroll)return;
     const data={...payload(),document:P,ranges:lineRange,readingAnchor:PromScrollView.getAnchor()};
     scrollHost.style.backgroundColor=data.dark?'#000':'#fff';
-    scrollHost.style.backgroundImage=data.dark?'none':$('page').style.backgroundImage;
+    scrollHost.style.backgroundImage=data.dark||$('theme').value==='white'?'none':$('page').style.backgroundImage;
     localRenderer.update(data);
     scrollHost.style.setProperty('--focus',data.dark?data.focus:'#0000ff');
   }
@@ -248,8 +248,8 @@
   });
   addEventListener('resize',placeSpeed);
   $('focusColor').onchange = () => { $('view').style.setProperty('--focus',$('focusColor').value); saveNow(); publish(); };
-  function syncTheme(){for(const value of ['dark','cloud'])$('theme-'+value).setAttribute('aria-pressed',String($('theme').value===value));}
-  for(const value of ['dark','cloud'])$('theme-'+value).onclick=()=>{$('theme').value=value;$('theme').dispatchEvent(new Event('change'));};
+  function syncTheme(){for(const value of ['dark','cloud','white'])$('theme-'+value).setAttribute('aria-pressed',String($('theme').value===value));}
+  for(const value of ['dark','cloud','white'])$('theme-'+value).onclick=()=>{$('theme').value=value;$('theme').dispatchEvent(new Event('change'));};
   $('theme').addEventListener('change',()=>{syncTheme();publish();saveNow();});syncTheme();
   function payload() {
     const extra={...(window.PromExtras?.settings()||{}),continuous};

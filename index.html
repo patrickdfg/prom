@@ -74,6 +74,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 .b{color:#0000ff;font-weight:700}.r{color:#ff0000}
 /* 여주교회 형식: 검정 배경·흰 글씨·노란 강조·빨간 쪽번호 */
 #page.dark{background:#000!important;color:#fff}
+#page.white{background:#fff!important;color:#000}
 #page.dark .b{color:#ffff00}
 #bar{position:absolute;left:0;right:0;bottom:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;
   padding:10px 16px;background:rgba(17,20,24,.92);color:var(--text);font-size:14px;transition:opacity .3s}
@@ -120,7 +121,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
-<link rel="stylesheet" href="workspace.css?v=20261020-mob5">
+<link rel="stylesheet" href="workspace.css?v=20261020-mob6">
 <link rel="stylesheet" href="extras.css?v=20261017-follow3">
 <style>.app-switch{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;flex-shrink:0;padding:8px 12px;border:1px solid #506a88;border-radius:8px;background:#20344c;color:#d6f5ec!important;font:600 12px/1.4 sans-serif;text-decoration:none;pointer-events:auto}.app-switch:hover{background:#2b4963}.app-switch:focus-visible{outline:3px solid #5de2ca;outline-offset:2px}</style>
 <link rel="stylesheet" href="display-screens.css?v=20261017-screen1">
@@ -164,7 +165,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 </div>
 
 <div id="view">
-  <div id="statusbar"><div class="status-left"><button id="back" class="status-home" type="button" title="처음 화면으로 돌아가기">⌂ 홈</button><div class="mic-state"><span id="dot"></span><span id="micStatus" role="status">마이크 꺼짐</span></div></div><span id="sessionTitle"></span><div class="theme-choices" role="group" aria-label="화면 도구"><button id="audience" type="button">슬라이드쇼 ↗</button><button id="scrollAudience" type="button">스크롤 슬라이드쇼 ↗</button><a class="app-switch" href="ppt/" target="_blank" rel="noopener" title="방송용 PPT 조작화면을 새 탭에서 열기">방송용 PPT ↗</a><button id="theme-dark" type="button" aria-pressed="true">검정 배경</button><button id="theme-cloud" type="button" aria-pressed="false">하늘·구름 배경</button><select id="theme" aria-label="배경" hidden><option value="dark" selected>검정화면</option><option value="cloud">구름 배경</option></select></div></div>
+  <div id="statusbar"><div class="status-left"><button id="back" class="status-home" type="button" title="처음 화면으로 돌아가기">⌂ 홈</button><div class="mic-state"><span id="dot"></span><span id="micStatus" role="status">마이크 꺼짐</span></div></div><span id="sessionTitle"></span><div class="theme-choices" role="group" aria-label="화면 도구"><button id="audience" type="button">슬라이드쇼 ↗</button><button id="scrollAudience" type="button">스크롤 슬라이드쇼 ↗</button><a class="app-switch" href="ppt/" target="_blank" rel="noopener" title="방송용 PPT 조작화면을 새 탭에서 열기">방송용 PPT ↗</a><button id="theme-dark" type="button" aria-pressed="true">검정 배경</button><button id="theme-cloud" type="button" aria-pressed="false">하늘·구름 배경</button><button id="theme-white" type="button" aria-pressed="false">흰색 배경</button><select id="theme" aria-label="배경" hidden><option value="dark" selected>검정화면</option><option value="cloud">구름 배경</option><option value="white">흰색 배경</option></select></div></div>
   <div id="voiceFeedback" hidden></div>
   <div id="stage"><div id="page"><div id="lines"></div><div id="nextCue" hidden aria-label="다음 장 첫 줄"></div></div></div>
   <div id="overviewToolbar" hidden>
@@ -1979,8 +1980,10 @@ $('mic').onclick=()=>listening?stopMic():startMic();
 $('prev').onclick=()=>go(page-1,true);
 $('next').onclick=()=>go(page+1,true);
 $('dim').onchange=render;
-function applyTheme(){$('page').classList.toggle('dark',$('theme').value==='dark');try{localStorage.setItem('prompterTheme',$('theme').value)}catch(_){}}
+function applyTheme(){$('page').classList.toggle('dark',$('theme').value==='dark');$('page').classList.toggle('white',$('theme').value==='white');try{localStorage.setItem('prompterTheme',$('theme').value)}catch(_){}}
 try{const t=localStorage.getItem('prompterTheme');if(t)$('theme').value=t}catch(_){}
+// 폰은 검정·흰색 배경만 쓴다. 구름 배경이 골라져 있으면 흰색으로 바꾼다
+if(matchMedia('(max-width:700px)').matches&&$('theme').value==='cloud')$('theme').value='white';
 try{const n=localStorage.getItem('prompterLines');['lines','lines2'].forEach(nm=>{const r=n&&document.querySelector('input[name='+nm+'][value="'+n+'"]');if(r)r.checked=true})}catch(_){}
 $('theme').onchange=applyTheme;
 $('fs').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();else toast('이 브라우저에서는 메뉴에서 전체화면으로 열어 주세요.')}catch(_){toast('전체화면으로 바꾸지 못했습니다. 다시 눌러 주세요.')}};
@@ -2032,7 +2035,7 @@ if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 <script src="slide-layout.js?v=20261016-6"></script>
 <script src="smooth-scroll.js?v=20261017-line1"></script>
 <script src="scroll-view.js?v=20261020-phone1"></script>
-<script src="display-screens.js?v=20261017-screen1"></script><script src="workspace.js?v=20261019-vis1"></script>
+<script src="display-screens.js?v=20261017-screen1"></script><script src="workspace.js?v=20261020-white1"></script>
 <script src="overview.js?v=20261017-local1"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
 <script src="extras.js?v=20261019-nolab1"></script>
