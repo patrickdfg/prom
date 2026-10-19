@@ -213,3 +213,5 @@ button:hover{filter:brightness(1.12)}
 }
 /* 폰 화면: 발표 메모·실험실 버튼도 쓰지 않으므로 숨긴다 */
 @media(max-width:700px){#note,#extrasButton{display:none!important}}
+/* 폰 화면: 하늘·구름 배경 버튼 숨김 (이미 고른 경우 '검정 배경'으로 돌아갈 수 있게 그 버튼은 남김) */
+@media(max-width:700px){#theme-cloud{display:none!important}}
