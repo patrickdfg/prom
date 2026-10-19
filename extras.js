@@ -36,11 +36,11 @@
    const recognized=PromVoiceLab.mapped(heardCarry+text).text,sample=recognized.slice(-22);$('heard').textContent=text.slice(-40);
    const sampleKey=recognized.slice(-96);if(sampleKey===lastSample)return;lastSample=sampleKey;
    const readingPage=pageOf(cursor),current=voicePages[readingPage];if(!current)return;
-   // 다음 장의 첫 본문 줄까지만 살펴본다. 임의의 먼 장으로는 이동하지 않는다.
+   // 다음 장 끝까지 살펴본다. 줄을 건너뛰어도 다음 장 안이면 따라가고, 더 먼 장으로는 이동하지 않는다.
    let nextPage=readingPage+1,next=-1;
    while(nextPage<P.length){next=P[nextPage].findIndex((runs,li)=>lineRange[nextPage]?.[li]?.[1]>lineRange[nextPage]?.[li]?.[0]);if(next>=0)break;nextPage++;}
    const range=next>=0?lineRange[nextPage]?.[next]:null;
-   const nextData=voicePages[nextPage];const n=range&&nextData?nextData.map.filter(p=>p<=range[1]).length:0;
+   const nextData=voicePages[nextPage];const n=range&&nextData?nextData.map.length:0;
    const target=current.text+(nextData?.text.slice(0,n)||''),map=current.map.concat(nextData?.map.slice(0,n)||[]);
    const local=lineSpeech(recognized,target,cursor,0,map);
    const confirmed=confirmedSpeech(recognized,target,cursor,0,map)??local;

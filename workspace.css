@@ -85,6 +85,8 @@ button:hover{filter:brightness(1.12)}
 #view.presenting #statusbar,#view.presenting #bar,#view.presenting #voiceFeedback,#view.presenting #toast,#view.presenting #cap,#view.presenting #noteLayer,#view.presenting #noteTools,#view.presenting #fontPanel,#view.presenting #ttsPanel,#view.presenting #setpanel{display:none!important}
 #view.presenting .ln.current::before{display:none!important}
 #view.presenting.controls-open #bar,#view.presenting.controls-open #statusbar{display:flex!important;opacity:1!important;pointer-events:auto!important}
+/* 마이크를 켠 일반 창(전체화면 아님)에서도 화면 아래로 마우스를 내리면 조작줄을 보인다 */
+#view.controls-open #bar.hide{opacity:1;pointer-events:auto}
 @media(max-width:600px){#statusbar{padding:8px 12px;gap:8px}#statusbar label{font-size:12px;gap:4px}#statusbar select{max-width:120px;padding:6px}#sessionTitle{max-width:24vw}#pageNote{font-size:16px}}
 
 @media(max-width:600px){#setup{padding:24px 16px 40px}.brandrow{margin-bottom:26px}.setup-card{padding:16px;border-radius:18px}#bar{padding:8px;gap:6px}#bar>button,#bar>.control-group>button{padding:9px;font-size:13px}#bar #mic{flex:1}#bar #pg{min-width:42px}#bar #fs{display:none}#moreTools{gap:8px}#moreTools button{flex:1;white-space:nowrap}#resumeCard{align-items:flex-start;flex-direction:column}.tool-dialog{padding:18px}#autosaveState{display:none}}
