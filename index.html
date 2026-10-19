@@ -124,7 +124,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 <link rel="stylesheet" href="extras.css?v=20261017-follow3">
 <style>.app-switch{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;flex-shrink:0;padding:8px 12px;border:1px solid #506a88;border-radius:8px;background:#20344c;color:#d6f5ec!important;font:600 12px/1.4 sans-serif;text-decoration:none;pointer-events:auto}.app-switch:hover{background:#2b4963}.app-switch:focus-visible{outline:3px solid #5de2ca;outline-offset:2px}</style>
 <link rel="stylesheet" href="display-screens.css?v=20261017-screen1">
-</head>
+<style>.drive-row{margin-top:14px;font-size:14px}.drive-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}#driveState{opacity:.8}#driveFiles{display:flex;flex-direction:column;gap:6px;margin-top:10px;max-height:260px;overflow:auto}.drive-file{display:flex;justify-content:space-between;gap:12px;text-align:left;padding:10px 12px;border:1px solid #33465e;border-radius:8px;background:#162232;color:inherit;font-size:15px;cursor:pointer}.drive-file small{opacity:.7;white-space:nowrap}</style></head>
 <body>
 <div id="setup">
   <header class="brandrow"><span class="brandmark">SERMON PROMPTER</span><a class="app-switch" href="ppt/" target="_blank" rel="noopener" title="방송용 PPT 조작화면을 새 탭에서 열기">방송용 PPT ↗</a></header>
@@ -157,6 +157,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <div class="row startrow"><span id="fname">원고를 고른 뒤 시작하세요.</span><button class="btn" id="start" disabled>프롬프터 시작 →</button></div>
     <button id="usePaste" hidden>붙여 넣은 글로 시작</button>
   </section>
+  <section class="drive-row" aria-label="구글 드라이브 원고"><div class="drive-head"><button class="btn" id="driveLogin" type="button">구글 로그인</button><button class="btn" id="driveRefresh" type="button" hidden>목록 새로고침</button><span id="driveState" role="status"></span></div><div id="driveFiles" hidden></div></section>
   <div class="setup-footer"><button class="btn" id="demo">예시 원고로 체험</button></div>
   <p class="format-note" style="margin-top:16px">최근 원고와 메모는 이 기기의 브라우저에 자동 저장됩니다. 공용 기기에서는 사용 후 사이트 데이터를 지워 주세요.</p>
   <div id="loadmsg"></div>
@@ -1265,6 +1266,7 @@ async function savePages(){
   const q=snapshotPages();
   const body='{"app":"sermon-prompter","v":1,"lines":'+LINES+(MOBILE?',"mobile":'+MFS:'')+',"pages":[\n'+q.map(p=>JSON.stringify(p)).join(',\n')+'\n],"meta":'+JSON.stringify(window.PromUI?.metadata()||{})+'}\n';
   const name=baseName+'_프롬프터.json', blob=new Blob([body],{type:'application/json'});
+  window.PromDrive?.save(name,body);      // 구글에 로그인했으면 드라이브에도 같은 이름으로 저장한다
   if(window.showSaveFilePicker){      // 크롬: 내 컴퓨터에서 저장할 폴더·이름을 고른다
     try{
       const h=await showSaveFilePicker({suggestedName:name,types:[{description:'설교 프롬프터 저장 파일',accept:{'application/json':['.json']}}]});
@@ -2022,6 +2024,7 @@ if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 <script src="overview.js?v=20261017-local1"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
 <script src="extras.js?v=20261019-nolab1"></script>
+<script src="ppt/drive-config.js?v=20261020-sync1"></script><script src="drive-sync.js?v=20261020-sync1"></script>
 
 <div data-prom-support class="prom-support-floating" aria-label="사용자 도움말"></div><script src="support.js?v=20261017-support1"></script></body>
 </html>
