@@ -197,3 +197,11 @@ button:hover{filter:brightness(1.12)}
 #bar{right:0}
 #view.solo-presentation>#fs{opacity:0;pointer-events:none}
 #view.solo-presentation.controls-open>#fs,#view.solo-presentation>#fs:focus-visible{opacity:1;pointer-events:auto}
+/* 폰 화면: 위 도구 버튼은 한 줄로 두고 옆으로 밀어 보기, 안내 문구는 아래쪽에, 사용법·문의 버튼은 프롬프터 화면에서 숨김 */
+@media(max-width:700px){
+  .theme-choices{flex-basis:100%;flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .theme-choices::-webkit-scrollbar{display:none}
+  .theme-choices>*{flex-shrink:0;white-space:nowrap}
+  #toast{top:auto;bottom:72px;max-width:calc(100vw - 32px);text-align:center}
+  body:has(#view[style*="display: block"]) .prom-support-floating{display:none!important}
+}
