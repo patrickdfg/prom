@@ -61,8 +61,11 @@ window.PromScrollView=class {
     const relayout=layout!==this.layout;
     if(relayout){
       this.layout=layout;this.position='';
-      const metrics=PromSlideLayout.measure(this.host.clientWidth||innerWidth,height,Math.max(1,data.lines));
-      this.pitch=metrics.height/Math.max(1,data.lines)*scale*PromScrollView.getSpacing()/100;
+      let metrics=PromSlideLayout.measure(this.host.clientWidth||innerWidth,height,Math.max(1,data.lines)),pitch=metrics.height/Math.max(1,data.lines);
+      // 세로로 긴 폰 화면: 가로 슬라이드 비율로 재면 글자가 너무 작아진다. 화면 폭에 한 줄 약 18자가 들어가는 크기로 잡는다.
+      const w=this.host.clientWidth||innerWidth;
+      if(height>w*1.1){const font=w*.94/18;metrics={width:w*.94,height:metrics.height,font};pitch=font*1.6;}
+      this.pitch=pitch*scale*PromScrollView.getSpacing()/100;
       this.host.firstElementChild.style.paddingTop=(height*anchor)+'px';
       this.host.firstElementChild.style.paddingBottom=(height*(1-anchor))+'px';
       const flow=this.host.querySelector('.scroll-flow');
