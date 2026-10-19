@@ -1453,6 +1453,23 @@ let recWatchAt=0;
 function recWatchdog(now){if(!listening||ANDROID||!rec)return false;if(now-Math.max(lastResultAt,recWatchAt)<30000)return false;recWatchAt=now;
   typeof vlogAdd==='function'&&vlogAdd({k:'watchdog',v:'restart'});try{rec.abort()}catch(_){}return true}
 setInterval(()=>recWatchdog(Date.now()),5000);
+/* 소리는 들어오는데 인식 글자가 늘지 않는 정지: 실제 시험에서 결과가 10초에 한두 단어씩만 오며 약 60초 따라가지 못했다.
+   마이크 소리 크기를 재서, 최근 15초 중 10초 넘게 말소리가 있는데 12초 넘게 글자가 늘지 않으면 인식기를 다시 켠다. */
+let lvAn=null,lvSrc=null,lvBuf=null,lvNoise=0.002,lvVoiced=[],growAt=0,growLen=0,stallAt=0;
+function noteGrowth(t){const n=normStr(t).length;if(n>growLen){growLen=n;growAt=Date.now()}}
+function voicedNow(){
+  if(!micStream)return false;
+  if(!lvAn||lvSrc!==micStream){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return false;window.__lvAC=window.__lvAC||new AC();lvSrc=micStream;lvAn=window.__lvAC.createAnalyser();lvAn.fftSize=1024;lvBuf=new Float32Array(1024);window.__lvAC.createMediaStreamSource(micStream).connect(lvAn)}
+  lvAn.getFloatTimeDomainData(lvBuf);let sum=0;for(let i=0;i<lvBuf.length;i++)sum+=lvBuf[i]*lvBuf[i];const rms=Math.sqrt(sum/lvBuf.length);
+  lvNoise=Math.min(lvNoise*1.0005+1e-7,Math.max(rms,1e-5));return rms>Math.max(0.01,lvNoise*4)}
+function stallCheck(now){
+  if(!listening||ANDROID||!rec||!micStream){lvVoiced=[];return false}
+  let v=false;try{v=voicedNow()}catch(_){}
+  lvVoiced.push(v);if(lvVoiced.length>15)lvVoiced.shift();
+  if(lvVoiced.length<15||lvVoiced.filter(Boolean).length<10)return false;
+  if(now-growAt<12000||now-stallAt<20000||now-recWatchAt<12000)return false;
+  stallAt=now;recWatchAt=now;lvVoiced=[];typeof vlogAdd==='function'&&vlogAdd({k:'watchdog',v:'voiced-no-text'});try{rec.abort()}catch(_){}return true}
+setInterval(()=>stallCheck(Date.now()),1000);
 let lastResultAt=0, waitAC=null, waitStream=null, waitIv=null, waitGeneration=0, restartTimer=null, waitPending=false;
 function makeWaitAC(){try{if(!waitAC){const AC=window.AudioContext||window.webkitAudioContext; if(AC)waitAC=new AC()} waitAC&&waitAC.resume().catch(()=>{})}catch(_){waitAC=null}}
 function endWait(){
@@ -1506,7 +1523,7 @@ async function startMic(){
     if(!listening||rec!==activeRec)return;
     speechResultCount=e.results.length;
     let t=''; for(let i=speechFloor;i<e.results.length;i++) t+=e.results[i][0].transcript;
-    sessionText=t; heardLogged(t,!!e.results[e.results.length-1]?.isFinal); speedFeed(e.results); lastResultAt=Date.now();emptySessions=0;
+    noteGrowth(t);sessionText=t; heardLogged(t,!!e.results[e.results.length-1]?.isFinal); speedFeed(e.results); lastResultAt=Date.now();emptySessions=0;
   };
   rec.onerror=e=>{
     if(!listening||rec!==activeRec)return;
@@ -1529,12 +1546,12 @@ async function startMic(){
   rec.onend=()=>{typeof vlogAdd==='function'&&vlogAdd({k:"end"});
     if(rec!==activeRec||!listening)return;
     if(ANDROID){emptySessions=sessionText.trim()?0:emptySessions+1;if(emptySessions>=3){stopMic();toast('말소리를 인식하지 못해 반복 연결을 멈췄습니다. 마이크를 확인한 뒤 다시 켜 주세요.',7000);return}}
-    heardCarry=(heardCarry+sessionText).slice(-60); sessionText=''; speechFloor=0;speechResultCount=0;spLast=0;
+    heardCarry=(heardCarry+sessionText).slice(-60); sessionText=''; speechFloor=0;speechResultCount=0;spLast=0;growLen=0;growAt=Date.now();
     if(listening&&ANDROID){setDot('');androidWait();return}
     if(listening){setDot('');try{startRec()}catch(_){setTimeout(()=>{if(listening)try{startRec()}catch(__){}},300)}}
     else setDot('');
   };
-  rec.onstart=()=>{recWatchAt=Date.now();setDot('live'); cap('음성인식 연결됨 · 현재 화면의 글을 읽어 주세요.')};
+  rec.onstart=()=>{recWatchAt=Date.now();growLen=0;growAt=Date.now();setDot('live'); cap('음성인식 연결됨 · 현재 화면의 글을 읽어 주세요.')};
   rec.onaudiostart=()=>cap('마이크 소리가 들어옵니다 · 말씀해 보세요');
   rec.onspeechstart=()=>cap('말소리 감지 · 글자로 바꾸는 중');
   if(ANDROID){makeWaitAC(); lastResultAt=0;emptySessions=0;}
