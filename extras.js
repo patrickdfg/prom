@@ -4,7 +4,6 @@
  const button=document.createElement('button');button.id='extrasButton';button.textContent='실험실';$('more').before(button);
  const dialog=document.createElement('dialog');dialog.id='extrasDialog';dialog.className='tool-dialog';
  dialog.innerHTML=`<div class="dialog-head"><h2>실험실</h2><button id="extrasClose">닫기</button></div>
- <fieldset><legend>음성 추적 실험실</legend><label><input type="checkbox" id="voiceLab"> 숫자·장절 인식 / 애드리브 복귀 보강</label><p>원고 밖 발화는 대기합니다. 먼 위치로 복귀할 때는 이어지는 문장까지 읽어 주세요. 기기별 실제 인식 결과는 다를 수 있습니다.</p></fieldset>
  <fieldset id="nextLineTools"><legend>실험실 · 다음 장 첫 줄</legend><p>본문 줄 간격을 먼저 좁혀 다음 장 첫 줄을 하단에 표시합니다.</p></fieldset>
  <fieldset><legend>슬라이드쇼 전용</legend><div class="extras-row"><label><input type="checkbox" id="mirrorX"> 좌우 반전</label><label><input type="checkbox" id="mirrorY"> 상하 반전</label></div><p>반사 유리 장비용입니다. 조작창은 반전하지 않습니다.</p><label for="stageMessage">긴급 안내</label><input id="stageMessage" type="text" maxlength="140" placeholder="예: 5분 남았습니다"><div class="extras-row"><button id="sendStageMessage">안내 표시</button><button id="clearStageMessage">안내 지우기</button></div><p id="stageMessageStatus" role="status">슬라이드쇼 창에 표시할 안내를 입력하세요.</p></fieldset>
  <fieldset><legend>읽어주기 구간 반복</legend><div class="extras-row"><label>시작 쪽 <input id="repeatFrom" type="number" min="1" value="1"></label><label>끝 쪽 <input id="repeatTo" type="number" min="1" value="1"></label></div><label><input id="repeatTTS" type="checkbox"> 지정 구간 반복</label><button id="playRepeat">이 구간 읽기</button><p>배속은 읽어주기의 속도 설정(0.5~2배)을 따릅니다.</p></fieldset>
@@ -13,45 +12,19 @@
  $('nextLineTools').appendChild($('labOptWrap'));$('labOptWrap').hidden=false;
  let emergency='',voiceKey='',voicePages=[],pending=null,lastSample='',lastPage=-1;
  let recorder=null,recordStream=null,recordUrl=null,recordTimer=null,recordAt=0,recordPending=false,unsavedRecording=false;
- for(const id of ['voiceLab','mirrorX','mirrorY'])try{$(id).checked=localStorage.getItem('promExtra:'+id)==='true';}catch(_){}
+ try{localStorage.removeItem('promExtra:voiceLab')}catch(_){}
+ for(const id of ['mirrorX','mirrorY'])try{$(id).checked=localStorage.getItem('promExtra:'+id)==='true';}catch(_){}
  const settings=()=>({mirrorX:$('mirrorX').checked,mirrorY:$('mirrorY').checked,message:emergency});
  function change(){render();}
  button.onclick=()=>{if(editing)endEdit();PromUI.finishNote();$('repeatFrom').max=$('repeatTo').max=P.length;dialog.showModal();};
  $('extrasClose').onclick=()=>dialog.close();
- for(const id of ['voiceLab','mirrorX','mirrorY'])$(id).onchange=()=>{try{localStorage.setItem('promExtra:'+id,String($(id).checked));}catch(_){}pending=null;lastSample='';change();};
+ for(const id of ['mirrorX','mirrorY'])$(id).onchange=()=>{try{localStorage.setItem('promExtra:'+id,String($(id).checked));}catch(_){}pending=null;lastSample='';change();};
  $('sendStageMessage').onclick=()=>{emergency=$('stageMessage').value.trim();$('stageMessageStatus').textContent=emergency?(PromUI.hasSlideshow()?'슬라이드쇼에 안내 표시 중':'슬라이드쇼를 열면 안내가 표시됩니다.'):'표시할 안내가 없습니다.';change();};
  $('clearStageMessage').onclick=()=>{emergency='';$('stageMessage').value='';$('stageMessageStatus').textContent='안내를 지웠습니다.';change();};
  function repeatRange(){const a=Number($('repeatFrom').value),b=Number($('repeatTo').value);return Number.isInteger(a)&&Number.isInteger(b)&&a>=1&&b>=a&&b<=P.length?[a-1,b-1]:null;}
  $('repeatTTS').onchange=()=>{if($('repeatTTS').checked&&!repeatRange()){$('repeatTTS').checked=false;toast('반복 시작·끝 쪽을 확인하세요.');}};
  $('playRepeat').onclick=()=>{const range=repeatRange();if(!range){toast('반복 시작·끝 쪽을 확인하세요.');return;}if(!P.slice(range[0],range[1]+1).some((_,i)=>pageSay(i+range[0]).trim())){toast('읽을 본문이 없습니다.');return;}go(range[0],true);dialog.close();tPlay();};
  function ttsPage(i){if(!$('repeatTTS').checked)return i;const range=repeatRange();if(!range){$('repeatTTS').checked=false;return i;}let at=i>range[1]||i<range[0]?range[0]:i;for(let k=0;k<=range[1]-range[0];k++){if(/[가-힣A-Za-z0-9]/.test(pageSay(at)))return at;at=at>=range[1]?range[0]:at+1;}$('repeatTTS').checked=false;return i;}
- function indexVoice(){const key=JSON.stringify(P);if(key===voiceKey)return;voiceKey=key;voicePages=P.map((pg,pi)=>{let text='',map=[];pg.forEach((runs,li)=>{const raw=videoSpeech[pi]?.[li]??PromVideoCues.speech(runs);const result=PromVoiceLab.mapped(raw,lineRange[pi][li][0]);text+=result.text;map.push(...result.map);});return {text,map};});pending=null;lastSample='';}
- const originalHeard=onHeard;
- onHeard=function(text){
-   if(!$('voiceLab').checked)return originalHeard(text);
-   if(PromOptionalSpeech.match(normStr(heardCarry+text),optionalSpeech,cursor)!==null||(typeof PromSpeechMatch!=='undefined'&&PromSpeechMatch.optional(normStr(heardCarry+text),optionalSpeech,cursor)))return originalHeard(text);
-   const scripture=typeof PromScriptureSpeech==='undefined'?null:PromScriptureSpeech.match(normStr(heardCarry+text),scriptureSpeech,cursor);
-   if(scripture){pending=null;cursor=scripture.pos;const target=pageOf(cursor);cap('성경 본문·해설 위치 확인');if(target!==page)go(target);else render();return;}
-   indexVoice();if(lastPage!==page){pending=null;lastSample='';lastPage=page;}
-   const recognized=PromVoiceLab.mapped(heardCarry+text).text,sample=recognized.slice(-22);$('heard').textContent=text.slice(-40);
-   const sampleKey=recognized.slice(-96);if(sampleKey===lastSample)return;lastSample=sampleKey;
-   const readingPage=pageOf(cursor),current=voicePages[readingPage];if(!current)return;
-   // 다음 장 끝까지 살펴본다. 줄을 건너뛰어도 다음 장 안이면 따라가고, 더 먼 장으로는 이동하지 않는다.
-   let nextPage=readingPage+1,next=-1;
-   while(nextPage<P.length){next=P[nextPage].findIndex((runs,li)=>lineRange[nextPage]?.[li]?.[1]>lineRange[nextPage]?.[li]?.[0]);if(next>=0)break;nextPage++;}
-   const range=next>=0?lineRange[nextPage]?.[next]:null;
-   const nextData=voicePages[nextPage];const n=range&&nextData?nextData.map.length:0;
-   const target=current.text+(nextData?.text.slice(0,n)||''),map=current.map.concat(nextData?.map.slice(0,n)||[]);
-   const local=lineSpeech(recognized,target,cursor,0,map);
-   const confirmed=confirmedSpeech(recognized,target,cursor,0,map)??local;
-   const hit=confirmed===null?PromVoiceLab.match(sample,target,map,cursor):{pos:confirmed,confirmed:true};
-   if(!hit){cap('원고 밖 발화 또는 인식 차이 · 원고가 이어지면 다시 따라갑니다.');return;}
-   const far=hit.pos-cursor>45;
-   if(far&&!hit.confirmed){const now=Date.now();if(!pending||now-pending.time>12000||hit.pos<pending.pos+5||hit.pos>pending.pos+70){pending={pos:hit.pos,time:now};cap('복귀 위치 확인 중 · 이어서 읽어 주세요.');return;}}
-   pending=null;cursor=Math.max(cursor,Math.min(hit.pos,norm.length));let targetPage=pageOf(cursor);
-   if(cursor>=Math.max(pEnd[targetPage]-Number($('lead').value),lastLine[targetPage]+1)&&targetPage<P.length-1)targetPage++;
-   cap('실험실 · 원고 위치 확인');if(targetPage!==page)go(targetPage);else render();
- };
  const originalMic=startMic;
  startMic=function(...args){if(ANDROID&&(recordPending||recorder?.state==='recording')){toast('연습 녹음을 종료한 뒤 마이크 자동 넘김을 켜 주세요.');return;}pending=null;lastSample='';lastPage=-1;return originalMic(...args);};
  function recordingUI(active){$('recordStart').disabled=active;$('recordStop').disabled=!active;button.textContent=active?'● 녹음 중 · 실험실':'실험실';}
