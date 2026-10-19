@@ -8,7 +8,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
  await page.evaluate(async()=>{try{localStorage.removeItem('prompterVoiceLog')}catch(_){}
   startWith(parseTxt('오늘 상원은 총기 규제 강화 법안을 표결에 부쳤습니다. 해당 법안은 하원에 이어 최종 통과했습니다.\n\n다음 문단은 새로운 내용입니다.'));
   await new Promise(r=>setTimeout(r,300));listening=true;
-  for(const t of ['오늘 상원은 총기 규제','오늘 상원은 총기 규제 강화 법안을 표결에','엉뚱한 말입니다 아무거나'])onHeard(t);});
+  for(const t of ['오늘 상원은 총기 규제','오늘 상원은 총기 규제 강화 법안을 표결에','엉뚱한 말입니다 아무거나'])heardLogged(t);});
  const [dl]=await Promise.all([page.waitForEvent('download'),page.evaluate(()=>document.getElementById('saveVoiceLog').click())]);
  const file=await dl.path(),doc=JSON.parse(fs.readFileSync(file,'utf8'));
  assert.match(dl.suggestedFilename(),/^prompter_voice_log_\d{8}_\d{4}\.json$/);

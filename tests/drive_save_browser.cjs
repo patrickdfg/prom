@@ -24,12 +24,12 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');
  await page.check('#driveAuto');await page.waitForTimeout(200);
  await page.click('#driveLogin');await page.waitForFunction(()=>/me@test/.test(document.getElementById('driveState').textContent));
  await page.click('#start');await page.waitForTimeout(300);
- await page.evaluate(()=>{listening=true;onHeard('오늘 말씀은 사랑입니다');stopMic();});
+ await page.evaluate(()=>{listening=true;heardLogged('오늘 말씀은 사랑입니다');stopMic();});
  await page.waitForFunction(()=>/2개 파일/.test(document.getElementById('driveState').textContent),null,{timeout:5000});
  assert.equal(meta.length,2);assert.match(meta[0].name,/^\d{4}-\d\d-\d\d \d{4} 주일설교\.txt$/);assert.match(meta[1].name,/주일설교 인식기록\.json$/);
  assert.deepEqual(meta.map(x=>x.parents[0]),['F1','F1']);assert.ok(ups[0]>0&&ups[1]>0);
  // 두 번째로 마이크를 끄면 원고는 다시 올리지 않고 기록만 올린다
- await page.evaluate(()=>{listening=true;onHeard('다음 문단입니다');stopMic();});
+ await page.evaluate(()=>{listening=true;heardLogged('다음 문단입니다');stopMic();});
  await page.waitForFunction(()=>/1개 파일/.test(document.getElementById('driveState').textContent),null,{timeout:5000});
  assert.equal(meta.length,3);assert.match(meta[2].name,/인식기록\.json$/);
  // 자동 저장을 끄면 올리지 않는다
