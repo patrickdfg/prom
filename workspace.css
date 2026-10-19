@@ -207,3 +207,7 @@ button:hover{filter:brightness(1.12)}
 }
 /* 전체화면에서 읽어주기 중 화면을 누르면 속도 조절 창이 보이게 한다 */
 #view.solo-presentation #ttsPanel.open,#view.presenting #ttsPanel.open{display:block!important}
+/* 폰 화면: 송출·외부 화면용 버튼은 쓰지 않으므로 숨긴다 */
+@media(max-width:700px){
+  .display-screen-button,#audience,#scrollAudience,#overviewAudience,.theme-choices .app-switch,#obsFullscreenSetup{display:none!important}
+}
