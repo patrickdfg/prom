@@ -211,3 +211,5 @@ button:hover{filter:brightness(1.12)}
 @media(max-width:700px){
   .display-screen-button,#audience,#scrollAudience,#overviewAudience,.theme-choices .app-switch,#obsFullscreenSetup{display:none!important}
 }
+/* 폰 화면: 발표 메모·실험실 버튼도 쓰지 않으므로 숨긴다 */
+@media(max-width:700px){#note,#extrasButton{display:none!important}}
