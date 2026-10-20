@@ -1745,7 +1745,7 @@ function tPlay(){
   notifyUI('finishNote');ttsOn=true;tShow();notifyUI('reading'); tPlaying=true; $('tPP').textContent='⏸'; $('tts').classList.add('on'); $('tts').textContent='읽기 끝내기';
   if(!document.fullscreenElement&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{});
   // 폰: 읽어주기를 누르면 스크롤 보기로 바꿔 자동으로 흘러가게 한다
-  if(matchMedia('(max-width:700px)').matches&&!$('view').classList.contains('local-scroll'))$('viewScroll').click();
+  if(typeof matchMedia==='function'&&matchMedia('(max-width:700px)').matches&&!$('view').classList.contains('local-scroll'))$('viewScroll').click();
   keepAwake(); tSpeakPage(page);
 }
 function tPause(){tPlaying=false; tTok++; SYN&&SYN.cancel(); $('tPP').textContent='▶'}
