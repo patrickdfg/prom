@@ -4,6 +4,7 @@
 const Scripture=typeof module==='object'&&module.exports?require('../scripture-speech.js'):root.PromScriptureSpeech;
 const Robust=typeof module==='object'&&module.exports?require('../speech-match.js'):root.PromSpeechMatch;
 const Optional=typeof module==='object'&&module.exports?require('../optional-speech.js'):root.PromOptionalSpeech;
+const Fold=typeof module==='object'&&module.exports?require('../speech-fold.js'):root.PromSpeechFold;
 const normalize=s=>String(s||'').normalize('NFKC').toLowerCase().replace(/[^가-힣a-z0-9]/g,'');
 function index(lines){let text='';const ranges=lines.map(line=>{const start=text.length;text+=normalize(line);return {start,end:text.length};});return {text,ranges};}
 function segments(lines,links){
@@ -40,7 +41,7 @@ function align(lines,slides){const ix=index(lines),links=[],needles=slides.map(s
  return links;
 }
 function active(links,pos){return links.findIndex(l=>['exact','manual'].includes(l.status)&&Number.isFinite(l.start)&&pos>=l.start&&pos<l.end);}
-function locateSpeech(raw,text,cursor,optional=null,scripture=null){const passage=Scripture?.match(normalize(raw),scripture,cursor);if(passage)return passage;const skipped=Optional?.match(normalize(raw),optional,cursor);if(skipped!==null&&skipped!==undefined)return {pos:skipped,score:1,optional:true};const heard=normalize(raw).slice(-64);if(heard.length<5)return null;const begin=Math.max(0,cursor-100),end=Math.min(text.length,cursor+1400),hay=text.slice(begin,end);
+function locateSpeechBase(raw,text,cursor,optional=null,scripture=null){const passage=Scripture?.match(normalize(raw),scripture,cursor);if(passage)return passage;const skipped=Optional?.match(normalize(raw),optional,cursor);if(skipped!==null&&skipped!==undefined)return {pos:skipped,score:1,optional:true};const heard=normalize(raw).slice(-64);if(heard.length<5)return null;const begin=Math.max(0,cursor-100),end=Math.min(text.length,cursor+1400),hay=text.slice(begin,end);
  // Prefer the longest matching phrase across the manuscript before trying shorter local fragments.
  for(const size of [56,40,28,18,12]){
   if(heard.length<size)continue;const tail=heard.slice(-size),at=hay.indexOf(tail);
@@ -59,6 +60,14 @@ function locateSpeech(raw,text,cursor,optional=null,scripture=null){const passag
  // Short fragments may advance only near the current reading position, uniquely.
  const nearBegin=Math.max(0,cursor-40),nearEnd=Math.min(text.length,cursor+90),near=text.slice(nearBegin,nearEnd);
  for(const size of [8,7,6,5]){if(heard.length<size)continue;const tail=heard.slice(-size),at=near.indexOf(tail);if(at<0||near.indexOf(tail,at+1)>=0)continue;const pos=nearBegin+at+size;if(pos>cursor)return {pos,score:1};}
+ return null;
+}
+// 기존 방식으로 못 찾았을 때만: 숫자·기호를 원고 표기로 바꿔 보고(일곱 번↔7번, 3↔삼, +↔더하기), 그래도 없으면 지금 위치 근처에서 한두 글자 틀린 것을 허용해 찾는다.
+function locateSpeech(raw,text,cursor,optional=null,scripture=null){
+ const hit=locateSpeechBase(raw,text,cursor,optional,scripture);if(hit||!Fold)return hit;
+ const alt=Fold.variants(raw);
+ for(const v of alt){const h=locateSpeechBase(v,text,cursor,optional,scripture);if(h)return {...h,folded:true};}
+ for(const v of [raw,...alt]){const h=Fold.near(normalize(v),text,cursor);if(h)return h;}
  return null;
 }
 // 본문이 시작되는 위치: 맨 앞의 <날짜>·제목·'본 문'·<성경 구절> 줄은 읽지 않고 바로 본문으로 들어가는 일이 많다.
