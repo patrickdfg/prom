@@ -1293,7 +1293,8 @@ $('save').onclick=savePages;
 async function savePptx(){
   if(!P.length)return;
   try{
-    const pages=snapshotPages().map(pg=>pg.map(l=>l.map(r=>({...r,t:String(r.t||'').replace(/\s*>>\s*$/,'')})).filter(r=>r.t)));
+    // 쪽이 이어질 때 붙는 >> 표시도 그대로 넣는다
+    const pages=snapshotPages().map(pg=>pg.map(l=>l.filter(r=>r&&r.t)));
     const blob=await PromPptx.create(pages,{count:LINES,dark:$('theme').value==='dark',title:baseName});
     const name=baseName+'_프롬프터.pptx';
     if(window.showSaveFilePicker){
@@ -2076,7 +2077,7 @@ if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 <script src="overview.js?v=20261017-local1"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
 <script src="extras.js?v=20261019-nolab1"></script>
-<script src="ppt/drive-config.js?v=20261020-sync1"></script><script src="prompter-pptx.js?v=20261020-pptx1"></script><script src="drive-sync.js?v=20261020-sync1"></script>
+<script src="ppt/drive-config.js?v=20261020-sync1"></script><script src="prompter-pptx.js?v=20261020-pptx2"></script><script src="drive-sync.js?v=20261020-sync1"></script>
 
 <div data-prom-support class="prom-support-floating" aria-label="사용자 도움말"></div><script src="support.js?v=20261017-support1"></script></body>
 </html>
