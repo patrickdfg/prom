@@ -121,7 +121,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
-<link rel="stylesheet" href="workspace.css?v=20261020-mob6">
+<link rel="stylesheet" href="workspace.css?v=20261020-tts1">
 <link rel="stylesheet" href="extras.css?v=20261017-follow3">
 <style>.app-switch{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;flex-shrink:0;padding:8px 12px;border:1px solid #506a88;border-radius:8px;background:#20344c;color:#d6f5ec!important;font:600 12px/1.4 sans-serif;text-decoration:none;pointer-events:auto}.app-switch:hover{background:#2b4963}.app-switch:focus-visible{outline:3px solid #5de2ca;outline-offset:2px}</style>
 <link rel="stylesheet" href="display-screens.css?v=20261017-screen1">
@@ -1727,11 +1727,16 @@ function tNext(my){
   tSpokenOffset=0;
   const u=new SpeechSynthesisUtterance(tChunks[tCi]); u.lang='ko-KR'; u.rate=TS.rate; u.pitch=TS.pitch;
   const v=tVoices.find(v=>v.voiceURI===TS.voice); if(v)u.voice=v;
-  u.onboundary=e=>{if(my===tTok&&Number.isFinite(e.charIndex)){tSpokenOffset=Math.max(tSpokenOffset,Math.min(tChunks[tCi].length,e.charIndex));tFollow();}};
-  u.onend=()=>{if(my!==tTok)return; tCi++; tSpokenOffset=0; tFollow(); tNext(my)};
+  u.onstart=()=>{if(my===tTok)tStartAt=Date.now()};
+  u.onboundary=e=>{if(my===tTok&&Number.isFinite(e.charIndex)){tBoundary=true;tSpokenOffset=Math.max(tSpokenOffset,Math.min(tChunks[tCi].length,e.charIndex));tFollow();}};
+  u.onend=()=>{if(my!==tTok)return; tLearn(tChunks[tCi]); tCi++; tSpokenOffset=0; tStartAt=0; tFollow(); tNext(my)};
   u.onerror=e=>{if(my!==tTok)return; if(e.error==='interrupted'||e.error==='canceled')return; tCi++; tNext(my)};
-  SYN.speak(u);
+  tStartAt=Date.now(); SYN.speak(u);
 }
+// 안드로이드 크롬은 읽는 위치(onboundary)를 알려 주지 않는 일이 많다. 그때는 읽은 시간과 말 빠르기로 위치를 어림해 줄 단위로 따라간다.
+let tStartAt=0,tBoundary=false,tCps1=8;      // tCps1: 속도 1배일 때 초당 읽는 글자 수(문장마다 실제 걸린 시간으로 고쳐 간다)
+function tLearn(chunk){if(!tStartAt||tBoundary||!chunk)return;const sec=(Date.now()-tStartAt)/1000;if(sec>1.5)tCps1=Math.max(3,Math.min(16,tCps1*.6+(chunk.length/sec/(TS.rate||1))*.4));}
+typeof setInterval==="function"&&setInterval(()=>{if(!ttsOn||!tPlaying||!tStartAt||tBoundary||!tChunks[tCi])return;const est=Math.floor((Date.now()-tStartAt)/1000*tCps1*(TS.rate||1));const v=Math.min(tChunks[tCi].length-1,est);if(v>tSpokenOffset){tSpokenOffset=v;tFollow();}},250);
 // 스크롤 보기에서 읽어주기: 읽은 글자 비율만큼 원고 위치를 옮겨 화면이 읽는 곳을 따라 흘러가게 한다
 function tFollow(){
   if(!$('view').classList.contains('local-scroll')||!P[page])return;
@@ -1742,7 +1747,7 @@ function tFollow(){
 function tPlay(){
   if(!SYN){toast('이 브라우저는 읽어주기를 지원하지 않습니다. 크롬으로 열어 주세요.',5000);return}
   if(editing)endEdit(); if(listening)stopMic();
-  notifyUI('finishNote');ttsOn=true;tShow();notifyUI('reading'); tPlaying=true; $('tPP').textContent='⏸'; $('tts').classList.add('on'); $('tts').textContent='읽기 끝내기';
+  notifyUI('finishNote');ttsOn=true;$('view').classList.add('tts-reading');tShow();notifyUI('reading'); tPlaying=true; $('tPP').textContent='⏸'; $('tts').classList.add('on'); $('tts').textContent='읽기 끝내기';
   if(!document.fullscreenElement&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{});
   // 폰: 읽어주기를 누르면 스크롤 보기로 바꿔 자동으로 흘러가게 한다
   if(typeof matchMedia==='function'&&matchMedia('(max-width:700px)').matches&&!$('view').classList.contains('local-scroll'))$('viewScroll').click();
@@ -1750,7 +1755,7 @@ function tPlay(){
 }
 function tPause(){tPlaying=false; tTok++; SYN&&SYN.cancel(); $('tPP').textContent='▶'}
 function tStop(){
-  tPause(); ttsOn=false;tShow();notifyUI('reading'); $('ttsPanel').classList.remove('open');
+  tPause(); ttsOn=false;$('view').classList.remove('tts-reading');tShow();notifyUI('reading'); $('ttsPanel').classList.remove('open');
   $('tts').classList.remove('on'); $('tts').textContent='읽어주기';
 }
 function tContinueRate(){

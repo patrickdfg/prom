@@ -219,3 +219,5 @@ button:hover{filter:brightness(1.12)}
 #theme-white{display:none}
 @media(max-width:700px){#theme-white{display:inline-flex}}
 @media(max-width:700px){#statusbar{background:#10151d}}
+/* 읽어주기 중 스크롤 보기: 지금 읽는 줄 글자색을 강조색(검정 배경은 노랑, 흰 배경은 파랑)으로 */
+#view.tts-reading #localScroll .scroll-current{color:var(--focus)}
