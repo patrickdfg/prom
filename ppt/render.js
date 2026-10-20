@@ -9,7 +9,7 @@ function show(host,slide,green='#00ff00'){
    // A nearly full-slide background must cover the green canvas at every edge.
    if(!shape.manualGeometry&&(shape.background||(!shape.rotate&&Math.abs(shape.x)<=edgeX&&Math.abs(shape.y)<=edgeY&&Math.abs(slide.width-shape.x-shape.w)<=edgeX&&Math.abs(slide.height-shape.y-shape.h)<=edgeY))){Object.assign(el.style,{left:'0px',top:'0px',width:slide.width+'px',height:slide.height+'px'});el.dataset.fullBleed='true';}
    if(!/^data:image\/(png|jpeg|gif|webp|bmp|svg\+xml);base64,/.test(shape.src||''))continue;const img=document.createElement('img');img.src=shape.src;img.alt='';el.appendChild(img);}
-  if(shape.type==='rect')el.style.background=shape.color;
+  if(shape.type==='rect'){el.style.background=shape.color||'transparent';if(shape.geom==='ellipse')el.style.borderRadius='50%';else if(shape.geom==='roundRect')el.style.borderRadius=Math.min(shape.w,shape.h)*.1667+'px';if(shape.line?.width>0){el.style.boxSizing='border-box';el.style.border=shape.line.width+'px solid '+(shape.line.color||'#000000');}}
   if(shape.type==='text'){el.classList.add('slide-text');el.style.justifyContent=shape.anchor==='ctr'?'center':shape.anchor==='b'?'flex-end':'flex-start';el.style.padding=(shape.padding||[0,0,0,0]).map(n=>n+'px').join(' ');
    el.style.whiteSpace=shape.wrap===false?'pre':'pre-wrap';el.style.fontSynthesis='none';
    const frame=document.createElement('div'),content=document.createElement('div');frame.className='slide-text-frame';content.className='slide-text-content';frame.appendChild(content);el.appendChild(frame);

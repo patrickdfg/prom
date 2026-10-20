@@ -50,3 +50,14 @@ details.more{margin:4px 0 10px}details.more summary{cursor:pointer;color:var(--a
   main{padding:10px}.grid4{grid-template-columns:repeat(2,1fr)}.span2{grid-column:span 2}
   .grid{grid-template-columns:repeat(2,1fr)}.back{display:none}
 }
+
+/* 마스터 편집 도구 */
+.tools{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0 10px}
+.tools button,.btnlike{padding:6px 10px;font-size:13px}
+.btnlike{display:inline-block;color:var(--text);background:#21262d;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.tools .sep{width:1px;height:22px;background:var(--line);margin:0 2px}
+.tools .inline{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--dim)}
+.tools .inline input{width:38px;height:30px;padding:0;border:1px solid var(--line);border-radius:6px;background:none}
+.preview:focus{outline:2px solid var(--accent2)}
+.preview .hdl{position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;background:#fff;border:2px solid #1f6feb;border-radius:2px;z-index:4;touch-action:none}
+.checks{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
