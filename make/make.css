@@ -73,3 +73,6 @@ details.more{margin:4px 0 10px}details.more summary{cursor:pointer;color:var(--a
 /* 만들기 슬라이드 목록: 선택·편집 */
 .thumb{position:relative;cursor:pointer}.thumb.selected{outline:3px solid var(--accent2);outline-offset:-3px}.thumb .thumb-edit{position:absolute;right:6px;top:6px;padding:3px 8px;font-size:12px;opacity:0}.thumb:hover .thumb-edit,.thumb.selected .thumb-edit{opacity:1}
 #editorDialog fieldset:has(#editStart),#editorDialog label:has(#editReveal){display:none!important}   /* 방송용 PPT에서 원고 연결·누적 표시 칸: 만들기 화면에는 필요 없음 */
+/* 지침 수정 창 */
+#instructionsDialog{background:#152131;color:#e7edf5;border:1px solid #52647a;border-radius:14px;padding:20px;width:min(780px,94vw);max-height:94dvh;overflow:auto}#instructionsDialog::backdrop{background:#000b}
+#instructionsDialog textarea{display:block;width:100%;background:#0c1726;color:#edf5ff;border:1px solid #4b607a;border-radius:6px;padding:10px;font:inherit;line-height:1.6;resize:vertical;margin:10px 0}#instructionsDialog [hidden]{display:none!important}

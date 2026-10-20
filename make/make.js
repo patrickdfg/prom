@@ -57,6 +57,7 @@ function renderList(){
     const btn=(label,fn,cls)=>{const b=document.createElement('button');b.textContent=label;if(cls)b.className=cls;b.onclick=fn;return b;};
     row.append(name,
       btn('마스터 편집',()=>{$('mTemplate').value=r.id;openMaster(r.id);showTab('master');}),
+      btn('지침 수정',()=>openInstructions(r.id)),
       btn('이름 바꾸기',async()=>{const n=prompt('새 이름',r.name);if(!n||!n.trim()||n.trim()===r.name)return;await put({...r,name:n.trim()});toast('이름을 바꿨습니다.');}),
       btn('드라이브에 저장',()=>window.dispatchEvent(new CustomEvent('make-template-upload',{detail:{id:r.id}}))),
       btn('파일로 받기',()=>exportTemplate(r)),
@@ -300,6 +301,20 @@ $('makeDownload').onclick=async()=>{
   catch(e){status('makeStatus',e.message||String(e),true);}
   finally{busy=false;$('makeDownload').disabled=false;}
 };
+
+/* ---------- 지침 수정 창 ---------- */
+// 템플릿에 붙은 지침 글(rec.instructions)을 고친다. 사이트 기본 템플릿을 고치면 edited 표시를 남겨 다시 덮어쓰지 않게 한다(마스터 편집 저장과 같은 방식).
+let instrId='';
+function instrCount(){const n=$('instrText').value.length;$('instrCount').textContent=n.toLocaleString('ko-KR')+'자';}
+function openInstructions(id){
+  const rec=byId(id);if(!rec){toast('지침을 고칠 템플릿을 고르세요.');return;}
+  instrId=id;$('instrTitle').textContent=`"${rec.name}" 지침 수정`;$('instrText').value=rec.instructions||'';$('instrBuiltinNote').hidden=!rec.builtin;instrCount();
+  if(!$('instructionsDialog').open)$('instructionsDialog').showModal();$('instrText').focus();
+}
+$('instrText').addEventListener('input',instrCount);
+$('instrClose').onclick=$('instrCancel').onclick=()=>$('instructionsDialog').close();
+$('instrSave').onclick=async()=>{const rec=byId(instrId);if(!rec){$('instructionsDialog').close();return;}await put({...rec,instructions:$('instrText').value,...(rec.builtin?{edited:true}:{})});$('instructionsDialog').close();toast('지침을 저장했습니다.');};
+$('mInstructions').onclick=()=>openInstructions($('mTemplate').value);
 
 /* ---------- 슬라이드 편집 창 연결 ----------
    방송용 PPT의 편집 창(ppt/editor.js)을 그대로 쓰되, 그 창이 기대하는 작업 공간(CaptionWorkspace)과 템플릿 도우미(CaptionRecipes)를

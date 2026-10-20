@@ -63,6 +63,7 @@ async function upload(rec,existing){
 // 템플릿 줄의 「드라이브에 저장」
 async function saveOne(id){
   const rec=M()?.get(id);if(!rec)return;
+  if(rec.builtin&&!rec.edited){note('사이트 기본 템플릿은 고치기 전에는 올리지 않아도 누구나 쓸 수 있습니다. 고친 뒤에 저장하세요.');return;}
   if(!L()?.loggedIn()){note('먼저 상단에서 구글 로그인해 주세요.');M()?.toast?.('먼저 상단에서 구글 로그인해 주세요.');return;}
   busy=true;paint();note('드라이브에 저장 중… · '+rec.name);
   try{await upload(rec,await findRemote(rec.id));note('드라이브에 저장했습니다 · '+rec.name+' · '+when(Date.now()));M()?.toast?.(`"${rec.name}" 템플릿을 드라이브에 저장했습니다.`);}
@@ -77,6 +78,7 @@ async function syncAll(){
     const files=await listRemote(),byTid=new Map(files.map(f=>[f.appProperties?.tid,f]));
     let up=0;
     for(const rec of M().records()){
+      if(rec.builtin&&!rec.edited)continue;   // 고치지 않은 사이트 기본 템플릿은 누구나 쓰므로 올리지 않는다
       const f=byTid.get(rec.id);
       if(!f||(rec.updatedAt||0)>(Number(f.appProperties?.updatedAt)||0)){note('드라이브에 저장 중… · '+rec.name);await upload(rec,f||null);up++;}
     }
