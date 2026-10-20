@@ -4,7 +4,7 @@ window.PromBuiltinTemplates=(()=>{
 // version을 올리면 고치지 않은 기본 템플릿은 새 것으로 바뀐다. 사용자가 마스터 편집으로 고친 것(edited)은 그대로 둔다.
 const LIST=[
   {id:'builtin-sunday',file:'sunday.json',version:1},
-  {id:'builtin-dawn',file:'dawn.json',version:1},
+  {id:'builtin-dawn',file:'dawn.json',version:2},
 ];
 const KEY='promBuiltinTemplates',DB='prom-ppt-generation-templates';
 const base=new URL('templates/',document.currentScript.src);
