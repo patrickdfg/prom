@@ -18,7 +18,10 @@ let dbp;
 function db(){return dbp||(dbp=new Promise((ok,no)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('templates',{keyPath:'id'});r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error);}));}
 async function store(mode,fn){const d=await db();return new Promise((ok,no)=>{const tx=d.transaction('templates',mode),req=fn(tx.objectStore('templates'));tx.oncomplete=()=>ok(req?.result);tx.onerror=()=>no(tx.error);});}
 async function load(){records=(await store('readonly',s=>s.getAll())||[]).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));fillSelects();renderList();}
-async function put(rec){await store('readwrite',s=>s.put(rec));await load();}
+// 저장할 때마다 수정 시각을 남기고 알린다: 구글 로그인 중이면 make/drive.js가 내 드라이브에도 자동으로 올린다.
+async function put(rec){rec={...rec,updatedAt:Date.now()};await store('readwrite',s=>s.put(rec));await load();window.dispatchEvent(new CustomEvent('make-template-saved',{detail:{id:rec.id}}));}
+// 드라이브에서 가져온 템플릿은 원래 id·수정 시각 그대로 넣는다(알림 없이).
+async function putSynced(rec){await store('readwrite',s=>s.put(rec));await load();}
 const byId=id=>records.find(r=>r.id===id)||null;
 function useForMake(id){try{localStorage.setItem(LAST,id)}catch{}$('makeTemplate').value=id;$('makeTemplate').onchange();}   // 방금 만들거나 고친 템플릿을 만들기에서 바로 쓰게 한다
 
@@ -293,5 +296,5 @@ $('makeDownload').onclick=async()=>{
 
 /* ---------- 시작 ---------- */
 load().then(()=>$('makeTemplate').onchange()).catch(e=>toast('템플릿 보관함을 열지 못했습니다: '+e.message,6000));
-window.PromMake={load,openMaster,get deck(){return deck},get draft(){return draft}};
+window.PromMake={load,openMaster,get deck(){return deck},get draft(){return draft},records:()=>records.slice(),get:byId,putSynced,toast};
 })();

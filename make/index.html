@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PPT 자동 제작</title>
 <script src="../ui-theme.js?v=20261020-ui3"></script>
-<link rel="stylesheet" href="make.css?v=20261021-login1">
+<link rel="stylesheet" href="make.css?v=20261021-login2">
 </head>
 <body>
 <header class="top">
@@ -58,6 +58,13 @@
 
   <!-- ② 템플릿 -->
   <section id="tab-templates" class="tab" hidden>
+    <div class="card" id="tplDriveCard">
+      <h2>내 구글 드라이브</h2>
+      <p id="tplDriveState" class="hint" role="status"></p>
+      <div class="row"><button id="tplDriveSync" type="button" disabled>지금 모두 저장</button><button id="tplDriveList" type="button" disabled>드라이브에서 불러오기</button></div>
+      <div id="tplDriveFiles" class="list" hidden></div>
+      <p class="hint">로그인하면 템플릿을 만들거나 저장할 때 자동으로 내 드라이브에도 올라갑니다. 드라이브에서 가져오는 것은 「가져오기」를 누를 때만 합니다.</p>
+    </div>
     <div class="card">
       <h2>저장된 템플릿</h2>
       <div id="tplList" class="list"></div>
@@ -168,8 +175,9 @@
 <script src="../ppt/builder.js?v=20261020-speaker1"></script>
 <script src="../ppt/pptx-export.js?v=20261020-layout1"></script>
 <script src="../ppt/pair-template.js?v=20261018-proverb1"></script>
-<script src="make.js?v=20261020-make4"></script>
+<script src="make.js?v=20261021-drive1"></script>
 <script src="../ppt/drive-config.js?v=20261020-sync1"></script>
-<script src="login.js?v=20261021-login1"></script>
+<script src="login.js?v=20261021-drive1"></script>
+<script src="drive.js?v=20261021-drive1"></script>
 </body>
 </html>

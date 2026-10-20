@@ -12,12 +12,14 @@ function note(msg,ms=6000){
   clearTimeout(noteTimer);n.textContent=msg||'';n.hidden=!msg;
   if(msg&&ms)noteTimer=setTimeout(()=>{n.hidden=true;n.textContent='';},ms);
 }
+let lastOn=false;
 function paint(){
   const on=loggedIn();
   $('googleConnect').textContent=busy?'로그인 중…':on?'계정 바꾸기':'구글 로그인';
   $('googleConnect').disabled=busy;
   $('googleDisconnect').hidden=!on;
   const a=$('loginAccount');a.hidden=!on;a.textContent=on?account:'';a.title=on?account:'';
+  if(on!==lastOn){lastOn=on;window.dispatchEvent(new CustomEvent('make-login',{detail:{loggedIn:on}}));}   // 드라이브 기능이 로그인·로그아웃을 알아채게
 }
 function clear(){token='';expires=0;account='';paint();}
 function sdk(){
@@ -69,5 +71,13 @@ $('googleDisconnect').onclick=()=>{
 // 클라이언트 ID가 설정돼 있으면 미리 불러 두어 첫 클릭에서 바로 로그인 창이 뜨게 한다(창은 사용자가 누를 때만).
 if(window.PROM_GOOGLE_CLIENT_ID)sdk().then(initClient).catch(()=>{});
 paint();
-window.MakeLogin={loggedIn:()=>loggedIn(),account:()=>account,token:()=>loggedIn()?token:''};
+// 로그인한 토큰으로 구글 API를 부른다. 만료·거절이면 로그아웃 상태로 돌리고 알려 준다.
+async function request(url,options={}){
+  if(!loggedIn()){clear();throw Error('로그인이 만료되었습니다. 「구글 로그인」을 다시 눌러 주세요.');}
+  const res=await fetch(url,{...options,headers:{...(options.headers||{}),Authorization:'Bearer '+token}});
+  if(res.status===401){clear();throw Error('로그인이 만료되었습니다. 「구글 로그인」을 다시 눌러 주세요.');}
+  if(!res.ok)throw Error(res.status===403?'드라이브 권한이나 저장 용량을 확인해 주세요.':'드라이브 요청에 실패했습니다 ('+res.status+').');
+  return res;
+}
+window.MakeLogin={loggedIn:()=>loggedIn(),account:()=>account,token:()=>loggedIn()?token:'',request};
 })();
