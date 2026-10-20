@@ -17,7 +17,7 @@ function readData(file){return new Promise((ok,no)=>{const r=new FileReader();r.
 let dbp;
 function db(){return dbp||(dbp=new Promise((ok,no)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('templates',{keyPath:'id'});r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error);}));}
 async function store(mode,fn){const d=await db();return new Promise((ok,no)=>{const tx=d.transaction('templates',mode),req=fn(tx.objectStore('templates'));tx.oncomplete=()=>ok(req?.result);tx.onerror=()=>no(tx.error);});}
-async function load(){records=(await store('readonly',s=>s.getAll())||[]).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));fillSelects();renderList();}
+async function load(){await window.PromBuiltinTemplates?.ready;records=(await store('readonly',s=>s.getAll())||[]).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));fillSelects();renderList();}
 // 저장할 때마다 수정 시각을 남긴다(드라이브에 올릴 때 어느 쪽이 더 새로운지 비교하는 데 쓴다). 드라이브 업로드는 사용자가 버튼을 눌렀을 때만 한다.
 async function put(rec){rec={...rec,updatedAt:Date.now()};await store('readwrite',s=>s.put(rec));await load();}
 // 드라이브에서 가져온 템플릿은 원래 id·수정 시각 그대로 넣는다(알림 없이).
@@ -52,7 +52,7 @@ function renderList(){
     const row=document.createElement('div');row.className='tpl';
     const name=document.createElement('b');name.textContent=r.name;
     const info=document.createElement('small');const ev=r.pair?.evidence;
-    info.textContent=(ev?`원고-PPT 학습 · 연결 ${ev.matchedSlides}/${ev.totalSlides}장`:'기본 디자인에서 시작')+(r.fixedSlides?.length?` · 고정 슬라이드 ${r.fixedSlides.length}장`:'')+` · 레이아웃 ${Object.keys(r.design?.layouts||{}).length}개`;
+    info.textContent=(r.builtin?'사이트 기본 템플릿'+(r.edited?' (고친 것)':'')+' · ':'')+(ev?`원고-PPT 학습 · 연결 ${ev.matchedSlides}/${ev.totalSlides}장`:'기본 디자인에서 시작')+(r.fixedSlides?.length?` · 고정 슬라이드 ${r.fixedSlides.length}장`:'')+` · 레이아웃 ${Object.keys(r.design?.layouts||{}).length}개`;
     const btn=(label,fn,cls)=>{const b=document.createElement('button');b.textContent=label;if(cls)b.className=cls;b.onclick=fn;return b;};
     row.append(name,
       btn('마스터 편집',()=>{$('mTemplate').value=r.id;openMaster(r.id);showTab('master');}),
@@ -219,7 +219,7 @@ $('mTemplate').onchange=()=>openMaster($('mTemplate').value);
 $('mLayout').onchange=async()=>{layoutKey=$('mLayout').value;shapeIx=scene().bodyIndex;fillShapes();await preview();};
 $('mShape').onchange=()=>select(+$('mShape').value);
 $('mSample').addEventListener('input',()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(preview);});
-$('mSave').onclick=async()=>{const rec=byId(draftId);if(!rec||!draft){toast('편집할 템플릿을 고르세요.');return;}await put({...rec,design:clone(draft)});useForMake(rec.id);dirty=false;status('mStatus',`"${rec.name}" 템플릿에 저장했습니다. 다음 만들기부터 이 디자인으로 나옵니다.`);};
+$('mSave').onclick=async()=>{const rec=byId(draftId);if(!rec||!draft){toast('편집할 템플릿을 고르세요.');return;}await put({...rec,design:clone(draft),...(rec.builtin?{edited:true}:{})});useForMake(rec.id);dirty=false;status('mStatus',`"${rec.name}" 템플릿에 저장했습니다. 다음 만들기부터 이 디자인으로 나옵니다.`);};
 $('mRevert').onclick=()=>{dirty=false;openMaster(draftId);};
 addEventListener('resize',outline);
 
