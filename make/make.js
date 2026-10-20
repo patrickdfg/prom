@@ -4,6 +4,7 @@
 const $=id=>document.getElementById(id),B=CaptionBuilder,clone=x=>structuredClone(x);
 const DB='prom-ppt-generation-templates',LAST='promMakeTemplate';
 const DEFAULT_OPTIONS={title:'',date:'',greenLayout:'word',cumulative:true,allText:false};
+let selected=-1,deckTemplate=null;   // 편집 창: 고른 슬라이드 번호, 이 덱을 만든 템플릿 디자인(편집 창이 새 장면을 만들 때 같은 템플릿을 쓰게)
 let records=[],busy=false,deck=null,draft=null,draftId='',layoutKey='caption',shapeIx=0,dirty=false;
 
 /* ---------- 공통 ---------- */
@@ -268,8 +269,12 @@ let observer=null;
 function renderGrid(slides){
   const grid=$('makeGrid');observer?.disconnect();for(const h of grid.querySelectorAll('.host'))CaptionRender.release?.(h);grid.replaceChildren();
   observer=new IntersectionObserver(entries=>{for(const en of entries)if(en.isIntersecting){const h=en.target;observer.unobserve(h);CaptionRender.show(h,slides[+h.dataset.i]);}},{rootMargin:'300px'});
-  slides.forEach((s,i)=>{const t=document.createElement('div');t.className='thumb';const n=document.createElement('small');n.textContent=i+1;const h=document.createElement('div');h.className='host';h.dataset.i=i;t.append(n,h);grid.append(t);observer.observe(h);});
+  slides.forEach((s,i)=>{const t=document.createElement('div');t.className='thumb'+(i===selected?' selected':'');const n=document.createElement('small');n.textContent=i+1;const h=document.createElement('div');h.className='host';h.dataset.i=i;
+    const e=document.createElement('button');e.type='button';e.className='thumb-edit';e.textContent='편집';e.onclick=ev=>{ev.stopPropagation();selected=i;markSelected();CaptionEditor.open(i);};
+    t.onclick=()=>{selected=i;markSelected();};t.ondblclick=()=>CaptionEditor.open(i);
+    t.append(n,h,e);grid.append(t);observer.observe(h);});
 }
+function markSelected(){[...$('makeGrid').children].forEach((t,i)=>t.classList.toggle('selected',i===selected));}
 $('makeRun').onclick=async()=>{
   if(busy)return;const f=$('makeScript').files[0];if(!f){status('makeStatus','원고 파일을 고르세요.',true);return;}
   busy=true;$('makeRun').disabled=true;$('makeDownload').disabled=true;status('makeStatus','원고를 읽고 PPT를 만드는 중…');
@@ -282,20 +287,35 @@ $('makeRun').onclick=async()=>{
     try{result=await B.generate(project,opts);}
     catch(e){if(!opts.allText&&/찾지 못했습니다/.test(e.message)){result=await B.generate(project,{...opts,allText:true});$('makeAll').checked=true;toast('원고에 색 표시가 없어 원고 전체로 만들었습니다.',5000);}else throw e;}
     const woven=rec?.fixedSlides?.length?CaptionPairTemplate.weave(rec.fixedSlides,result.slides,result.links):result;
-    // 레이아웃에 따라 960×540(앱 기본)·1280×720(불러온 PPT)이 섞일 수 있어, 만든 슬라이드는 모두 1920×1080으로 맞춘다.
-    CaptionSize.unify(woven.slides,1920,1080);
-    deck={...project,slides:woven.slides,links:woven.links,deckName:stem(f.name)+'_자막.pptx'};
-    renderGrid(deck.slides);$('makeDownload').disabled=false;
+    // 크기(960×540·1280×720 혼재)는 편집 창이 장면을 다시 만들 때 어긋나지 않도록 여기서 바꾸지 않고, PPTX로 내려받을 때 모두 1920×1080으로 맞춘다.
+    deck={...project,slides:woven.slides,links:woven.links,deckName:stem(f.name)+'_자막.pptx'};deckTemplate=rec?.design||null;selected=-1;
+    renderGrid(deck.slides);$('makeDownload').disabled=false;$('makeEditTools').hidden=false;
     status('makeStatus',`${deck.slides.length}장을 만들었습니다${rec?` (템플릿: ${rec.name})`:''}. 확인 후 PPTX 다운로드를 누르세요.`);
   }catch(e){status('makeStatus',e.message||String(e),true);}
   finally{busy=false;$('makeRun').disabled=false;}
 };
 $('makeDownload').onclick=async()=>{
   if(!deck||busy)return;busy=true;$('makeDownload').disabled=true;status('makeStatus','PPTX 파일을 만드는 중…');
-  try{const blob=await CaptionPptx.create(deck),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=deck.deckName;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);status('makeStatus',`${deck.deckName} 를 받았습니다.`);}
+  try{const out=structuredClone(deck);CaptionSize.unify(out.slides,1920,1080);const blob=await CaptionPptx.create(out),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=deck.deckName;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);status('makeStatus',`${deck.deckName} 를 받았습니다.`);}
   catch(e){status('makeStatus',e.message||String(e),true);}
   finally{busy=false;$('makeDownload').disabled=false;}
 };
+
+/* ---------- 슬라이드 편집 창 연결 ----------
+   방송용 PPT의 편집 창(ppt/editor.js)을 그대로 쓰되, 그 창이 기대하는 작업 공간(CaptionWorkspace)과 템플릿 도우미(CaptionRecipes)를
+   만들기 화면의 덱에 맞춰 대신 만들어 준다. 원고 연결 구간·누적 표시처럼 방송용에만 필요한 칸은 화면에서 숨긴다. */
+window.CaptionWorkspace={
+  snapshot(){if(!deck)throw Error('먼저 PPT를 만드세요.');return structuredClone(deck);},
+  apply(slides,links,opts={}){deck={...deck,slides,links,...(opts.deckName?{deckName:opts.deckName}:{})};if(Number.isInteger(opts.selected))selected=Math.max(-1,Math.min(opts.selected,slides.length-1));renderGrid(deck.slides);if(opts.message)toast(opts.message,5000);},
+  selected:()=>selected,
+  message:text=>toast(String(text).replace(/\s*복제한 자막의 원고 연결 구간을 지정하세요\./,''),5000),   // 방송용 PPT 전용 안내(원고 연결 구간)는 이 화면에 없다
+  prepareEdit(){},rememberRich(){},
+  rows:()=>deck?CaptionCore.segments(deck.lines,deck.links):[],
+  currentRange:()=>null
+};
+window.CaptionRecipes={sync:async()=>{await B.useTemplate(deckTemplate);},setMode(){},open:async()=>{},remember:async()=>{},withFixed:r=>r};
+$('makeEditSelected').onclick=()=>{if(selected<0||!deck?.slides[selected]){toast('편집할 슬라이드를 먼저 누르세요.');return;}CaptionEditor.open(selected);};
+$('makeAddCaption').onclick=()=>CaptionEditor.open(-1);
 
 /* ---------- 시작 ---------- */
 load().then(()=>$('makeTemplate').onchange()).catch(e=>toast('템플릿 보관함을 열지 못했습니다: '+e.message,6000));
