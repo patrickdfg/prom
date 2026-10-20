@@ -1,15 +1,16 @@
-// PPT 자동 제작: 템플릿을 로그인한 구글 드라이브에 자동 저장하고, 내 드라이브에서 불러온다.
-// - 로그인 중에 템플릿을 만들거나 고쳐 저장하면 잠시 뒤 자동으로 드라이브 「설교 PPT 템플릿」 폴더에 올린다(같은 템플릿은 덮어쓴다).
-// - 로그인하면 이 컴퓨터에만 있거나 더 새로운 템플릿을 한 번에 올린다. 드라이브에서 내려받는 것은 사용자가 「가져오기」를 누를 때만 한다.
+// PPT 자동 제작: 템플릿을 로그인한 구글 드라이브에 저장하고, 내 드라이브에서 불러온다. 올리고 내려받는 일은 모두 사용자가 버튼을 눌렀을 때만 한다.
+// - 템플릿 줄의 「드라이브에 저장」: 그 템플릿을 드라이브 「설교 PPT 템플릿」 폴더에 올린다(같은 템플릿은 덮어쓴다).
+// - 「드라이브에 모두 저장」: 드라이브에 없거나 이 컴퓨터 것이 더 새로운 템플릿을 한 번에 올린다.
+// - 「드라이브에서 불러오기」→「가져오기」: 드라이브 템플릿을 이 컴퓨터로 가져온다.
 // - 이 컴퓨터에서 템플릿을 지워도 드라이브 복사본은 그대로 둔다. 드라이브 목록의 「드라이브에서 삭제」를 눌러야 휴지통으로 옮긴다(30일 안에 복구 가능).
 // 이 앱이 만든 파일만 다루는 drive.file 권한이라 다른 드라이브 파일은 보지도 건드리지도 못한다.
 (()=>{
 'use strict';
 const $=id=>document.getElementById(id);
 const API='https://www.googleapis.com/drive/v3/',UPLOAD='https://www.googleapis.com/upload/drive/v3/files';
-const FOLDER_NAME='설교 PPT 템플릿',FOLDER_KEY='promMakeDriveFolder',APP='make-template',DEBOUNCE=1500;
+const FOLDER_NAME='설교 PPT 템플릿',FOLDER_KEY='promMakeDriveFolder',APP='make-template';
 const L=()=>window.MakeLogin,M=()=>window.PromMake;
-let chain=Promise.resolve(),timers=new Map(),busy=false,remote=[];
+let chain=Promise.resolve(),busy=false,remote=[];
 
 const esc=s=>String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
 const when=t=>new Date(t).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
@@ -17,7 +18,7 @@ function note(msg){const n=$('tplDriveState');if(n)n.textContent=msg||'';}
 function paint(){
   const on=!!L()?.loggedIn();
   for(const id of ['tplDriveSync','tplDriveList'])if($(id))$(id).disabled=!on||busy;
-  if(!on){note('상단에서 구글 로그인하면 템플릿이 내 드라이브에 자동으로 저장됩니다.');const box=$('tplDriveFiles');if(box){box.replaceChildren();box.hidden=true;}}
+  if(!on){note('상단에서 구글 로그인하면 템플릿을 내 드라이브에 저장하고 불러올 수 있습니다.');const box=$('tplDriveFiles');if(box){box.replaceChildren();box.hidden=true;}}
 }
 // 한 번에 하나씩 순서대로(저장 순서가 뒤바뀌어 옛 것이 덮어쓰지 않게)
 const enqueue=fn=>(chain=chain.then(fn,fn));
@@ -59,20 +60,16 @@ async function upload(rec,existing){
   if(!loc||new URL(loc).origin!=='https://www.googleapis.com')throw Error('업로드 주소를 받지 못했습니다.');
   await L().request(loc,{method:'PUT',headers:{'Content-Type':'application/json'},body:blob});
 }
+// 템플릿 줄의 「드라이브에 저장」
 async function saveOne(id){
-  const rec=M()?.get(id);if(!rec||!L()?.loggedIn())return;
+  const rec=M()?.get(id);if(!rec)return;
+  if(!L()?.loggedIn()){note('먼저 상단에서 구글 로그인해 주세요.');M()?.toast?.('먼저 상단에서 구글 로그인해 주세요.');return;}
   busy=true;paint();note('드라이브에 저장 중… · '+rec.name);
-  try{await upload(rec,await findRemote(rec.id));note('드라이브에도 저장했습니다 · '+rec.name+' · '+when(Date.now()));}
+  try{await upload(rec,await findRemote(rec.id));note('드라이브에 저장했습니다 · '+rec.name+' · '+when(Date.now()));M()?.toast?.(`"${rec.name}" 템플릿을 드라이브에 저장했습니다.`);}
   catch(e){note(e.message+' 이 컴퓨터 저장은 그대로입니다.');}
   busy=false;paint();
 }
-// 자동 저장: 같은 템플릿을 잇달아 고치면 마지막 것만 올린다
-function schedule(id){
-  if(!L()?.loggedIn())return;
-  clearTimeout(timers.get(id));
-  timers.set(id,setTimeout(()=>{timers.delete(id);enqueue(()=>saveOne(id));},DEBOUNCE));
-}
-// 로그인했을 때·「지금 모두 저장」: 드라이브에 없거나 이 컴퓨터 것이 더 새로우면 올린다
+// 「드라이브에 모두 저장」: 드라이브에 없거나 이 컴퓨터 것이 더 새로우면 올린다
 async function syncAll(){
   if(!L()?.loggedIn())return;
   busy=true;paint();note('드라이브와 맞춰 보는 중…');
@@ -130,8 +127,8 @@ async function trashRemote(f){
   busy=false;paint();
 }
 
-window.addEventListener('make-template-saved',e=>schedule(e.detail.id));
-window.addEventListener('make-login',e=>{if(e.detail.loggedIn)enqueue(syncAll);else{remote=[];paint();}});
+window.addEventListener('make-template-upload',e=>enqueue(()=>saveOne(e.detail.id)));
+window.addEventListener('make-login',e=>{if(e.detail.loggedIn){paint();note('로그인했습니다. 「드라이브에 저장」을 누르면 내 드라이브에 올라갑니다.');}else{remote=[];paint();}});
 $('tplDriveSync')&&($('tplDriveSync').onclick=()=>enqueue(syncAll));
 $('tplDriveList')&&($('tplDriveList').onclick=()=>enqueue(refreshRemote));
 paint();

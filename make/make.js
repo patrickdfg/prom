@@ -18,8 +18,8 @@ let dbp;
 function db(){return dbp||(dbp=new Promise((ok,no)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('templates',{keyPath:'id'});r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error);}));}
 async function store(mode,fn){const d=await db();return new Promise((ok,no)=>{const tx=d.transaction('templates',mode),req=fn(tx.objectStore('templates'));tx.oncomplete=()=>ok(req?.result);tx.onerror=()=>no(tx.error);});}
 async function load(){records=(await store('readonly',s=>s.getAll())||[]).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));fillSelects();renderList();}
-// 저장할 때마다 수정 시각을 남기고 알린다: 구글 로그인 중이면 make/drive.js가 내 드라이브에도 자동으로 올린다.
-async function put(rec){rec={...rec,updatedAt:Date.now()};await store('readwrite',s=>s.put(rec));await load();window.dispatchEvent(new CustomEvent('make-template-saved',{detail:{id:rec.id}}));}
+// 저장할 때마다 수정 시각을 남긴다(드라이브에 올릴 때 어느 쪽이 더 새로운지 비교하는 데 쓴다). 드라이브 업로드는 사용자가 버튼을 눌렀을 때만 한다.
+async function put(rec){rec={...rec,updatedAt:Date.now()};await store('readwrite',s=>s.put(rec));await load();}
 // 드라이브에서 가져온 템플릿은 원래 id·수정 시각 그대로 넣는다(알림 없이).
 async function putSynced(rec){await store('readwrite',s=>s.put(rec));await load();}
 const byId=id=>records.find(r=>r.id===id)||null;
@@ -57,6 +57,7 @@ function renderList(){
     row.append(name,
       btn('마스터 편집',()=>{$('mTemplate').value=r.id;openMaster(r.id);showTab('master');}),
       btn('이름 바꾸기',async()=>{const n=prompt('새 이름',r.name);if(!n||!n.trim()||n.trim()===r.name)return;await put({...r,name:n.trim()});toast('이름을 바꿨습니다.');}),
+      btn('드라이브에 저장',()=>window.dispatchEvent(new CustomEvent('make-template-upload',{detail:{id:r.id}}))),
       btn('파일로 받기',()=>exportTemplate(r)),
       btn('삭제',async()=>{if(!confirm(`"${r.name}" 템플릿을 삭제할까요? 되돌릴 수 없습니다.`))return;await store('readwrite',s=>s.delete(r.id));if(draftId===r.id){draftId='';draft=null;}await load();toast('삭제했습니다.');},'danger'),
       info);
