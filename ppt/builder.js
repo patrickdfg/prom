@@ -42,14 +42,44 @@ function metrics(layout,bank=templateBank){
  const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d'),font=/마루\s*부리|maru\s*buri/i.test(r.font)?'"PROM MaruBuri"':JSON.stringify(r.font||'Malgun Gothic');ctx.font=`${r.bold?700:400} ${r.size}px ${font}, "Malgun Gothic", serif`;
  return {width:(b?.w||900)-pad[1]-pad[3]-2,measure:text=>ctx.measureText(text).width+Math.max(0,text.length-1)*(r.spacing||0),maxLines:Math.max(1,Math.min(layout==='caption'?2:layout==='verse'?8:layout==='proverb'?99:5,Math.floor(((b?.h||406)-pad[0]-pad[2])/(p?.lineSpacing?.unit==='px'?p.lineSpacing.value:r.size*(p?.lineSpacing?.value||1.3)))))};
 }
-// 최소 줄 수는 유지하면서 줄 길이가 고르게 되도록 단어 경계에서 나눈다. 마지막 줄에 한두 글자만 남는 것을 막는다.
+// 줄을 바꾸기 좋은 곳/나쁜 곳. 앞 낱말 끝과 뒤 낱말 앞을 보고 점수를 준다(작을수록 좋음).
+// 좋은 곳: 쉼표·마침표 뒤, '~고 ~며 ~면 ~서 ~니 ~지만 ~는데 ~도록 ~여' 같은 이음말 뒤, '~은/는/이/가/을/를' 같은 조사 뒤.
+// 나쁜 곳: '그 이 저 각 온 모든 한' 같은 꾸밈말 뒤, '~의' 뒤, '~할/~될/~는' 꾸밈 끝 뒤, '것 수 줄 때 뿐 대로 간에 나름' 같은 매인 이름씨 앞,
+// '않 못 있 없 주 보 싶' 같은 보조 용언 앞(앞이 ~지/~고/~어/~게일 때), 숫자와 단위 사이.
+const DETERMINER=/^(그|이|저|각|온|모든|한|두|세|네|몇|새|첫|이런|그런|저런|어떤|무슨|여러|온갖|갖은|매|전|총|약|단|그의|나의|너의|우리의|자기의)$/;
+const BOUND=/^(것|거|수|줄|때|데|듯|뿐|만큼|대로|중|간에|간|나름|등|바|따름|적|채|김|척|체|양|만|분|번|장|절|년|월|일|시|개|명|가지|및)(?![가-힣]{3})/;
+const AUX=/^(않|못하|못한|못할|못합|있|없|주|줘|준|줄|보|봐|본|버리|버린|싶|놓|두었|둔|드리|드립|계시|계신|지|져|진|질|하게|되었|되어|된다|됩니|합니다|했습니다|하십니다|하셨습니다|하였습니다|입니다|이다|이었|같|말았|말고|말아)/;
+function breakScore(prev,next){
+ const p=prev.replace(/[”’"')）」』\]]+$/,''),q=next.replace(/^[“‘"'(（「『\[]+/,'');
+ if(/[.!?。]$/.test(p))return .2;
+ if(/[,，:;]$/.test(p))return .35;
+ if(/\d$/.test(p)&&/^[가-힣]/.test(q))return 4;                                  // 3 / 장
+ if(DETERMINER.test(p))return 5;                                                  // 그 / 보내신
+ if(BOUND.test(q))return 4;
+ if(/[가-힣]$/.test(p)&&/^\d/.test(q))return 3;                                   // 요한복음 / 5장
+ if(/(이|가)$/.test(p)&&/^(되|된|될|됩|됐)/.test(q))return 3;                         // 체질이 / 되어
+ if(/(게|케|도록)$/.test(p)&&/^(하|해|했|한|할|함|합|만들|되|된)/.test(q))return 4;      // 자유케 / 하고
+ if(/^(통해|통하여|통한|위해|위하여|위한|대해|대하여|대한|따라|따른|향해|향한|인해|인하여|인한|비해|관해|관한|말미암아|의해|의하여|의한)/.test(q))return 4;   // 구원자를 / 통해                                                       // 선악 / 간에, 자기 / 나름대로
+ if(/(지|고|어|아|여|게|해)$/.test(p)&&AUX.test(q))return 4;                       // 하지 / 않으면
+ if(/의$/.test(p))return 3;                                                       // 하나님의 / 말씀
+ if(/(고|며|면|서|니|니까|지만|는데|은데|ㄴ데|도록|면서|므로|여|하여|해서|러|려고|든지|거나|자|다가)$/.test(p))return .5;
+ if(/(은|는|이|가|을|를|에게|에서|으로|로|와|과|도|만|까지|부터|에는|에도|께서)$/.test(p))return .8;
+ if(/(할|될|갈|올|볼|줄|는|던|운|된|한|인|진|난|신|른)$/.test(p))return 2.2;      // 꾸밈 끝 뒤 (조사 '는'은 위에서 걸러짐)
+ return 1.2;
+}
+// 최소 줄 수는 유지하면서 줄 길이가 고르게, 그리고 뜻이 끊기지 않는 곳에서 나눈다. 마지막 줄에 한두 글자만 남는 것을 막는다.
+// 한 장에 maxLines 줄을 넘으면 장이 바뀌는 줄 끝은 더 엄격하게 고른다.
 function balance(chars,m,rowCount){
  const words=[];let s=0;for(let i=0;i<=chars.length;i++)if(i===chars.length||/\s/.test(chars[i].ch)){if(i>s)words.push([s,i]);s=i+1;}
  const n=words.length;if(n<rowCount)return null;
  const cache=new Map(),text=(a,b)=>chars.slice(words[a][0],words[b-1][1]).map(c=>c.ch).join('');
- const cost=(a,b)=>{const key=a*1000+b;if(cache.has(key))return cache.get(key);const str=text(a,b),w=m.measure(str);let v=w>m.width?Infinity:(m.width-w)**2*(/[,，]$/.test(str)?.5:1);cache.set(key,v);return v;};
+ const unit=(m.width*.3)**2,per=m.maxLines||rowCount;
+ const cost=(a,b,k)=>{const key=(a*1000+b)*2+(k%per===0&&k<rowCount?1:0);if(cache.has(key))return cache.get(key);const str=text(a,b),w=m.measure(str);let v=w>m.width?Infinity:(m.width-w)**2;
+  if(v<Infinity&&b<n){let sc=breakScore(text(b-1,b),text(b,b+1));if(w<m.width*.45&&sc>.4)sc=Math.max(sc,1.2);   // 너무 짧은 줄은 좋은 곳이어도 덤을 주지 않는다
+  v=v*Math.min(1,sc)+unit*Math.max(0,sc-.6)*(key%2?2.5:1);}
+  cache.set(key,v);return v;};
  const dp=Array.from({length:rowCount+1},()=>Array(n+1).fill(Infinity)),from=Array.from({length:rowCount+1},()=>Array(n+1).fill(0));dp[0][0]=0;
- for(let k=1;k<=rowCount;k++)for(let j=k;j<=n;j++)for(let a=k-1;a<j;a++){if(dp[k-1][a]===Infinity)continue;const v=dp[k-1][a]+cost(a,j);if(v<dp[k][j]){dp[k][j]=v;from[k][j]=a;}}
+ for(let k=1;k<=rowCount;k++)for(let j=k;j<=n;j++)for(let a=k-1;a<j;a++){if(dp[k-1][a]===Infinity)continue;const v=dp[k-1][a]+cost(a,j,k);if(v<dp[k][j]){dp[k][j]=v;from[k][j]=a;}}
  if(dp[rowCount][n]===Infinity)return null;
  const rows=[];for(let k=rowCount,j=n;k>0;k--){const a=from[k][j];rows.unshift(trim(chars.slice(words[a][0],words[j-1][1])));j=a;}
  return rows.every(r=>r.length)?rows:null;
