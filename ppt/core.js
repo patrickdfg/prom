@@ -64,6 +64,9 @@ function locateSpeech(raw,text,cursor,optional=null,scripture=null){const passag
 // 본문이 시작되는 위치: 맨 앞의 <날짜>·제목·'본 문'·<성경 구절> 줄은 읽지 않고 바로 본문으로 들어가는 일이 많다.
 // 맨 앞 12줄 안의 머리 묶음(<…>로 시작하는 줄, '본 문' 줄, 20자 미만 짧은 줄) 가운데 마지막 <…>·'본 문' 줄 바로 다음 줄의 시작 위치(없으면 0).
 function bodyStart(lines,ix){let last=-1;for(let i=0;i<Math.min(lines.length,12);i++){const s=String(lines[i]||''),tag=/^\s*</.test(s)||/^\s*본\s*문/.test(s);if(tag){last=i;continue;}if(normalize(s).length<20)continue;break;}return last>=0?(ix.ranges[last+1]?.start??0):0;}
-const api={normalize,index,segments,align,active,locateSpeech,distance,bodyStart};if(typeof module==='object'&&module.exports)module.exports=api;else root.CaptionCore=api;
+// 머리 줄을 건너뛰고 본문을 읽기 시작했는지: 본문 앞부분(600자) 안에서 들은 말 끝 9~24자가 한 곳에만 그대로 있을 때만 그 위치.
+// 짧은 말로 본문 쪽으로 잘못 넘어가지 않도록 locateSpeech보다 엄격하게 본다.
+function bodyMatch(raw,text,body){const heard=normalize(raw);if(!body||heard.length<9)return null;const end=Math.min(text.length,body+600),win=text.slice(body,end);for(let n=Math.min(24,heard.length);n>=9;n--){const tail=heard.slice(-n),at=win.indexOf(tail);if(at<0||win.indexOf(tail,at+1)>=0||text.slice(0,body).includes(tail))continue;return {pos:body+at+n,score:1,body:true};}return null;}
+const api={normalize,index,segments,align,active,locateSpeech,distance,bodyStart,bodyMatch};if(typeof module==='object'&&module.exports)module.exports=api;else root.CaptionCore=api;
 })(typeof window==='object'?window:globalThis);
 
