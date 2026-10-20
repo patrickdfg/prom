@@ -104,6 +104,9 @@ const textBase=sh=>{const p=sh?.paragraphs?.[0]||{},r=(sh?.paragraphs||[]).flatM
 const plainText=sh=>(sh?.paragraphs||[]).map(p=>(p.runs||[]).map(r=>r.text||'').join('')).join('\n');
 const scene=()=>draft.layouts[layoutKey],cur=()=>scene()?.shapes[shapeIx];
 const isBody=i=>i===scene().bodyIndex;
+// 화면을 거의 다 덮는 그림은 '배경'으로 보고 요소 목록에서 빼서 배경 그림 버튼으로만 바꾼다.
+const isBg=(sh,s=scene())=>sh?.type==='image'&&(sh.background||(sh.w>=s.width*.9&&sh.h>=s.height*.9));
+const firstFront=()=>{const s=scene();let i=0;while(i<s.shapes.length&&isBg(s.shapes[i],s))i++;return i;};
 function shapeLabel(sh,i,s){if(i===s.bodyIndex)return '본문 글상자 (원고 글자가 들어감)';const t=plainText(sh).trim().slice(0,14);if(sh.type==='text')return `글상자 ${i+1}`+(t?` · ${t}`:'');if(sh.type==='image')return `그림 ${i+1}`+(sh.background?' (배경)':'');return ({ellipse:'원',roundRect:'둥근 사각형'}[sh.geom]||'사각형')+` ${i+1}`;}
 
 // 되돌리기·다시 실행: 바꾸기 직전 상태를 쌓는다. 같은 칸을 연달아 고치면 한 번으로 묶는다.
@@ -126,8 +129,8 @@ async function openMaster(id){
 }
 function fillShapes(){
   const s=scene(),sel=$('mShape');sel.replaceChildren();
-  s.shapes.forEach((sh,i)=>sel.append(new Option(shapeLabel(sh,i,s),i)));
-  if(!s.shapes[shapeIx])shapeIx=s.bodyIndex;sel.value=shapeIx;fillControls();
+  s.shapes.forEach((sh,i)=>{if(!isBg(sh,s))sel.append(new Option(shapeLabel(sh,i,s),i));});
+  if(!s.shapes[shapeIx]||isBg(s.shapes[shapeIx],s))shapeIx=s.bodyIndex;$('mBgClear').disabled=!s.shapes.some(sh=>isBg(sh,s));sel.value=shapeIx;fillControls();
 }
 const hex=(c,d)=>/^#[0-9a-f]{6}$/i.test(c||'')?c:d;
 function fillControls(){
@@ -187,6 +190,10 @@ for(const id of ['mX','mY','mW','mH'])$(id).addEventListener('input',applyGeomet
 for(const id of ['mText','mFont','mSize','mLine','mColor','mAlign','mAnchor','mBold','mItalic','mUnder'])$(id).addEventListener('input',applyText);
 for(const id of ['mGeom','mFill','mNoFill','mLineColor','mLineWidth'])$(id).addEventListener('input',applyShape);
 $('mBg').addEventListener('input',()=>{if(!draft)return;mark('bg');scene().background=$('mBg').value;changed();});
+$('mBgImage').onchange=async()=>{const f=$('mBgImage').files[0];$('mBgImage').value='';if(!f||!draft)return;if(f.size>10*1024*1024){toast('배경 그림은 10MB 이하로 고르세요.');return;}const src=(await readData(f)).data,s=scene();mark();const i=s.shapes.findIndex(sh=>isBg(sh,s));
+  if(i>=0)Object.assign(s.shapes[i],{src,x:0,y:0,w:s.width,h:s.height,background:true});else{const body=s.shapes[s.bodyIndex];s.shapes.unshift({type:'image',src,x:0,y:0,w:s.width,h:s.height,background:true});s.bodyIndex=s.shapes.indexOf(body);if(shapeIx>=0)shapeIx++;}
+  fillShapes();changed();toast('이 레이아웃의 배경 그림을 바꿨습니다.');};
+$('mBgClear').onclick=()=>{if(!draft)return;const s=scene(),body=s.shapes[s.bodyIndex],keep=cur();if(!s.shapes.some(sh=>isBg(sh,s)))return;mark();s.shapes=s.shapes.filter(sh=>!isBg(sh,s));s.bodyIndex=s.shapes.indexOf(body);shapeIx=Math.max(0,s.shapes.indexOf(keep));fillShapes();changed();};
 $('mBgGreen').onclick=()=>{if(!draft)return;mark();scene().background='#00ff00';$('mBg').value='#00ff00';changed();};
 
 // 넣기·복제·삭제·순서
@@ -199,7 +206,7 @@ $('mAddEllipse').onclick=()=>insert({type:'rect',geom:'ellipse',...box(200,200),
 $('mAddImage').onchange=async()=>{const f=$('mAddImage').files[0];$('mAddImage').value='';if(!f||!draft)return;if(f.size>8*1024*1024){toast('그림은 8MB 이하로 고르세요.');return;}const src=(await readData(f)).data,img=new Image();img.src=src;await img.decode().catch(()=>{});const s=scene(),k=Math.min(1,s.width*.5/(img.naturalWidth||1),s.height*.5/(img.naturalHeight||1)),w=Math.round((img.naturalWidth||400)*k),h=Math.round((img.naturalHeight||300)*k);insert({type:'image',src,...box(w,h),manualGeometry:true});};
 function duplicate(){if(!draft||isBody(shapeIx))return;const c=clone(cur());c.x+=20;c.y+=20;insert(c);}
 function remove(){if(!draft||isBody(shapeIx))return;if(cur()?.background&&!confirm('배경 그림을 지울까요?'))return;mark();const s=scene(),body=s.shapes[s.bodyIndex];s.shapes.splice(shapeIx,1);s.bodyIndex=s.shapes.indexOf(body);shapeIx=s.bodyIndex;fillShapes();changed();}
-function order(to){if(!draft)return;const s=scene(),n=s.shapes.length,from=shapeIx,dest=Math.max(0,Math.min(n-1,to==='front'?n-1:to==='back'?0:from+to));if(dest===from)return;mark();const body=s.shapes[s.bodyIndex],[sh]=s.shapes.splice(from,1);s.shapes.splice(dest,0,sh);s.bodyIndex=s.shapes.indexOf(body);fillShapes();select(dest);changed();}
+function order(to){if(!draft)return;const s=scene(),n=s.shapes.length,from=shapeIx,low=firstFront(),dest=Math.max(low,Math.min(n-1,to==='front'?n-1:to==='back'?low:from+to));if(dest===from)return;mark();const body=s.shapes[s.bodyIndex],[sh]=s.shapes.splice(from,1);s.shapes.splice(dest,0,sh);s.bodyIndex=s.shapes.indexOf(body);fillShapes();select(dest);changed();}
 $('mDup').onclick=duplicate;$('mDel').onclick=remove;
 $('mFront').onclick=()=>order('front');$('mBack').onclick=()=>order('back');$('mForward').onclick=()=>order(1);$('mBackward').onclick=()=>order(-1);
 $('mUndo').onclick=undo;$('mRedo').onclick=redo;
