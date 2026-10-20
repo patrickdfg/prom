@@ -31,7 +31,7 @@
   };
   $('layoutMode').onchange = () => {
     const mobile = $('layoutMode').value === 'mobile';
-    const r = document.querySelector(`input[name=lines][value="${mobile ? 'm' : '7'}"]`); if(r) r.checked = true;
+    const r = document.querySelector(`input[name=lines][value="${mobile ? 'm' : '5'}"]`); if(r) r.checked = true;
     $('desktopLines').hidden = mobile;
   };
   $('layoutMode').value = chosenMode() === 'm' ? 'mobile' : 'desktop';
@@ -76,6 +76,51 @@
     else window.PromSmoothScroll?.cancel(scrollHost);
     render();showBar();
   }
+  // ---- 원고 쪽 번호 레이어(빨간 큰 숫자, 글과 별도): 번호는 프롬프터 쪽이 아니라 한글 원고(종이)의 쪽 번호다.
+  //      원고 쪽 번호는 글 안에 빨간 숫자로 들어 있다(그 쪽이 시작되기 직전 단어 뒤). 그 번호들을 읽어 현재 원고 쪽을 보여 준다.
+  //      쪽 보기: 왼쪽 위에 현재 번호 하나를 고정. 스크롤 보기: 번호가 나오는 줄에 번호가 붙고, 지나가는 쪽 번호는 위에 고정돼 있다가 다음 번호가 올라오면 밀려 올라간다(위 4·아래 5가 함께 보이다 5가 위로).
+  const pageNumLayer=document.createElement('div');pageNumLayer.id='pageNumLayer';pageNumLayer.setAttribute('aria-hidden','true');$('view').append(pageNumLayer);
+  let showPageNum=true;try{showPageNum=localStorage.getItem('promShowPageNum')!=='0'}catch(_){}
+  $('pageNumOpt').checked=showPageNum;
+  $('pageNumOpt').onchange=()=>{showPageNum=$('pageNumOpt').checked;try{localStorage.setItem('promShowPageNum',showPageNum?'1':'0')}catch(_){}updatePageNums();};
+  const PN_TOP=58,PN_H=78;   // 고정 위치(위 툴바 아래)와 번호 한 칸 높이
+  // 글 속 원고 쪽 번호 찾기: 빨간색 숫자만 있는 덩어리가 2, 3, 4…처럼 이어질 때만 쪽 번호로 본다(그냥 빨간 숫자는 거른다)
+  function manuscriptMarks(){
+    const out=[];let last=0;
+    for(let pi=0;pi<P.length;pi++)for(let li=0;li<P[pi].length;li++)for(const r of P[pi][li]){
+      if(r.c!=='r'||!/^\s*\d{1,3}\s*$/.test(r.t))continue;
+      const n=+r.t;
+      if(out.length?(n>last&&n-last<=3):(n>=2&&n<=40)){out.push({n,pi,li});last=n;}
+    }
+    return out;
+  }
+  function pnLabel(i){let el=pageNumLayer.children[i];if(!el){el=document.createElement('div');el.className='pn';pageNumLayer.append(el);}return el;}
+  function pnShow(list){const n=Math.max(list.length,pageNumLayer.children.length);for(let i=0;i<n;i++){const el=pnLabel(i);if(list[i]){el.hidden=false;if(el.textContent!==String(list[i][0]))el.textContent=String(list[i][0]);el.style.top=Math.round(list[i][1])+'px';}else el.hidden=true;}}
+  function updatePageNums(){
+    const v=$('view');
+    if(!showPageNum||MOBILE||!P.length||v.style.display!=='block'||v.classList.contains('overview-mode')){pageNumLayer.hidden=true;return;}
+    const marks=manuscriptMarks();
+    if(!marks.length){pageNumLayer.hidden=true;return;}                 // 원고에 쪽 번호가 없으면 보여 줄 번호가 없다
+    pageNumLayer.hidden=false;
+    const first=Math.max(1,marks[0].n-1);                                // 첫 번호 앞은 그 앞 쪽
+    if(!localScroll){                                                    // 쪽 보기: 이 쪽이 시작될 때의 원고 쪽 번호 하나
+      let n=first;for(const m of marks)if(m.pi<page)n=m.n;else break;
+      pnShow([[n,PN_TOP]]);return;
+    }
+    const base=pageNumLayer.getBoundingClientRect().top,H=pageNumLayer.clientHeight,rows=localRenderer.rows;
+    if(!rows.length){pageNumLayer.hidden=true;return;}
+    const byKey=new Map(rows.map(r=>[r.pi+':'+r.li,r.el])),anchors=[[first,rows[0].el]];
+    for(const m of marks){const el=byKey.get(m.pi+':'+m.li);if(el)anchors.push([m.n,el]);}
+    const tops=anchors.map(a=>a[1].getBoundingClientRect().top-base),out=[];
+    for(let k=0;k<anchors.length;k++){
+      if(tops[k]>H)break;                                              // 화면 아래 번호는 아직 안 보임
+      const next=k+1<tops.length?tops[k+1]:Infinity;
+      if(next<=0)continue;                                             // 이미 다 지나감(다음 번호 줄이 화면 위로 나감)
+      out.push([anchors[k][0],Math.min(Math.max(tops[k],PN_TOP),next-PN_H)]);   // 번호 줄에서 시작해 위에 고정, 다음 번호가 올라오면 밀려 올라감
+    }
+    pnShow(out);
+  }
+  let pnRaf=0;scrollHost.addEventListener('scroll',()=>{if(pnRaf)return;pnRaf=requestAnimationFrame(()=>{pnRaf=0;updatePageNums();});},{passive:true});
   function updateLocalScroll(){
     syncScrollText();if(!localScroll)return;
     const data={...payload(),document:P,ranges:lineRange,readingAnchor:PromScrollView.getAnchor()};
@@ -350,7 +395,7 @@
       $('sessionTitle').textContent=baseName; $('sessionTitle').title=baseName;
       showNote();
       [...$('lines').children].forEach((el,i)=>{const r=lineRange[page]?.[i];el.classList.toggle('current',!editing && !!r && r[1]>r[0] && cursor>=r[0] && cursor<r[1]);});
-      updateLocalScroll();publish(); scheduleSave();
+      updateLocalScroll();updatePageNums();publish(); scheduleSave();
       // 읽은 위치가 조작 표식에 도달할 때만 OBS 전체화면을 전환한다.
       // 조작창은 그대로 유지하며 Windows 보조 프로그램이 없으면 기능만 비활성.
       if(P.length && !editing && bridgeConnected && videoCues.length){

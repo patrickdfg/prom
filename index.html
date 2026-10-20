@@ -121,7 +121,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
-<link rel="stylesheet" href="workspace.css?v=20261020-tts1">
+<link rel="stylesheet" href="workspace.css?v=20261021-pn1">
 <link rel="stylesheet" href="extras.css?v=20261017-follow3">
 <style>.app-switch{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;flex-shrink:0;padding:8px 12px;border:1px solid #506a88;border-radius:8px;background:#20344c;color:#d6f5ec!important;font:600 12px/1.4 sans-serif;text-decoration:none;pointer-events:auto}.app-switch:hover{background:#2b4963}.app-switch:focus-visible{outline:3px solid #5de2ca;outline-offset:2px}</style>
 <link rel="stylesheet" href="display-screens.css?v=20261017-screen1">
@@ -148,9 +148,9 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     </div>
     <div class="mode-row"><label for="layoutMode">화면 구성</label><select id="layoutMode"><option value="desktop">PC · 큰 화면</option><option value="mobile">모바일 · 세로 화면</option></select></div>
     <div id="optrow"><div class="row" id="desktopLines"><b>한 화면 줄 수</b>
-      <label><input type="radio" name="lines" value="5"> 5줄</label>
+      <label><input type="radio" name="lines" value="5" checked> 5줄</label>
       <label><input type="radio" name="lines" value="6"> 6줄</label>
-      <label><input type="radio" name="lines" value="7" checked> 7줄</label></div>
+      <label><input type="radio" name="lines" value="7"> 7줄</label></div>
       <input type="radio" name="lines" value="m" aria-label="모바일 자동 줄 수" hidden>
       <label id="skipParenWrap" class="paren-opt" title="원고의 ( ) 또는 （ ） 안에 있는 글은 프롬프터에 넣지 않습니다. (요 3:16) 같은 성경 구절 표기는 남깁니다."><input type="checkbox" id="skipParen"> ( ) 안의 글은 프롬프터에 넣지 않기</label>
       <span id="optnote">PC는 줄 수가 적을수록 글자가 커집니다. 모바일은 화면 크기에 맞춥니다.</span>
@@ -198,7 +198,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <div class="control-group"><button id="mic" title="현재 화면에서 음성으로 원고를 따라갑니다. M으로 켜고 끕니다.">마이크 켜기 (M)</button><button id="tts">읽어주기</button><span id="ttsRateControls" class="control-group" role="group" aria-label="읽기 속도" hidden><span>읽기 속도</span><button id="ttsRateMinus" type="button" aria-label="읽기 속도 줄이기">−</button><output id="ttsRateInline" aria-live="polite">1.0</output><button id="ttsRatePlus" type="button" aria-label="읽기 속도 높이기">＋</button></span></div>
     <div class="control-group"><button id="prev" aria-label="이전 쪽">◀</button><span id="pg">1 / 1</span><button id="find">검색</button><button id="next" aria-label="다음 쪽">▶</button></div>
     <div class="control-group view-switch" role="group" aria-label="원고 보기"><button id="viewSingle" aria-pressed="true">한 장</button><button id="viewMultiple" aria-pressed="false">여러 장</button><button id="viewScroll" aria-pressed="false" title="현재 창에서 원고를 부드럽게 스크롤합니다">스크롤 보기</button></div>
-    <div class="control-group"><label id="speedOptWrap" title="마이크를 켰을 때 오른쪽 위에 말하는 속도(현수 목소리=100)를 띄웁니다"><input type="checkbox" id="speedOpt" checked>속도<span class="wide"> 표시</span></label><label id="dimOptWrap"><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label></div>
+    <div class="control-group"><label id="pageNumOptWrap" title="원고에 적힌 쪽 번호를 왼쪽 위에 크게 빨간색으로 띄웁니다(원고에 쪽 번호가 있을 때)"><input type="checkbox" id="pageNumOpt" checked>쪽</label><label id="speedOptWrap" title="마이크를 켰을 때 오른쪽 위에 말하는 속도(현수 목소리=100)를 띄웁니다"><input type="checkbox" id="speedOpt" checked>속도<span class="wide"> 표시</span></label><label id="dimOptWrap"><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label></div>
     <div class="control-group"><button id="note">발표 메모</button><button id="edit">편집 (E)</button><button id="save">저장</button><button id="savePptx" title="쪽마다 슬라이드 한 장인 PPT(PPTX) 파일로 저장합니다">PPT 저장</button><button id="openf">열기</button></div>
     <label hidden id="labOptWrap" title="줄 간격을 좁히고 다음 장 첫 줄을 하단에 표시합니다"><input type="checkbox" id="labNextLine"> 실험실 · 다음 장 첫 줄</label>
     <button id="more" aria-expanded="false" aria-controls="moreTools">더보기</button>
@@ -930,7 +930,7 @@ function scrubTofu(){
   window.__tofu=bad;
 }
 let LINES=5, pending=null;
-const chosenMode=()=>{const r=document.querySelector('input[name=lines]:checked');return r?r.value:'7'};
+const chosenMode=()=>{const r=document.querySelector('input[name=lines]:checked');return r?r.value:'5'};
 const chosenLines=()=>{const m=chosenMode();return m==='m'?MOBILE_LINES:+m};
 /* ---------- 프롬프터 규칙으로 쪽 나누기 ---------- */
 // 폭: 한글·한자·전각은 1, 그 밖(영문·숫자·따옴표·부호)은 0.5. 한 줄은 17.5 이하, 줄 길이는 12.5 안팎으로 맞춘다
@@ -2143,7 +2143,7 @@ if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 <script src="slide-layout.js?v=20261016-6"></script>
 <script src="smooth-scroll.js?v=20261017-line1"></script>
 <script src="scroll-view.js?v=20261020-phone2"></script>
-<script src="display-screens.js?v=20261017-screen1"></script><script src="workspace.js?v=20261020-white1"></script>
+<script src="display-screens.js?v=20261017-screen1"></script><script src="workspace.js?v=20261021-pn1"></script>
 <script src="overview.js?v=20261017-local1"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
 <script src="extras.js?v=20261019-nolab1"></script>
