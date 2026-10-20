@@ -148,9 +148,9 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     </div>
     <div class="mode-row"><label for="layoutMode">화면 구성</label><select id="layoutMode"><option value="desktop">PC · 큰 화면</option><option value="mobile">모바일 · 세로 화면</option></select></div>
     <div id="optrow"><div class="row" id="desktopLines"><b>한 화면 줄 수</b>
-      <label><input type="radio" name="lines" value="5" checked> 5줄</label>
+      <label><input type="radio" name="lines" value="5"> 5줄</label>
       <label><input type="radio" name="lines" value="6"> 6줄</label>
-      <label><input type="radio" name="lines" value="7"> 7줄</label></div>
+      <label><input type="radio" name="lines" value="7" checked> 7줄</label></div>
       <input type="radio" name="lines" value="m" aria-label="모바일 자동 줄 수" hidden>
       <label id="skipParenWrap" class="paren-opt" title="원고의 ( ) 또는 （ ） 안에 있는 글은 프롬프터에 넣지 않습니다. (요 3:16) 같은 성경 구절 표기는 남깁니다."><input type="checkbox" id="skipParen"> ( ) 안의 글은 프롬프터에 넣지 않기</label>
       <span id="optnote">PC는 줄 수가 적을수록 글자가 커집니다. 모바일은 화면 크기에 맞춥니다.</span>
@@ -930,7 +930,7 @@ function scrubTofu(){
   window.__tofu=bad;
 }
 let LINES=5, pending=null;
-const chosenMode=()=>{const r=document.querySelector('input[name=lines]:checked');return r?r.value:'5'};
+const chosenMode=()=>{const r=document.querySelector('input[name=lines]:checked');return r?r.value:'7'};
 const chosenLines=()=>{const m=chosenMode();return m==='m'?MOBILE_LINES:+m};
 /* ---------- 프롬프터 규칙으로 쪽 나누기 ---------- */
 // 폭: 한글·한자·전각은 1, 그 밖(영문·숫자·따옴표·부호)은 0.5. 한 줄은 17.5 이하, 줄 길이는 12.5 안팎으로 맞춘다

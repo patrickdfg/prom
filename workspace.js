@@ -31,7 +31,7 @@
   };
   $('layoutMode').onchange = () => {
     const mobile = $('layoutMode').value === 'mobile';
-    const r = document.querySelector(`input[name=lines][value="${mobile ? 'm' : '5'}"]`); if(r) r.checked = true;
+    const r = document.querySelector(`input[name=lines][value="${mobile ? 'm' : '7'}"]`); if(r) r.checked = true;
     $('desktopLines').hidden = mobile;
   };
   $('layoutMode').value = chosenMode() === 'm' ? 'mobile' : 'desktop';
@@ -343,6 +343,7 @@
       applyMetadata();noteEditing=false;noteAnchor=null;noteBox=null;activeNote=null;$('note').textContent='발표 메모';syncTheme();
       menu.hidden=true; $('more').setAttribute('aria-expanded','false');
       dirty=false; render(); scheduleSave();
+      if(!MOBILE&&!localScroll)$('viewScroll').click();   // 새로 만들 때는 스크롤 보기가 기본(저장본 복원은 그대로)
     },
     render() {
       syncPresentationMode();

@@ -10,10 +10,10 @@ window.PromScrollView=class {
   }
   static getScale(){try{const n=Number(localStorage.getItem('promScrollTextScale'));if(n>=60&&n<=180)return n;}catch(_){}return this.zoom||100;}
   static setScale(value){const n=Math.max(60,Math.min(180,Math.round(Number(value)/10)*10||100));this.zoom=n;try{localStorage.setItem('promScrollTextScale',String(n));}catch(_){}return n;}
-  static getAnchor(){try{const n=localStorage.getItem("promScrollAnchor");if(n!==null&&Number(n)>=.15&&Number(n)<=.5)return Number(n);}catch(_){}return .35;}
-  static setAnchor(value){const n=Math.max(.15,Math.min(.5,Number(value)||.35));try{localStorage.setItem("promScrollAnchor",String(n));}catch(_){}return n;}
-  static getSpacing(){try{const n=Number(localStorage.getItem("promScrollSpacing"));if(n>=80&&n<=140)return n;}catch(_){}return 100;}
-  static setSpacing(value){const n=Math.max(80,Math.min(140,Number(value)||100));try{localStorage.setItem("promScrollSpacing",String(n));}catch(_){}return n;}
+  static getAnchor(){try{const n=localStorage.getItem("promScrollAnchor");if(n!==null&&Number(n)>=.15&&Number(n)<=.5)return Number(n);}catch(_){}return .2;}
+  static setAnchor(value){const n=Math.max(.15,Math.min(.5,Number(value)||.2));try{localStorage.setItem("promScrollAnchor",String(n));}catch(_){}return n;}
+  static getSpacing(){try{const n=Number(localStorage.getItem("promScrollSpacing"));if(n>=80&&n<=140)return n;}catch(_){}return 80;}
+  static setSpacing(value){const n=Math.max(80,Math.min(140,Number(value)||80));try{localStorage.setItem("promScrollSpacing",String(n));}catch(_){}return n;}
   constructor(host){this.host=host;this.key='';this.rows=[];this.gaps=[];this.position='';this.layout='';}
   currentRow(data){
     const spoken=this.rows.filter(r=>{const range=data.ranges?.[r.pi]?.[r.li];return range&&range[1]>range[0];});
