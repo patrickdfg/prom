@@ -73,6 +73,13 @@ window.PromScrollView=class {
       flow.style.fontSize=(metrics.font*scale)+'px';
       for(const row of this.rows)row.el.style.height=this.pitch+'px';
       for(const gap of this.gaps)gap.style.height=this.pitch+'px';
+      // 세로 폰: 긴 줄만 따로 줄이면 줄마다 글자 크기가 달라 보인다. 줄 95%가 폭에 들어가는 한 가지 크기로 맞춘다.
+      if(height>w*1.1&&this.rows.length){
+        for(const row of this.rows)row.wrap.style.transform='';
+        const ratios=this.rows.map(r=>{const width=r.wrap.scrollWidth,max=r.el.clientWidth;return width>0&&max>0?max/width:1;}).sort((a,b)=>a-b);
+        const fit=Math.max(.6,Math.min(1,ratios[Math.floor(ratios.length*.05)]));
+        if(fit<1){flow.style.fontSize=(metrics.font*scale*fit)+'px';this.pitch*=fit;for(const row of this.rows)row.el.style.height=this.pitch+'px';for(const gap of this.gaps)gap.style.height=this.pitch+'px';}
+      }
       for(const row of this.rows){row.wrap.style.transform='';const width=row.wrap.scrollWidth,max=row.el.clientWidth;if(width>max&&max>0)row.wrap.style.transform=`scale(${max/width})`;}
     }
     this.host.classList.toggle('scroll-dark',data.dark);
