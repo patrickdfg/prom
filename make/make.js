@@ -282,6 +282,8 @@ $('makeRun').onclick=async()=>{
     try{result=await B.generate(project,opts);}
     catch(e){if(!opts.allText&&/찾지 못했습니다/.test(e.message)){result=await B.generate(project,{...opts,allText:true});$('makeAll').checked=true;toast('원고에 색 표시가 없어 원고 전체로 만들었습니다.',5000);}else throw e;}
     const woven=rec?.fixedSlides?.length?CaptionPairTemplate.weave(rec.fixedSlides,result.slides,result.links):result;
+    // 레이아웃에 따라 960×540(앱 기본)·1280×720(불러온 PPT)이 섞일 수 있어, 만든 슬라이드는 모두 1920×1080으로 맞춘다.
+    CaptionSize.unify(woven.slides,1920,1080);
     deck={...project,slides:woven.slides,links:woven.links,deckName:stem(f.name)+'_자막.pptx'};
     renderGrid(deck.slides);$('makeDownload').disabled=false;
     status('makeStatus',`${deck.slides.length}장을 만들었습니다${rec?` (템플릿: ${rec.name})`:''}. 확인 후 PPTX 다운로드를 누르세요.`);

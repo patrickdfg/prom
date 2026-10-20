@@ -9,7 +9,7 @@ function textXml(shape){const pad=shape.padding||[0,0,0,0];return '<p:txBody><a:
  let runs='';for(const r of p.runs||[]){const parts=String(/^\u00a0+$/.test(r.text||'')?' '.repeat(r.text.length):r.text||'').split('\n');parts.forEach((t,i)=>{if(i)runs+='<a:br>'+rpr(r)+'</a:br>';if(t)runs+='<a:r>'+rpr(r)+'<a:t xml:space="preserve">'+esc(t)+'</a:t></a:r>';});}
  return '<a:p><a:pPr algn="'+({center:'ctr',right:'r',justify:'just'}[p.align]||'l')+'" marL="'+emu(p.marginLeft)+'" marR="'+emu(p.marginRight)+'" indent="'+emu(p.indent)+'">'+spacing('lnSpc',p.lineSpacing)+spacing('spcBef',p.spaceBefore)+spacing('spcAft',p.spaceAfter)+'</a:pPr>'+runs+'<a:endParaRPr lang="ko-KR" sz="'+Math.round((p.defaultSize||p.runs?.[0]?.size||30)*75)+'"/></a:p>';}).join('')+'</p:txBody>';}
 async function create(project){
- if(!project.slides.length)throw Error('내려받을 자막이 없습니다.');const z=new JSZip(),types=[],media=new Map();let mediaCount=0;const width=project.slides[0].width,height=project.slides[0].height;
+ if(!project.slides.length)throw Error('내려받을 자막이 없습니다.');const z=new JSZip(),types=[],media=new Map();let mediaCount=0;const width=project.slides[0].width,height=project.slides[0].height;if(window.CaptionSize)for(const s of project.slides)if(s.width!==width||s.height!==height)CaptionSize.fit(s,width,height);   // 크기가 섞여 있으면 첫 슬라이드 크기에 비율대로 맞춘다
  // 도형 하나를 XML로. 슬라이드와 레이아웃이 같이 쓴다. rels에 그림 연결을 더한다.
  async function shapeXml(s,id,rels){let shapes='';
    const nv='<p:nvSpPr><p:cNvPr id="'+id+'" name="'+(s.type==='text'?'Text ':'Shape ')+id+'"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>';
