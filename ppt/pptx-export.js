@@ -9,7 +9,7 @@ function textXml(shape){const pad=shape.padding||[0,0,0,0];return '<p:txBody><a:
  let runs='';for(const r of p.runs||[]){const parts=String(/^\u00a0+$/.test(r.text||'')?' '.repeat(r.text.length):r.text||'').split('\n');parts.forEach((t,i)=>{if(i)runs+='<a:br>'+rpr(r)+'</a:br>';if(t)runs+='<a:r>'+rpr(r)+'<a:t xml:space="preserve">'+esc(t)+'</a:t></a:r>';});}
  return '<a:p><a:pPr algn="'+({center:'ctr',right:'r',justify:'just'}[p.align]||'l')+'" marL="'+emu(p.marginLeft)+'" marR="'+emu(p.marginRight)+'" indent="'+emu(p.indent)+'">'+spacing('lnSpc',p.lineSpacing)+spacing('spcBef',p.spaceBefore)+spacing('spcAft',p.spaceAfter)+'</a:pPr>'+runs+'<a:endParaRPr lang="ko-KR" sz="'+Math.round((p.defaultSize||p.runs?.[0]?.size||30)*75)+'"/></a:p>';}).join('')+'</p:txBody>';}
 async function create(project){
- if(!project.slides.length)throw Error('내려받을 자막이 없습니다.');const z=new JSZip(),types=[],media=new Map();let mediaCount=0;const width=project.slides[0].width,height=project.slides[0].height;if(window.CaptionSize)for(const s of project.slides)if(s.width!==width||s.height!==height)CaptionSize.fit(s,width,height);   // 크기가 섞여 있으면 첫 슬라이드 크기에 비율대로 맞춘다
+ if(!project.slides.length)throw Error('내려받을 자막이 없습니다.');const z=new JSZip(),types=[],media=new Map();let mediaCount=0;const width=project.exportSize?.width||project.slides[0].width,height=project.exportSize?.height||project.slides[0].height;CaptionSize.unify(project.slides,width,height);   // 지정된 출력 크기(없으면 첫 장)로 맞추고 전체 배경을 채운다
  // 도형 하나를 XML로. 슬라이드와 레이아웃이 같이 쓴다. rels에 그림 연결을 더한다.
  async function shapeXml(s,id,rels){let shapes='';
    const nv='<p:nvSpPr><p:cNvPr id="'+id+'" name="'+(s.type==='text'?'Text ':'Shape ')+id+'"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>';
@@ -25,14 +25,14 @@ async function create(project){
  const srcIds=new Map(),srcId=src=>{if(!srcIds.has(src))srcIds.set(src,srcIds.size);return srcIds.get(src);};
  const layouts=new Map(),layoutNames=window.CaptionBuilder?.layouts||{};
  function layoutFor(slide){let k=0;while(k<(slide.shapes||[]).length&&drawable(slide.shapes[k]))k++;
-  const decor=slide.shapes.slice(0,k).map(s=>{const c=structuredClone(s);if(c.type==='image'&&c.background&&!c.manualGeometry){c.x=0;c.y=0;c.w=slide.width;c.h=slide.height;}return c;});
+  const decor=slide.shapes.slice(0,k).map(s=>{const c=structuredClone(s);Object.assign(c,CaptionSize.backgroundBox(c,slide));return c;});
   const key=JSON.stringify([slide.background||'#00ff00',decor.map(s=>[s.type,Math.round(s.x),Math.round(s.y),Math.round(s.w),Math.round(s.h),s.rotate||0,s.src?srcId(s.src):'',s.color||'',s.geom||'',s.line||''])]);
   if(!layouts.has(key)){const base=layoutNames[slide.editor?.layout]||'레이아웃';let name=base,n=2;const used=new Set([...layouts.values()].map(l=>l.name));while(used.has(name))name=base+' '+n++;layouts.set(key,{index:layouts.size+1,name,decor,background:slide.background||'#00ff00'});}
   return {count:k,layout:layouts.get(key)};}
 
  for(let i=0;i<project.slides.length;i++){
   const slide=project.slides[i],fitScales=[];const host=document.createElement('div');host.className='slide-host';Object.assign(host.style,{position:'fixed',left:'-10000px',top:'0',width:slide.width+'px',height:slide.height+'px',opacity:'0',pointerEvents:'none'});document.body.append(host);try{CaptionRender.show(host,slide);await document.fonts.ready;for(const shape of host.querySelectorAll('.slide-object'))if(shape.classList.contains('slide-text'))fitScales.push(Number(shape.querySelector('.slide-text-frame')?.dataset.scale)||1);}finally{CaptionRender.release(host);host.remove();}let textIndex=0;const own=layoutFor(slide),rels=[{Id:'rId1',Type:R+'/slideLayout',Target:'../slideLayouts/slideLayout'+own.layout.index+'.xml'}];let shapes='',id=2;
-  for(const [si,original] of (slide.shapes||[]).entries()){if(si<own.count)continue;const s=structuredClone(original);if(s.type==='text'){const scale=fitScales[textIndex++]||1;if(scale<.999)for(const p of s.paragraphs||[]){for(const r of p.runs||[]){r.size=(r.size||p.defaultSize||30)*scale;if(r.spacing)r.spacing*=scale;}if(p.defaultSize)p.defaultSize*=scale;for(const key of ['marginLeft','marginRight','indent'])if(p[key])p[key]*=scale;for(const key of ['lineSpacing','spaceBefore','spaceAfter'])if(p[key]?.unit==='px')p[key].value*=scale;}}if(!(s.w>0&&s.h>0))continue;if(s.type==='image'&&s.background&&!s.manualGeometry){s.x=0;s.y=0;s.w=slide.width;s.h=slide.height;}
+  for(const [si,original] of (slide.shapes||[]).entries()){if(si<own.count)continue;const s=structuredClone(original);if(s.type==='text'){const scale=fitScales[textIndex++]||1;if(scale<.999)for(const p of s.paragraphs||[]){for(const r of p.runs||[]){r.size=(r.size||p.defaultSize||30)*scale;if(r.spacing)r.spacing*=scale;}if(p.defaultSize)p.defaultSize*=scale;for(const key of ['marginLeft','marginRight','indent'])if(p[key])p[key]*=scale;for(const key of ['lineSpacing','spaceBefore','spaceAfter'])if(p[key]?.unit==='px')p[key].value*=scale;}}if(!(s.w>0&&s.h>0))continue;Object.assign(s,CaptionSize.backgroundBox(s,slide));
    shapes+=await shapeXml(s,id,rels);
 id++;
   }

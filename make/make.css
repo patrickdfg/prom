@@ -43,6 +43,7 @@ details.more{margin:4px 0 10px}details.more summary{cursor:pointer;color:var(--a
 .preview .pick{position:absolute;outline:2px dashed #ffcc00;pointer-events:none;z-index:3}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#21262d;border:1px solid var(--line);padding:10px 16px;border-radius:10px;z-index:9;max-width:90vw}
 /* 슬라이드 렌더 (ppt/style.css와 같은 규칙) */
+.slide-host{position:relative;overflow:hidden;background:#00ff00;aspect-ratio:16/9;isolation:isolate}
 .slide-canvas{position:absolute;left:50%;top:50%;transform-origin:center;overflow:hidden}
 .slide-object{position:absolute;overflow:hidden;transform-origin:center}
 .slide-object img{width:100%;height:100%;object-fit:fill}

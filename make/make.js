@@ -4,7 +4,7 @@
 const $=id=>document.getElementById(id),B=CaptionBuilder,clone=x=>structuredClone(x);
 const DB='prom-ppt-generation-templates',LAST='promMakeTemplate';
 const DEFAULT_OPTIONS={title:'',date:'',greenLayout:'word',cumulative:true,allText:false};
-let selected=-1,deckTemplate=null;   // 편집 창: 고른 슬라이드 번호, 이 덱을 만든 템플릿 디자인(편집 창이 새 장면을 만들 때 같은 템플릿을 쓰게)
+let selected=-1,deckTemplate=null,deckTemplateRec=null;   // 편집 창: 고른 슬라이드 번호, 이 덱을 만든 템플릿 디자인(편집 창이 새 장면을 만들 때 같은 템플릿을 쓰게)
 let records=[],busy=false,deck=null,draft=null,draftId='',layoutKey='caption',shapeIx=0,dirty=false;
 
 /* ---------- 공통 ---------- */
@@ -289,8 +289,8 @@ $('makeRun').onclick=async()=>{
     catch(e){if(!opts.allText&&/찾지 못했습니다/.test(e.message)){result=await B.generate(project,{...opts,allText:true});$('makeAll').checked=true;toast('원고에 색 표시가 없어 원고 전체로 만들었습니다.',5000);}else throw e;}
     const woven=rec?.fixedSlides?.length?CaptionPairTemplate.weave(rec.fixedSlides,result.slides,result.links):result;
     // 크기(960×540·1280×720 혼재)는 편집 창이 장면을 다시 만들 때 어긋나지 않도록 여기서 바꾸지 않고, PPTX로 내려받을 때 모두 1920×1080으로 맞춘다.
-    deck={...project,slides:woven.slides,links:woven.links,deckName:stem(f.name)+'_자막.pptx'};deckTemplate=rec?.design||null;selected=-1;
-    renderGrid(deck.slides);$('makeDownload').disabled=false;$('makeEditTools').hidden=false;
+    deck={...project,slides:woven.slides,links:woven.links,deckName:stem(f.name)+'_자막.pptx',generationTemplate:rec?structuredClone(rec):null,exportSize:{width:1920,height:1080}};deckTemplate=rec?.design||null;deckTemplateRec=rec||null;selected=-1;
+    renderGrid(deck.slides);$('makeDownload').disabled=false;$('makeToLive').disabled=false;$('makeEditTools').hidden=false;
     status('makeStatus',`${deck.slides.length}장을 만들었습니다${rec?` (템플릿: ${rec.name})`:''}. 확인 후 PPTX 다운로드를 누르세요.`);
   }catch(e){status('makeStatus',e.message||String(e),true);}
   finally{busy=false;$('makeRun').disabled=false;}
@@ -300,6 +300,42 @@ $('makeDownload').onclick=async()=>{
   try{const out=structuredClone(deck);CaptionSize.unify(out.slides,1920,1080);const blob=await CaptionPptx.create(out),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=deck.deckName;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);status('makeStatus',`${deck.deckName} 를 받았습니다.`);}
   catch(e){status('makeStatus',e.message||String(e),true);}
   finally{busy=false;$('makeDownload').disabled=false;}
+};
+
+/* ---------- 예배 PPT(방송용 PPT)로 전환 ----------
+   방송용 PPT는 열 때 이 기기 저장소(IndexedDB 'prom-ppt-caption' · projects · 'last')의 작업을 불러온다. 지금 만든 덱(고친 내용 포함)·원고·연결·템플릿을
+   그 형식으로 써 넣고 방송용 PPT를 열면 그대로 이어진다. 방송용 PPT에 저장돼 있던 작업이 있으면 먼저 묻고, 덮어쓰기 전에 'beforeMake'로 한 벌 보관한다. */
+const LIVE_DB='prom-ppt-caption';
+function liveDb(){return new Promise((ok,no)=>{const r=indexedDB.open(LIVE_DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('projects');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error);});}
+function liveReq(db,mode,fn){return new Promise((ok,no)=>{const tx=db.transaction('projects',mode),r=fn(tx.objectStore('projects'));tx.oncomplete=()=>ok(r?.result);tx.onerror=()=>no(tx.error);tx.onabort=()=>no(tx.error);});}
+// 방송용 PPT의 저장 방식(같은 그림은 한 번만)과 같게 묶는다
+function packLive(value){const p=structuredClone(value),assets={},seen=new Map();for(const slide of p.slides)for(const shape of slide.shapes||[])if(shape.type==='image'&&/^data:image\//.test(shape.src||'')){let key=seen.get(shape.src);if(!key){key='image'+seen.size;seen.set(shape.src,key);assets[key]=shape.src;}shape.src='@prom:'+key;}if(seen.size)p.assets=assets;return p;}
+$('makeToLive').onclick=async()=>{
+  if(!deck||busy){toast('먼저 PPT를 만드세요.');return;}
+  busy=true;$('makeToLive').disabled=true;status('makeStatus','방송용 PPT로 넘기는 중…');
+  let db;
+  try{
+    db=await liveDb();
+    const old=await liveReq(db,'readonly',s=>s.get('last'));
+    if(old&&(old.slides?.length||old.lines?.length||old.standby)){
+      const label=(old.scriptName||old.deckName||'이름 없는 작업')+` · 자막 ${old.slides?.length||0}장`;
+      if(!confirm(`방송용 PPT에 이 기기에 저장된 작업이 있습니다(${label}).
+지금 만든 PPT로 바꿀까요? 이전 작업은 이 기기에 한 벌 보관해 둡니다.`)){status('makeStatus','넘기기를 취소했습니다.');return;}
+      // 백업과 새 작업 저장은 아래의 한 트랜잭션에서 함께 처리한다.
+    }
+    const project={version:1,lines:deck.lines,richLines:deck.richLines,scriptName:deck.scriptName||'',deckName:deck.deckName||'',slides:structuredClone(deck.slides),links:structuredClone(deck.links),layoutMasters:{},
+      generationTemplate:deckTemplateRec?structuredClone(deckTemplateRec):null,
+      exportSize:{width:1920,height:1080}};   // 방송용 PPT에서 PPTX로 내려받을 때도 1920×1080
+    const stamp=crypto.randomUUID(),packed=packLive({...project,makeTransferId:stamp});
+    await new Promise((ok,no)=>{const tx=db.transaction('projects','readwrite'),store=tx.objectStore('projects'),r=store.get('last');
+      r.onsuccess=()=>{const previous=r.result;if(previous&&(previous.slides?.length||previous.lines?.length||previous.standby))store.put(previous,'beforeMake');store.put(packed,'last');};
+      tx.oncomplete=ok;tx.onerror=()=>no(tx.error);tx.onabort=()=>no(tx.error);
+    });
+    try{localStorage.setItem('prom-ppt-make-transfer',stamp);}catch{}
+    status('makeStatus','편집 내용과 원고 연결을 저장했습니다. 방송용 PPT를 엽니다.');
+    window.location.assign('../ppt/?from=make');
+  }catch(e){status('makeStatus','넘기지 못했습니다: '+(e.message||e)+' (저장 공간이 부족할 수 있습니다)',true);}
+  finally{try{db?.close()}catch(_){}busy=false;$('makeToLive').disabled=false;}
 };
 
 /* ---------- 지침 수정 창 ---------- */

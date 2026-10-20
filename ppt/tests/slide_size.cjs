@@ -24,7 +24,7 @@ const b=S.fit(mk(1280,720));assert.equal(b.shapes[1].x,150);assert.equal(b.shape
 // 이미 같은 크기면 그대로
 const c=mk(1920,1080),before=JSON.stringify(c);S.fit(c);assert.equal(JSON.stringify(c),before,'같은 크기는 건드리지 않음');
 // 비율이 다르면(4:3) 작은 쪽에 맞추고 가운데에 둔다
-const d=S.fit(mk(1024,768));assert.equal(d.width,1920);assert.equal(d.height,1080);const k=1080/768;assert.ok(Math.abs(d.shapes[0].w-1024*k)<1e-9);assert.ok(Math.abs(d.shapes[0].x-(1920-1024*k)/2)<1e-9,'가운데 정렬');
+const d=S.fit(mk(1024,768));assert.equal(d.width,1920);assert.equal(d.height,1080);const k=1080/768;assert.deepEqual([d.shapes[0].x,d.shapes[0].y,d.shapes[0].w,d.shapes[0].h],[0,0,1920,1080],'4:3 전체 배경도 녹색 여백 없이 채움');assert.equal(d.shapes[1].x,(1920-1024*k)/2+100*k,'글자는 비율 유지·가운데 정렬');
 // 섞인 덱 한꺼번에
 const deck=[mk(1280,720),mk(960,540),mk(1920,1080),mk(960,540)];S.unify(deck);assert.ok(deck.every(s=>s.width===1920&&s.height===1080));
 // 첫 슬라이드 크기에 맞추기(내보내기 보호)
@@ -32,3 +32,14 @@ const e=[mk(1280,720),mk(960,540)];S.toFirst(e);assert.ok(e.every(s=>s.width===1
 // 이상한 값(크기 없음)은 던지지 않고 기본 크기로
 const f={shapes:[]};S.fit(f);assert.equal(f.width,1920);
 console.log('PASS slide size: 960·1280·4:3 → 1920×1080, 길이 값만 곱하고 비율·개수·색은 유지');
+
+const bg={type:'image',x:12,y:6,w:1243,h:699},scene={width:1280,height:720};
+assert.equal(S.fullBleed(bg,scene),true);
+assert.equal(S.fullBleed({...bg,manualGeometry:true},scene),false,'수동 배치 그림은 유지');
+assert.equal(S.fullBleed({...bg,manualGeometry:true,background:true},scene),true,'명시적 전체 배경은 항상 채움');
+assert.equal(S.fullBleed({...bg,y:540,h:171},scene),false,'하단 자막판은 유지');
+assert.equal(S.fullBleed({...bg,w:200,h:200},scene),false,'인물·로고는 유지');
+assert.equal(S.fullBleed({...bg,rotate:17},scene),false,'회전 장식은 유지');
+const shifted={width:1280,height:720,shapes:[bg,{...bg,y:540,h:171}]};S.fit(shifted);assert.deepEqual([bg.x,bg.y,bg.w,bg.h],[0,0,1920,1080]);assert.equal(shifted.shapes[1].y,810);
+const once=JSON.stringify(shifted);S.fit(shifted);assert.equal(JSON.stringify(shifted),once,'반복 출력 때 크기 중복 확대 없음');
+console.log('PASS backgrounds fill all edges, lower thirds/logos/manual placement preserved, repeated export stable');

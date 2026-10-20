@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PPT 자동 제작</title>
 <script src="../ui-theme.js?v=20261021-family1"></script>
-<link rel="stylesheet" href="make.css?v=20261021-instr1">
+<link rel="stylesheet" href="make.css?v=20261021-fill1">
 </head>
 <body>
 <header class="top">
@@ -50,6 +50,7 @@
       <div class="row">
         <button id="makeRun" class="primary">만들기</button>
         <button id="makeDownload" disabled>PPTX 다운로드</button>
+        <button id="makeToLive" disabled title="지금 만든 PPT(고친 내용 포함)를 방송용 PPT로 그대로 넘겨 엽니다 (기존 작업은 백업)">예배 PPT로 전환</button>
       </div>
       <p id="makeStatus" class="status" aria-live="polite"></p>
     </div>
@@ -181,14 +182,13 @@
 <script src="../ppt/hwp-reader.js?v=11"></script>
 <script src="../ppt/core.js?v=20261020-fold1"></script>
 <script src="../ppt/importers.js?v=20261017-textbox2"></script>
-<script src="../ppt/render.js?v=20261020-geom1"></script>
+<script src="../ppt/slide-size.js?v=20261021-fill1"></script><script src="../ppt/render.js?v=20261021-fill1"></script>
 <script src="../ppt/builtin-templates.js?v=20261021-tpl2"></script>
 <script src="../ppt/layout-masters.js?v=20261017-master2"></script>
 <script src="../ppt/builder.js?v=20261020-speaker1"></script>
-<script src="../ppt/slide-size.js?v=20261021-size1"></script>
-<script src="../ppt/pptx-export.js?v=20261021-size1"></script>
+<script src="../ppt/pptx-export.js?v=20261021-fill1"></script>
 <script src="../ppt/pair-template.js?v=20261018-proverb1"></script>
-<script src="make.js?v=20261021-instr1"></script>
+<script src="make.js?v=20261021-fill1"></script>
 <script src="../ppt/font-picker.js?v=20261017-font1"></script>
 <script src="../ppt/editor.js?v=20261021-edit1"></script>
 <script src="../ppt/drive-config.js?v=20261020-sync1"></script>

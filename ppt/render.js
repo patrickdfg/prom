@@ -5,9 +5,8 @@ function show(host,slide,green='#00ff00'){
  if(!slide)return;const textFits=[],canvas=document.createElement('div');canvas.className='slide-canvas';canvas.style.width=slide.width+'px';canvas.style.height=slide.height+'px';canvas.style.background=slide.background||green;host.appendChild(canvas);
  for(const shape of slide.shapes||[]){const el=document.createElement('div');el.className='slide-object';Object.assign(el.style,{left:shape.x+'px',top:shape.y+'px',width:shape.w+'px',height:shape.h+'px',transform:shape.rotate?`rotate(${shape.rotate}deg)`:''});
   if(shape.type==='image'){
-   const edgeX=slide.width*.1,edgeY=slide.height*.1;
-   // A nearly full-slide background must cover the green canvas at every edge.
-   if(!shape.manualGeometry&&(shape.background||(!shape.rotate&&Math.abs(shape.x)<=edgeX&&Math.abs(shape.y)<=edgeY&&Math.abs(slide.width-shape.x-shape.w)<=edgeX&&Math.abs(slide.height-shape.y-shape.h)<=edgeY))){Object.assign(el.style,{left:'0px',top:'0px',width:slide.width+'px',height:slide.height+'px'});el.dataset.fullBleed='true';}
+   // PPTX 내보내기와 같은 기준으로 배경 가장자리를 채운다.
+   if(CaptionSize.fullBleed(shape,slide)){Object.assign(el.style,{left:'0px',top:'0px',width:slide.width+'px',height:slide.height+'px'});el.dataset.fullBleed='true';}
    if(!/^data:image\/(png|jpeg|gif|webp|bmp|svg\+xml);base64,/.test(shape.src||''))continue;const img=document.createElement('img');img.src=shape.src;img.alt='';el.appendChild(img);}
   if(shape.type==='rect'){el.style.background=shape.color||'transparent';if(shape.geom==='ellipse')el.style.borderRadius='50%';else if(shape.geom==='roundRect')el.style.borderRadius=Math.min(shape.w,shape.h)*.1667+'px';if(shape.line?.width>0){el.style.boxSizing='border-box';el.style.border=shape.line.width+'px solid '+(shape.line.color||'#000000');}}
   if(shape.type==='text'){el.classList.add('slide-text');el.style.justifyContent=shape.anchor==='ctr'?'center':shape.anchor==='b'?'flex-end':'flex-start';el.style.padding=(shape.padding||[0,0,0,0]).map(n=>n+'px').join(' ');
@@ -42,7 +41,7 @@ function show(host,slide,green='#00ff00'){
    });
   }canvas.appendChild(el);
  }
- const fit=()=>{const scale=Math.min(host.clientWidth/slide.width,host.clientHeight/slide.height);canvas.style.transform=host.dataset.fill==='screen'?`translate(-50%,-50%) scale(${host.clientWidth/slide.width},${host.clientHeight/slide.height})`:`translate(-50%,-50%) scale(${scale})`;for(const fitText of textFits)fitText();};fit();const observer=new ResizeObserver(fit);observer.observe(host);const fontsDone=()=>{if(canvas.parentNode===host&&host.isConnected)fit();};document.fonts?.ready.then(fontsDone);document.fonts?.addEventListener('loadingdone',fontsDone);instances.set(host,{disconnect(){observer.disconnect();document.fonts?.removeEventListener('loadingdone',fontsDone);}});
+ const fit=()=>{const rect=host.getBoundingClientRect(),css=getComputedStyle(host),w=rect.width-(parseFloat(css.borderLeftWidth)||0)-(parseFloat(css.borderRightWidth)||0),h=rect.height-(parseFloat(css.borderTopWidth)||0)-(parseFloat(css.borderBottomWidth)||0),scale=Math.min(w/slide.width,h/slide.height);canvas.style.transform=host.dataset.fill==='screen'?`translate(-50%,-50%) scale(${w/slide.width},${h/slide.height})`:`translate(-50%,-50%) scale(${scale})`;for(const fitText of textFits)fitText();};fit();const observer=new ResizeObserver(fit);observer.observe(host);const fontsDone=()=>{if(canvas.parentNode===host&&host.isConnected)fit();};document.fonts?.ready.then(fontsDone);document.fonts?.addEventListener('loadingdone',fontsDone);instances.set(host,{disconnect(){observer.disconnect();document.fonts?.removeEventListener('loadingdone',fontsDone);}});
 }
 function release(host){instances.get(host)?.disconnect();for(const el of host.querySelectorAll('.slide-host'))instances.get(el)?.disconnect();}
 return {show,release};
