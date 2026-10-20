@@ -1,0 +1,136 @@
+<!doctype html>
+<!-- PPT 자동 제작: 원고·완성 PPT로 템플릿을 만들고, 마스터 레이아웃을 편집해 저장한 뒤, 한글 원고를 넣으면 방송용 PPT를 만든다 -->
+<html lang="ko" data-ui-toggle="header.top">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PPT 자동 제작</title>
+<script src="../ui-theme.js?v=20261020-ui3"></script>
+<link rel="stylesheet" href="make.css?v=20261020-make1">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><b>PROM</b><span>PPT 자동 제작</span></div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="make" aria-selected="true">① 만들기</button>
+    <button role="tab" data-tab="templates">② 템플릿</button>
+    <button role="tab" data-tab="master">③ 마스터 편집</button>
+  </nav>
+  <a class="back" href="../ppt/">방송용 PPT ↗</a>
+</header>
+
+<main>
+  <!-- ① 만들기 -->
+  <section id="tab-make" class="tab">
+    <div class="card">
+      <h2>한글 원고로 PPT 만들기</h2>
+      <label class="field">원고 (HWP · HWPX · DOCX · TXT)
+        <input id="makeScript" type="file" accept=".hwp,.hwpx,.docx,.txt">
+      </label>
+      <label class="field">템플릿
+        <select id="makeTemplate"></select>
+      </label>
+      <details class="more">
+        <summary>만들기 설정</summary>
+        <label class="field">표지 제목 (비워두면 표지 없음)<input id="makeTitle" type="text"></label>
+        <label class="field">표지 날짜·예배명<input id="makeDate" type="text"></label>
+        <label class="field">전체 화면 말씀의 기본 배경
+          <select id="makeGreen">
+            <option value="word">말씀 (예수님 배경)</option>
+            <option value="wordSpirit">성령 말씀 배경</option>
+            <option value="wordGod">하나님 말씀 배경</option>
+            <option value="wordSon">성자 말씀 배경</option>
+            <option value="wordTeacher">인물 없는 배경</option>
+          </select>
+        </label>
+        <label class="check"><input id="makeAll" type="checkbox"> 색 표시 없이 원고 전체로 만들기</label>
+        <label class="check"><input id="makeCumulative" type="checkbox" checked> 한 줄씩 누적해서 보이기</label>
+      </details>
+      <div class="row">
+        <button id="makeRun" class="primary">만들기</button>
+        <button id="makeDownload" disabled>PPTX 다운로드</button>
+      </div>
+      <p id="makeStatus" class="status" aria-live="polite"></p>
+    </div>
+    <div id="makeGrid" class="grid"></div>
+  </section>
+
+  <!-- ② 템플릿 -->
+  <section id="tab-templates" class="tab" hidden>
+    <div class="card">
+      <h2>저장된 템플릿</h2>
+      <div id="tplList" class="list"></div>
+      <p class="hint">템플릿은 이 컴퓨터의 크롬에 저장되며 방송용 PPT 앱과 함께 씁니다.</p>
+    </div>
+    <div class="card">
+      <h2>원고 + 완성 PPT로 새 템플릿</h2>
+      <p class="hint">같은 설교의 한글 원고와, 그 원고로 만든 완성 PPT를 넣으면 글꼴·크기·위치·배경을 배워 템플릿으로 저장합니다.</p>
+      <label class="field">한글 원고<input id="pairScript" type="file" accept=".hwp,.hwpx,.docx,.txt"></label>
+      <label class="field">완성 PPT<input id="pairDeck" type="file" accept=".pptx"></label>
+      <label class="field">템플릿 이름<input id="pairName" type="text" placeholder="예: 주일말씀"></label>
+      <div class="row"><button id="pairRun" class="primary">비교해서 템플릿 만들기</button></div>
+      <p id="pairStatus" class="status" aria-live="polite"></p>
+    </div>
+    <div class="card">
+      <h2>기본 디자인으로 새 템플릿</h2>
+      <p class="hint">완성 PPT 없이 기본 디자인에서 시작해 ③ 마스터 편집에서 직접 고칩니다.</p>
+      <label class="field">템플릿 이름<input id="blankName" type="text"></label>
+      <div class="row"><button id="blankRun">만들기</button></div>
+    </div>
+  </section>
+
+  <!-- ③ 마스터 편집 -->
+  <section id="tab-master" class="tab" hidden>
+    <div class="card">
+      <div class="row wrap">
+        <label class="field grow">템플릿<select id="mTemplate"></select></label>
+        <label class="field grow">레이아웃<select id="mLayout"></select></label>
+      </div>
+      <div id="mPreview" class="preview" title="요소를 끌어서 옮길 수 있습니다"></div>
+      <label class="field">미리보기 문구<textarea id="mSample" rows="2">미리보기 문구입니다. 실제 원고 글자로
+바뀌어 들어갑니다.</textarea></label>
+    </div>
+    <div class="card">
+      <label class="field">편집할 요소<select id="mShape"></select></label>
+      <div class="grid4">
+        <label class="field">가로 위치<input id="mX" type="number" step="1"></label>
+        <label class="field">세로 위치<input id="mY" type="number" step="1"></label>
+        <label class="field">너비<input id="mW" type="number" step="1" min="10"></label>
+        <label class="field">높이<input id="mH" type="number" step="1" min="10"></label>
+      </div>
+      <div id="mTextTools">
+        <div class="grid4">
+          <label class="field span2">글꼴<input id="mFont" list="mFonts" type="text"></label>
+          <label class="field">글자 크기(px)<input id="mSize" type="number" step="0.5" min="8"></label>
+          <label class="field">줄간격(배)<input id="mLine" type="number" step="0.05" min="0.8" max="3"></label>
+          <label class="field">글자색<input id="mColor" type="color"></label>
+          <label class="field">정렬
+            <select id="mAlign"><option value="left">왼쪽</option><option value="center">가운데</option><option value="right">오른쪽</option></select>
+          </label>
+          <label class="check"><input id="mBold" type="checkbox"> 굵게</label>
+        </div>
+        <datalist id="mFonts"></datalist>
+      </div>
+      <div class="row">
+        <button id="mSave" class="primary">템플릿에 저장</button>
+        <button id="mRevert">저장된 상태로 되돌리기</button>
+      </div>
+      <p id="mStatus" class="status" aria-live="polite"></p>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="../ppt/vendor.js?v=6"></script>
+<script src="../ppt/hwp-reader.js?v=11"></script>
+<script src="../ppt/core.js?v=20261020-fold1"></script>
+<script src="../ppt/importers.js?v=20261017-textbox2"></script>
+<script src="../ppt/render.js?v=20261018-pad1"></script>
+<script src="../ppt/layout-masters.js?v=20261017-master2"></script>
+<script src="../ppt/builder.js?v=20261020-break1"></script>
+<script src="../ppt/pptx-export.js?v=20261018-pad1"></script>
+<script src="../ppt/pair-template.js?v=20261018-proverb1"></script>
+<script src="make.js?v=20261020-make1"></script>
+</body>
+</html>

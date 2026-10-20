@@ -1,0 +1,52 @@
+/* PPT 자동 제작 화면 스타일 (어두운 기본, 밝게는 ui-theme.js가 반전) */
+@font-face{font-family:'PROM MaruBuri';src:url('https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Regular.woff2') format('woff2');font-weight:400;font-style:normal;font-display:block}
+@font-face{font-family:'PROM MaruBuri';src:url('https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Bold.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+:root{--bg:#0d1117;--card:#151b24;--line:#2a3442;--text:#e6edf3;--dim:#8b98a8;--accent:#2ea043;--accent2:#58a6ff;--danger:#f85149}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 "Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif}
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 16px;background:#0b0f15;border-bottom:1px solid var(--line)}
+.brand b{letter-spacing:.2em;font-size:18px}.brand span{margin-left:8px;color:var(--dim)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button{background:transparent;border:1px solid var(--line);color:var(--dim)}
+.tabs button[aria-selected="true"]{background:var(--card);color:var(--text);border-color:var(--accent2)}
+.back{margin-left:auto;color:var(--dim);text-decoration:none;font-size:13px}
+main{max-width:1100px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+h2{font-size:17px;margin:0 0 12px}
+.field{display:flex;flex-direction:column;gap:4px;margin:0 0 10px;font-size:13px;color:var(--dim)}
+.field input,.field select,.field textarea{font:inherit;color:var(--text);background:#0b0f15;border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+.field input[type=color]{padding:2px;height:38px}
+.check{display:flex;align-items:center;gap:8px;margin:6px 0 10px;font-size:14px}
+button{font:inherit;color:var(--text);background:#21262d;border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer}
+button:disabled{opacity:.45;cursor:default}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+button.danger{color:var(--danger)}
+.row{display:flex;gap:8px;align-items:flex-end;margin-top:6px}.row.wrap{flex-wrap:wrap}.grow{flex:1 1 220px}
+.status{min-height:1.5em;margin:10px 0 0;color:var(--dim);font-size:14px;white-space:pre-line}
+.status.error{color:var(--danger)}
+.hint{color:var(--dim);font-size:13px;margin:0 0 10px}
+details.more{margin:4px 0 10px}details.more summary{cursor:pointer;color:var(--accent2);margin-bottom:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.thumb{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#000}
+.thumb .host{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden}
+.thumb small{position:absolute;left:6px;top:4px;z-index:2;background:rgba(0,0,0,.6);color:#fff;padding:0 6px;border-radius:4px;font-size:12px}
+.list{display:flex;flex-direction:column;gap:8px}
+.tpl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px;border:1px solid var(--line);border-radius:8px}
+.tpl b{flex:1 1 160px}.tpl small{color:var(--dim);flex:1 1 100%}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:0 10px}.span2{grid-column:span 2}
+.preview{position:relative;width:100%;max-width:calc(56vh*16/9);margin-left:auto;margin-right:auto;aspect-ratio:16/9;overflow:hidden;border-radius:8px;border:1px solid var(--line);margin-bottom:10px;touch-action:none}
+.preview .pick{position:absolute;outline:2px dashed #ffcc00;pointer-events:none;z-index:3}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#21262d;border:1px solid var(--line);padding:10px 16px;border-radius:10px;z-index:9;max-width:90vw}
+/* 슬라이드 렌더 (ppt/style.css와 같은 규칙) */
+.slide-canvas{position:absolute;left:50%;top:50%;transform-origin:center;overflow:hidden}
+.slide-object{position:absolute;overflow:hidden;transform-origin:center}
+.slide-object img{width:100%;height:100%;object-fit:fill}
+.slide-text{display:flex;flex-direction:column;white-space:pre-wrap;overflow-wrap:normal;line-height:1.05;font-family:'PROM MaruBuri',serif;font-synthesis:none;word-spacing:normal;letter-spacing:normal;text-transform:none}
+.slide-text>div{flex-shrink:0;white-space:inherit;min-width:0}
+.slide-text-frame{position:relative;flex:0 0 auto;width:100%;min-height:0}
+.slide-text-content{display:flow-root;transform-origin:top left;white-space:inherit}
+.slide-text-content>div{white-space:inherit;min-width:0}
+@media (max-width:700px){
+  main{padding:10px}.grid4{grid-template-columns:repeat(2,1fr)}.span2{grid-column:span 2}
+  .grid{grid-template-columns:repeat(2,1fr)}.back{display:none}
+}
