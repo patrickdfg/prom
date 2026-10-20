@@ -1727,16 +1727,25 @@ function tNext(my){
   tSpokenOffset=0;
   const u=new SpeechSynthesisUtterance(tChunks[tCi]); u.lang='ko-KR'; u.rate=TS.rate; u.pitch=TS.pitch;
   const v=tVoices.find(v=>v.voiceURI===TS.voice); if(v)u.voice=v;
-  u.onboundary=e=>{if(my===tTok&&Number.isFinite(e.charIndex))tSpokenOffset=Math.max(tSpokenOffset,Math.min(tChunks[tCi].length,e.charIndex));};
-  u.onend=()=>{if(my!==tTok)return; tCi++; tNext(my)};
+  u.onboundary=e=>{if(my===tTok&&Number.isFinite(e.charIndex)){tSpokenOffset=Math.max(tSpokenOffset,Math.min(tChunks[tCi].length,e.charIndex));tFollow();}};
+  u.onend=()=>{if(my!==tTok)return; tCi++; tSpokenOffset=0; tFollow(); tNext(my)};
   u.onerror=e=>{if(my!==tTok)return; if(e.error==='interrupted'||e.error==='canceled')return; tCi++; tNext(my)};
   SYN.speak(u);
+}
+// 스크롤 보기에서 읽어주기: 읽은 글자 비율만큼 원고 위치를 옮겨 화면이 읽는 곳을 따라 흘러가게 한다
+function tFollow(){
+  if(!$('view').classList.contains('local-scroll')||!P[page])return;
+  const total=normStr(pageSay(page)).length;if(!total)return;
+  const done=normStr(tChunks.slice(0,tCi).join('')+(tChunks[tCi]||'').slice(0,tSpokenOffset)).length;
+  const len=Math.max(0,pEnd[page]-pStart[page]);cursor=pStart[page]+Math.min(len,Math.round(done/total*len));render();
 }
 function tPlay(){
   if(!SYN){toast('이 브라우저는 읽어주기를 지원하지 않습니다. 크롬으로 열어 주세요.',5000);return}
   if(editing)endEdit(); if(listening)stopMic();
   notifyUI('finishNote');ttsOn=true;tShow();notifyUI('reading'); tPlaying=true; $('tPP').textContent='⏸'; $('tts').classList.add('on'); $('tts').textContent='읽기 끝내기';
   if(!document.fullscreenElement&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{});
+  // 폰: 읽어주기를 누르면 스크롤 보기로 바꿔 자동으로 흘러가게 한다
+  if(matchMedia('(max-width:700px)').matches&&!$('view').classList.contains('local-scroll'))$('viewScroll').click();
   keepAwake(); tSpeakPage(page);
 }
 function tPause(){tPlaying=false; tTok++; SYN&&SYN.cancel(); $('tPP').textContent='▶'}
