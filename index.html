@@ -1451,9 +1451,20 @@ function heardLogged(text,fin){
 }
 // 방송용 PPT의 위치 찾기(ppt/core.js)를 보조로 쓴다. 실제 인식 기록 재생에서 PPT 쪽이 덜 뒤처졌다.
 // 프롬프터 규칙으로 못 찾았을 때만, 앞으로 가는 결과일 때만 쓴다.
+// 원고 전체에서 12글자쯤만 유일하게 맞는 '다시 찾음'은 설교에서 되풀이되는 문구일 수 있다(실제 시험: 109→3626으로 3,500자 점프, 앞으로만 가는 탓에 21분간 복구 못 함).
+// 450자 넘게 먼 결과는 바로 따르지 않고, 15초 안에 24~120자 이어 읽은 같은 흐름이 한 번 더 확인될 때만 따른다. 이미 잘못 앞서 갔다면 뒤쪽 결과도 같은 확인을 거쳐 되돌아온다.
+let farCand=null;
+function farConfirm(pos){const now=Date.now();
+  if(farCand&&now-farCand.t<15000&&pos>=farCand.pos+24&&pos<=farCand.pos+120){farCand=null;return true}
+  if(!farCand||now-farCand.t>=15000||pos<farCand.pos||pos>farCand.pos+120)farCand={pos,t:now};
+  return false}
 function pptSpeech(text){
   if(typeof CaptionCore==='undefined')return null;
-  try{const r=CaptionCore.locateSpeech(heardCarry+text,norm,cursor,optionalSpeech,scriptureSpeech);return r&&r.pos>cursor&&r.pos<=norm.length?r.pos:null}catch(_){return null}
+  try{const r=CaptionCore.locateSpeech(heardCarry+text,norm,cursor,optionalSpeech,scriptureSpeech);
+    if(!r||!(r.pos>=0&&r.pos<=norm.length))return null;
+    if(r.pos>cursor)return {pos:r.pos,far:!!r.reacquired&&r.pos>cursor+450};
+    if(r.reacquired&&r.pos<cursor-450)return {pos:r.pos,far:true,back:true};
+    return null}catch(_){return null}
 }
 function onHeard(text){
   // The displayed page may lead the reading position. Manual navigation already resets cursor.
@@ -1480,7 +1491,7 @@ function onHeard(text){
   const skipAhead=confirmedSpeech(all,norm.slice(from,Math.min(norm.length,cursor+450)),cursor,from,null,20);
   const optional=PromOptionalSpeech.match(all,optionalSpeech,cursor)??(typeof PromSpeechMatch==='undefined'?null:PromSpeechMatch.optional(all,optionalSpeech,cursor)?.pos??null);
   const scripture=typeof PromScriptureSpeech==='undefined'?null:PromScriptureSpeech.match(all,scriptureSpeech,cursor);
-  let to;
+  let to,ppt=null,backTo=false;
   if(scripture){to=scripture.pos;pend=null;}
   else if(optional!==null){to=optional;pend=null;}
   else if(confirmed!==null){to=confirmed;pend=null;}
@@ -1492,7 +1503,7 @@ function onHeard(text){
   }else if(skipAhead!==null){to=skipAhead;pend=null;
   }else if(h.back&&h.back.d<=2&&(!h.far||h.back.d<=h.far.d)){
     pend=null; cap(base+' · 이미 읽은 곳을 다시 읽는 중 · 그대로'); return;
-  }else if(typeof pptSpeech==='function'&&(to=pptSpeech(text))!==null){pend=null;
+  }else if(typeof pptSpeech==='function'&&(ppt=pptSpeech(text))!==null&&(!ppt.far||farConfirm(ppt.pos))){to=ppt.pos;backTo=!!ppt.back;pend=null;
   }else if(h.far&&h.far.d<=2&&S.length>=12){
     const now=Date.now();
     if(pend&&now-pend.t<15000&&h.far.pos>=pend.pos+24&&h.far.pos<=pend.pos+80){to=h.far.pos; pend=null}      // 같은 흐름으로 24자 넘게 이어 읽어야 넘긴다
@@ -1503,11 +1514,12 @@ function onHeard(text){
   }else{cap(base+' · 원고와 안 맞음');return}
   cap(base+' ✓ 원고 위치 찾음');
   const hit={pos:to};
-  cursor=Math.max(cursor,hit.pos);
+  cursor=backTo?hit.pos:Math.max(cursor,hit.pos);
+  if(backTo){cap(base+' ✓ 앞서 잘못 넘어간 위치를 바로잡음');heardCarry='';sessionText='';lastTail=''}
   let target=pageOf(cursor);
   const lead=+$('lead').value;
   if(cursor>=Math.max(pEnd[target]-lead,lastLine[target]+1) && target<P.length-1) target++;
-  if(target>page) go(target); else render();
+  if(backTo?target!==page:target>page) go(target); else render();
 }
 // 마이크를 한 번 열어 두면 크롬이 허용을 이어 가므로, 음성인식이 저절로 다시 시작될 때마다 허용창이 뜨는 일을 줄인다
 // 안드로이드는 마이크를 붙잡아 두면 음성인식과 부딪칠 수 있어 붙잡지 않고, 음성인식이 기본 마이크를 혼자 쓰게 한다
