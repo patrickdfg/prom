@@ -194,6 +194,7 @@ button:hover{filter:brightness(1.12)}
 
 /* 전체화면 버튼은 맨 윗줄 가운데에 둔다. 아래 도구줄과 겹치지 않는다. */
 #view>#fs{position:fixed;left:50%;top:5px;transform:translateX(-50%);z-index:35;display:block;min-height:32px;padding:6px 10px;border:1px solid #52647c;border-radius:8px;background:#202b3a;color:#e8eef6;font:12px 'Malgun Gothic',sans-serif;cursor:pointer;white-space:nowrap}
+@media(min-width:601px) and (max-width:1560px){#view>#fs{left:calc(50% - 96px)}}   /* 위 툴바 오른쪽 그룹이 길어져도 가운데 전체화면 버튼과 겹치지 않게 */
 #bar{right:0}
 #view.solo-presentation>#fs{opacity:0;pointer-events:none}
 #view.solo-presentation.controls-open>#fs,#view.solo-presentation>#fs:focus-visible{opacity:1;pointer-events:auto}
