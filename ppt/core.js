@@ -57,10 +57,13 @@ function locateSpeech(raw,text,cursor,optional=null,scripture=null){const passag
  global.sort((a,b)=>b.score-a.score);const first=global[0],other=first&&global.find(hit=>Math.abs(hit.pos-first.pos)>8);
  if(first&&(!other||first.score-other.score>=.04))return first;
  // Short fragments may advance only near the current reading position, uniquely.
- const nearBegin=Math.max(0,cursor-40),nearEnd=Math.min(text.length,cursor+120),near=text.slice(nearBegin,nearEnd);
+ const nearBegin=Math.max(0,cursor-40),nearEnd=Math.min(text.length,cursor+90),near=text.slice(nearBegin,nearEnd);
  for(const size of [8,7,6,5]){if(heard.length<size)continue;const tail=heard.slice(-size),at=near.indexOf(tail);if(at<0||near.indexOf(tail,at+1)>=0)continue;const pos=nearBegin+at+size;if(pos>cursor)return {pos,score:1};}
  return null;
 }
-const api={normalize,index,segments,align,active,locateSpeech,distance};if(typeof module==='object'&&module.exports)module.exports=api;else root.CaptionCore=api;
+// 본문이 시작되는 위치: 맨 앞의 <날짜>·제목·'본 문'·<성경 구절> 줄은 읽지 않고 바로 본문으로 들어가는 일이 많다.
+// 맨 앞 12줄 안의 머리 묶음(<…>로 시작하는 줄, '본 문' 줄, 20자 미만 짧은 줄) 가운데 마지막 <…>·'본 문' 줄 바로 다음 줄의 시작 위치(없으면 0).
+function bodyStart(lines,ix){let last=-1;for(let i=0;i<Math.min(lines.length,12);i++){const s=String(lines[i]||''),tag=/^\s*</.test(s)||/^\s*본\s*문/.test(s);if(tag){last=i;continue;}if(normalize(s).length<20)continue;break;}return last>=0?(ix.ranges[last+1]?.start??0):0;}
+const api={normalize,index,segments,align,active,locateSpeech,distance,bodyStart};if(typeof module==='object'&&module.exports)module.exports=api;else root.CaptionCore=api;
 })(typeof window==='object'?window:globalThis);
 
