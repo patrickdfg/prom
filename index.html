@@ -1364,16 +1364,68 @@ function toast(msg,ms=3000){const t=$('toast');t.textContent=msg;t.style.display
 function setDot(cls){$('dot').className=cls||''; notifyUI('mic',cls)}
 // 화면 왼쪽 위에 지금 어디까지 되고 있는지 보여 준다 (소리가 들어오는지, 글자로 바뀌는지, 원고에서 찾았는지)
 // 음성 인식 기록. 들은 글자·위치 판정·원고 위치를 남겨 따라오지 못한 이유를 나중에 분석한다.
-const VLOG_KEY='prompterVoiceLog',VLOG_MAX=12000;let vlog=[],vlogStart=Date.now(),lastCap='',vlogDirty=false;
-try{vlog=JSON.parse(localStorage.getItem(VLOG_KEY)||'[]')}catch(_){vlog=[]}
-function vlogAdd(e){e.t=Date.now();vlog.push(e);if(vlog.length>VLOG_MAX)vlog.splice(0,vlog.length-VLOG_MAX);vlogDirty=true}
-function vlogSave(){if(!vlogDirty)return;vlogDirty=false;try{localStorage.setItem(VLOG_KEY,JSON.stringify(vlog.slice(-600)))}catch(_){}}
+const VLOG_KEY='prompterVoiceLog',VLOG_MAX=60000,VLOG_DB='prompterVoiceLogDB',VLOG_KEEP_MS=12*3600*1000;let vlog=[],vlogStart=Date.now(),lastCap='',vlogDirty=false;
+let vlogLegacy=null;try{const o=JSON.parse(localStorage.getItem(VLOG_KEY)||'null');if(o&&!Array.isArray(o)&&Array.isArray(o.events))vlogLegacy=o}catch(_){}
+// 세션: 같은 원고를 읽는 동안의 기록. 설교 한 편(수천 건)이 통째로 남도록 메모리 60,000건까지 보관하고 IndexedDB에 조각으로 나눠 저장한다.
+// 넘치면 오래된 것부터 버리되 버린 수를 dropped에 남겨 내보낸 파일에서 알 수 있게 한다.
+let vlogSess={id:'s'+Date.now().toString(36),key:'',startedAt:Date.now(),dropped:0,error:''},vlogDb=null,vlogFlushed=0,vlogRestored=false,vlogBusy=false,vlogWarned=false;
+function vlogKey(){try{if(typeof norm==='undefined'||!norm)return '';let h=0;for(let i=0;i<norm.length;i+=7)h=(h*31+norm.charCodeAt(i))|0;return norm.length+':'+h}catch(_){return ''}}
+function vdbOpen(){return new Promise(res=>{try{const q=indexedDB.open(VLOG_DB,1);q.onupgradeneeded=()=>{q.result.createObjectStore('chunks',{keyPath:['s','n']});q.result.createObjectStore('meta',{keyPath:'id'})};q.onsuccess=()=>res(q.result);q.onerror=()=>res(null);q.onblocked=()=>res(null)}catch(_){res(null)}})}
+function vlogFail(e){vlogSess.error=String(e&&e.message||e||'저장 실패');if(!vlogWarned){vlogWarned=true;try{toast('인식 기록을 기기에 저장하지 못했습니다. 설교 뒤 「인식 기록 저장」으로 파일을 꼭 받아 두세요.',8000)}catch(_){}}}
+function vdbClear(id){if(!vlogDb)return;try{const tx=vlogDb.transaction(['chunks','meta'],'readwrite');tx.objectStore('chunks').delete(IDBKeyRange.bound([id,0],[id,Infinity]));tx.objectStore('meta').delete('current')}catch(_){}}
+function vlogNewSession(key){const old=vlogSess.id;vlogSess={id:'s'+Date.now().toString(36),key,startedAt:Date.now(),dropped:0,error:''};vlog=[];vlogFlushed=0;vlogRestored=true;vlogDirty=true;vdbClear(old)}
+// 새로고침 뒤 같은 원고(12시간 안)이면 저장해 둔 앞부분을 이어 붙인다. 다른 원고의 기록은 현재 원고와 섞이지 않게 버린다.
+function vlogUseLegacy(key){const o=vlogLegacy;vlogLegacy=null;if(!o||o.key!==key||!o.events.length)return;if(Date.now()-o.events[o.events.length-1].t>VLOG_KEEP_MS)return;vlog=o.events.filter(e=>!vlog.length||e.t<vlog[0].t).concat(vlog)}
+async function vdbRestore(key){
+  vlogRestored=true;
+  try{
+    vlogDb=vlogDb||await vdbOpen();if(!vlogDb){vlogUseLegacy(key);return}
+    const meta=await new Promise(r=>{const q=vlogDb.transaction('meta').objectStore('meta').get('current');q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)});
+    if(!meta||!meta.sess){vlogUseLegacy(key);return}
+    const m=meta.sess;
+    if(m.key!==key||Date.now()-(m.lastAt||m.startedAt)>VLOG_KEEP_MS){vdbClear(m.id);return}
+    const chunks=await new Promise(r=>{const q=vlogDb.transaction('chunks').objectStore('chunks').getAll(IDBKeyRange.bound([m.id,0],[m.id,Infinity]));q.onsuccess=()=>r(q.result||[]);q.onerror=()=>r([])});
+    const saved=chunks.sort((a,b)=>a.n-b.n).flatMap(c=>c.events);
+    if(!saved.length){vlogUseLegacy(key);return}
+    vlog=saved.concat(vlog.filter(e=>!saved.length||e.t>saved[saved.length-1].t));vlogFlushed=saved.length;
+    vlogSess={...vlogSess,id:m.id,key,startedAt:m.startedAt,dropped:m.dropped||0};
+  }catch(e){vlogFail(e)}
+}
+function vlogAdd(e){
+  e.t=Date.now();const k=vlogKey();
+  if(k){
+    if(vlogSess.key&&vlogSess.key!==k)vlogNewSession(k);
+    else if(!vlogSess.key)vlogSess.key=k;
+    if(!vlogRestored)vdbRestore(k);
+  }
+  vlog.push(e);
+  if(vlog.length>VLOG_MAX){const n=vlog.length-VLOG_MAX;vlog.splice(0,n);vlogFlushed=Math.max(0,vlogFlushed-n);vlogSess.dropped+=n}
+  vlogDirty=true;
+}
+function vdbFlush(){
+  if(!vlogDb||!vlogRestored||vlogBusy||vlogFlushed>=vlog.length)return;
+  const from=vlogFlushed,upto=vlog.length,part=vlog.slice(from);vlogBusy=true;
+  try{
+    const tx=vlogDb.transaction(['chunks','meta'],'readwrite');
+    tx.objectStore('chunks').put({s:vlogSess.id,n:upto,events:part});
+    tx.objectStore('meta').put({id:'current',sess:{...vlogSess,lastAt:Date.now()}});
+    tx.oncomplete=()=>{vlogBusy=false;vlogFlushed=Math.max(vlogFlushed,upto)};
+    tx.onerror=tx.onabort=()=>{vlogBusy=false;vlogFail(tx.error)};
+  }catch(e){vlogBusy=false;vlogFail(e)}
+}
+function vlogSave(){
+  if(!vlogDirty&&vlogFlushed>=vlog.length)return;vlogDirty=false;
+  try{localStorage.setItem(VLOG_KEY,JSON.stringify({key:vlogSess.key,events:vlog.slice(-600)}))}catch(_){}   // IndexedDB를 못 쓸 때를 위한 최근 600건
+  if(!vlogDb&&!vlogOpening){vlogOpening=true;vdbOpen().then(d=>{vlogDb=d;vlogOpening=false;if(!d)vlogFail('IndexedDB를 열 수 없습니다')})}
+  vdbFlush();
+}
+let vlogOpening=false;
 setInterval(vlogSave,4000);addEventListener('pagehide',vlogSave);
 function rowAt(c){for(let pi=0;pi<lineRange.length;pi++)for(let li=0;li<lineRange[pi].length;li++){const r=lineRange[pi][li];if(r[1]>r[0]&&c>=r[0]&&c<r[1])return [pi+1,li+1]}return null}
 function voiceLogDoc(){
   vlogSave();
   return {version:1,savedAt:new Date().toISOString(),userAgent:navigator.userAgent,settings:{lead:$('lead').value,lines:LINES,mobile:MOBILE},
-    lexicon:typeof PromLexicon==='object'?PromLexicon.exportLearned():[],manuscript:{norm,pages:P.map((pg,i)=>({page:i+1,start:pStart[i],end:pEnd[i],lines:pg.map((ln,li)=>({text:ln.map(x=>x.t).join(''),range:lineRange[i]?.[li]||null}))}))},events:vlog};
+    lexicon:typeof PromLexicon==='object'?PromLexicon.exportLearned():[],manuscript:{norm,pages:P.map((pg,i)=>({page:i+1,start:pStart[i],end:pEnd[i],lines:pg.map((ln,li)=>({text:ln.map(x=>x.t).join(''),range:lineRange[i]?.[li]||null}))}))},session:{id:vlogSess.id,startedAt:new Date(vlogSess.startedAt).toISOString(),endedAt:vlog.length?new Date(vlog[vlog.length-1].t).toISOString():null,events:vlog.length,dropped:vlogSess.dropped,stored:!!vlogDb&&!vlogSess.error,storageError:vlogSess.error||null,manuscriptKey:vlogSess.key||vlogKey()},events:vlog};
 }
 function saveVoiceLog(){
   const doc=voiceLogDoc();
@@ -1551,7 +1603,7 @@ async function startMic(){
     if(!listening||rec!==activeRec)return;
     speechResultCount=e.results.length;
     let t=''; for(let i=speechFloor;i<e.results.length;i++) t+=e.results[i][0].transcript;
-    noteGrowth(t);sessionText=t; heardLogged(t,!!e.results[e.results.length-1]?.isFinal); speedFeed(e.results); lastResultAt=Date.now();emptySessions=0;
+    sessionText=t; heardLogged(t,!!e.results[e.results.length-1]?.isFinal); speedFeed(e.results); lastResultAt=Date.now();emptySessions=0;noteGrowth(t);
   };
   rec.onerror=e=>{
     if(!listening||rec!==activeRec)return;
