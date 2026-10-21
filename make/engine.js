@@ -17,7 +17,8 @@ window.MakePptEngine=(()=>{
    return {...generated,...woven,record,exportSize:{width:1920,height:1080}};
   };
   // A previously open PPT must not add its project-specific master overrides to a different selected template.
-  return window.CaptionMasters?.withRecords?CaptionMasters.withRecords({},run):run();
+  const result=await (window.CaptionMasters?.withRecords?CaptionMasters.withRecords({},run):run());
+  return options.announcements?.trim()?MakeAnnouncements.replace(result,result.record,options.announcements):{...result,announcements:String(options.announcements||'')};
  }
  return {generate};
 })();

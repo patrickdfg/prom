@@ -317,11 +317,11 @@ $('makeRun').onclick=async()=>{
   try{
     let rec=byId($('makeTemplate').value);const rich=await makeInputs.read(CaptionImport.manuscriptRich);
     const project={lines:rich.lines,richLines:rich.richLines,scriptName:rich.name,slides:[],links:[]};
-    const opts={title:$('makeTitle').value.trim(),date:$('makeDate').value.trim()};
+    const opts={title:$('makeTitle').value.trim(),date:$('makeDate').value.trim(),announcements:$('makeAnnouncements').value};
     const woven=await MakePptEngine.generate(project,rec,opts);rec=woven.record;const summary=woven.summary||'원고를 자동 인식했습니다.';
     if(rec?.worship&&!byId(rec.id)?.worship){await put(rec);$('mTemplate').value=rec.id;draft=null;dirty=false;}
     // 편집 중 장면 좌표는 유지하고, 다운로드 크기는 공통 엔진의 결과를 따른다.
-    deck={...project,slides:woven.slides,links:woven.links,deckName:stem(rich.name)+'_자막.pptx',generationTemplate:rec?structuredClone(rec):null,exportSize:woven.exportSize||{width:1920,height:1080}};deckTemplate=rec?.design||null;deckTemplateRec=rec||null;selected=-1;
+    deck={...project,announcements:woven.announcements,slides:woven.slides,links:woven.links,deckName:stem(rich.name)+'_자막.pptx',generationTemplate:rec?structuredClone(rec):null,exportSize:woven.exportSize||{width:1920,height:1080}};deckTemplate=rec?.design||null;deckTemplateRec=rec||null;selected=-1;
     renderGrid(deck.slides);$('makeDownload').disabled=false;$('makeToLive').disabled=false;$('makeEditTools').hidden=false;
     status('makeStatus',`${deck.slides.length}장을 만들었습니다${rec?` (템플릿: ${rec.name})`:''}. ${summary}. 확인 후 PPTX 다운로드를 누르세요.`);
   }catch(e){status('makeStatus',e.message||String(e),true);}
@@ -356,7 +356,7 @@ $('makeToLive').onclick=async()=>{
       // 백업과 새 작업 저장은 아래의 한 트랜잭션에서 함께 처리한다.
     }
     const project={version:1,lines:deck.lines,richLines:deck.richLines,scriptName:deck.scriptName||'',deckName:deck.deckName||'',slides:structuredClone(deck.slides),links:structuredClone(deck.links),layoutMasters:{},
-      generationTemplate:deckTemplateRec?structuredClone(deckTemplateRec):null,
+      generationTemplate:deckTemplateRec?structuredClone(deckTemplateRec):null,announcements:deck.announcements||'',
       exportSize:structuredClone(deck.exportSize||{width:1920,height:1080})};   // 동일 원고 재현은 원본 크기도 유지
     const stamp=crypto.randomUUID(),packed=packLive({...project,makeTransferId:stamp});
     await new Promise((ok,no)=>{const tx=db.transaction('projects','readwrite'),store=tx.objectStore('projects'),r=store.get('last');
