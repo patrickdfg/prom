@@ -24,15 +24,10 @@ window.MakePptEngine=(()=>{
   await B.useTemplate(record.design);
   const slides=[],links=[];
   const cover=await B.scene('cover',title);slides.push(cover);links.push({status:'unlinked',start:null,end:null,score:0,reason:'cover'});
-  const width=record.design.layouts.word?.width||1920;
-  const body=record.design.layouts.word?.shapes?.[record.design.layouts.word.bodyIndex];
-  const estimatedLimit=Math.max(24,Math.floor((body?.w||width*.8)/28/1.05));
+  // Reuse PROM's font-width measurement, Korean phrasing penalties and balanced wrapping.
+  // No character-count heuristic: widths come from the selected word layout.
   const sentences=text=>String(text).match(/[^.!?。]+(?:[.!?。]+[”’"'）)]*|$)/g)?.map(s=>s.trim()).filter(Boolean)||[text.trim()];
-  const wrapSentence=s=>{
-   const parts=s.split(/\s+/),out=[],row=[];
-   for(const part of parts){if(row.length&&(row.join(' ').length+part.length+1)>estimatedLimit){out.push(row.join(' '));row.length=0;}row.push(part);}
-   if(row.length)out.push(row.join(' '));return out;
-  };
+  const wrapSentence=s=>B.wrapForLayout(s,'word');
   let groupCount=0;
   // 완성 그룹의 줄 수를 먼저 정한 뒤, 모든 단계에 같은 빈 줄을 패딩합니다.
   // 가운데 정렬을 유지하되 실제 첫 줄의 세로 좌표는 전 단계에서 고정됩니다.
