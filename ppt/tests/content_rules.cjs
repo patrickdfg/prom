@@ -25,8 +25,8 @@ assert.match(omitted.summary,/2장 제외/);
 const customized=structuredClone(result.record);customized.design.layouts.worshipTitle.background='#abcdef';assert.equal(R.generateWorship(script,customized,original).slides.at(-1).background,'#abcdef');
 assert.throws(()=>R.generateWorship(script,record,{slides:[slide([tx('자리 표시가 없는 PPT')])]}),/제목 또는 성경봉독/);
 const clean=R.instructions('파랑: 하단 자막.\n하단 자막은 900px 글상자 폭에서 두 줄씩 분할.\n내가 적은 보존할 메모','numbered');assert(!clean.includes('두 줄씩 분할'));assert(clean.includes('보존할 메모'));assert.equal(R.instructions(clean,'numbered'),clean);
-// Unnumbered manuscripts now use the automatic full-screen paragraph fallback.
+// Color-marked manuscripts work without numbers, but unmarked text is skipped.
 global.window=global;global.CaptionContentRules=R;global.CaptionCore=require('../core.js');global.document={currentScript:{src:'http://localhost/ppt/builder.js'},fonts:{load:async()=>{}},createElement:()=>({getContext:()=>({font:'',measureText:t=>({width:t.length*15})})})};global.crypto=require('node:crypto').webcrypto;require('../builder.js');
-const plainSpecs=CaptionBuilder.analyze(rows(['본문입니다. 두 줄 자막으로 바꾸면 안 됩니다.']),{allText:true});assert.equal(plainSpecs.length,1);assert.equal(plainSpecs[0].layout,'proverb');
+const plainSpecs=CaptionBuilder.analyze(rows(['본문입니다. 두 줄 자막으로 바꾸면 안 됩니다.']),{allText:true});assert.equal(plainSpecs.length,1);assert.equal(plainSpecs[0].layout,'proverb');assert.deepEqual(CaptionBuilder.analyze({lines:['색상과 번호가 없는 일반 본문입니다.']}),[]);
 const out=CaptionBuilder.analyze(rows(['본문의 설명입니다.','1. 짧은 항목입니다.','2. 둘째 항목입니다.']),{});assert.equal(out.length,2);assert(out.every(s=>s.layout==='proverb'));assert.equal(out[0].start,require('../core.js').normalize('본문의 설명입니다.').length);
-console.log('PASS numbered scope and plain-text fallback, paragraph continuation, ad exclusion, header extraction, worship slots/order/count/links, saved master style and explicit worship scope');
+console.log('PASS numbered scope and color-marked fallback, paragraph continuation, ad exclusion, header extraction, worship slots/order/count/links, saved master style and explicit worship scope');

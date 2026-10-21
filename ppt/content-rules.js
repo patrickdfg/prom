@@ -7,8 +7,8 @@ function mode(rec){return ['numbered','worship'].includes(rec?.options?.sourceMo
 // Exclude the requested service cues by their heading, so changing Bible passage counts cannot shift the wrong slide out.
 function worshipOmit(record){const saved=record?.options?.worshipOmit;if(Array.isArray(saved))return [...new Set(saved.filter(k=>['prayer','music'].includes(k)))];return /주일\s*예배\s*전반/.test(record?.name||'')?['prayer','music']:[];}
 function omittedCue(slide,omit){const headings=(slide.shapes||[]).filter(sh=>sh.type==='text').map(sh=>norm(text(sh)));return omit.includes('prayer')&&headings.includes('대표기도')||omit.includes('music')&&headings.some(t=>/^(?:성가대(?:가정국)?(?:특송)?|가정국특송|특송)$/.test(t));}
-function rule(value){return value==='worship'?'[현재 제작 규칙]\n예배 전반: 원고 앞부분의 제목과 성경본문만 가져와 원본 PPT의 해당 자리를 교체합니다. 설교 본문은 자막으로 만들지 않습니다.\n교독문·광고·기도·찬양 등 나머지 순서는 원본 PPT 내용을 유지하므로 송출 전에 확인합니다.':'[현재 제작 규칙]\n주일·수요·새벽 설교: 원고를 자동 인식합니다. 번호 항목이 있으면 항목별로, 없으면 파랑·초록 강조 구간을, 색상도 없으면 본문 문단을 사용합니다.\n선택한 각 항목·문단을 전체 화면 자막으로 만들고, 길면 다음 장으로 이어갑니다. 제목·날짜·진행 안내·광고는 본문에 섞지 않습니다.';}
-function instructions(value,scope){const lines=String(value||'').split('\n').filter(l=>!/^\[현재 제작 규칙\]|^(?:주일·수요·새벽 설교:|예배 전반: 원고 앞부분|교독문·광고·기도·찬양 등|한 항목을 템플릿|선택한 각 항목·문단을)/.test(l)&&!/(?:파랑: 하단 자막|초록: 말씀|검정: 설교 전문|전체 화면 말씀의 첫 두 줄|하단 자막은 .*두 줄|전체 원고.*(?:하단|자막)|누적 공개.*(?:확인|선택|연결|옵션)|번호가 붙은 항목만 자막|원고의 번호 항목을 사용)/.test(l));return rule(scope)+'\n\n'+lines.join('\n').trim();}
+function rule(value){return value==='worship'?'[현재 제작 규칙]\n예배 전반: 원고 앞부분의 제목과 성경본문만 가져와 원본 PPT의 해당 자리를 교체합니다. 설교 본문은 자막으로 만들지 않습니다.\n교독문·광고·기도·찬양 등 나머지 순서는 원본 PPT 내용을 유지하므로 송출 전에 확인합니다.':'[현재 제작 규칙]\n주일·수요·새벽 설교: 원고를 자동 인식합니다. 여러 번호 항목이 있으면 항목별로, 없으면 파랑·초록 강조 구간을 사용합니다. 둘 다 없으면 자막을 생성하지 않습니다.\n선택한 각 항목·구간을 전체 화면 자막으로 만들고, 길면 다음 장으로 이어갑니다. 제목·날짜·진행 안내·광고는 본문에 섞지 않습니다.';}
+function instructions(value,scope){const lines=String(value||'').split('\n').filter(l=>!/^\[현재 제작 규칙\]|^(?:주일·수요·새벽 설교:|예배 전반: 원고 앞부분|교독문·광고·기도·찬양 등|한 항목을 템플릿|선택한 각 항목·(?:문단|구간)을)/.test(l)&&!/(?:파랑: 하단 자막|초록: 말씀|검정: 설교 전문|전체 화면 말씀의 첫 두 줄|하단 자막은 .*두 줄|전체 원고.*(?:하단|자막)|누적 공개.*(?:확인|선택|연결|옵션)|번호가 붙은 항목만 자막|원고의 번호 항목을 사용)/.test(l));return rule(scope)+'\n\n'+lines.join('\n').trim();}
 function itemNumber(value){const raw=String(value||'').trimStart(),s=raw.normalize('NFKC');return /^[①-⑳㉑-㉟㊱-㊿]/.test(raw)||/^\(\s*\d{1,3}\s*\)/.test(s)||/^\d{1,3}\s*[.)、](?!\d)/.test(s);}
 function numbered(project){
  const rows=project.richLines?.length===project.lines.length?project.richLines:project.lines.map(text=>({text})),out=[];let offset=0,current=null,excluded=false,lastSource;
@@ -27,8 +27,8 @@ function numbered(project){
 function automatic(project){
  const inputRows=project.richLines?.length===project.lines.length?project.richLines:project.lines.map(text=>({text}));
  const sources=[];for(const row of inputRows){let part=sources.at(-1);if(!part||part.source!==row.source){part={source:row.source,rows:[]};sources.push(part);}part.rows.push(row);}
- if(sources.length>1){let offset=0;const blocks=[],kinds=new Set();for(const part of sources){const result=automatic({lines:part.rows.map(r=>r.text),richLines:part.rows});kinds.add(result.kind);for(const b of result.blocks)blocks.push({...b,chars:b.chars.map(c=>({...c,start:c.start+offset,end:c.end+offset}))});offset+=part.rows.reduce((n,r)=>n+norm(r.text).length,0);}const kind=kinds.size===1?[...kinds][0]:'mixed';return {kind,label:kind==='numbered'?'번호 항목':kind==='highlighted'?'색상 표시 구간':kind==='paragraphs'?'본문 문단':'각 원고의 자막 구간',blocks};}
- const numberedBlocks=numbered(project);if(numberedBlocks.length)return {kind:'numbered',label:'번호 항목',blocks:numberedBlocks};
+ if(sources.length>1){let offset=0;const blocks=[],kinds=new Set();for(const part of sources){const result=automatic({lines:part.rows.map(r=>r.text),richLines:part.rows});kinds.add(result.kind);for(const b of result.blocks)blocks.push({...b,chars:b.chars.map(c=>({...c,start:c.start+offset,end:c.end+offset}))});offset+=part.rows.reduce((n,r)=>n+norm(r.text).length,0);}const kind=kinds.size===1?[...kinds][0]:'mixed';return {kind,label:kind==='numbered'?'번호 항목':kind==='highlighted'?'색상 표시 구간':kind==='unmarked'?'자막 표시 없음':'각 원고의 자막 구간',blocks};}
+ const numberedBlocks=numbered(project);if(numberedBlocks.length>1)return {kind:'numbered',label:'번호 항목',blocks:numberedBlocks};
  const rows=project.richLines?.length===project.lines.length?project.richLines:project.lines.map(text=>({text})),eligible=[];let offset=0,excluded=false,lastSource;
  let bodyStart=0;try{const h=header(project);bodyStart=Math.max(...h.passages.map(p=>p.end));}catch{}
  for(const row of rows){if(row.source!==lastSource){excluded=false;lastSource=row.source;}const value=row.text||'',start=offset;offset+=norm(value).length;
@@ -38,14 +38,15 @@ function automatic(project){
  }
  const shade=hex=>{const h=String(hex||'').replace('#','');if(!/^[a-f\d]{6}$/i.test(h))return '';const [r,g,b]=[0,2,4].map(i=>parseInt(h.slice(i,i+2),16));return b>90&&b>r*1.3&&b>g*1.15?'marked':g>65&&g>r*1.25&&g>b*1.15?'marked':r>130&&r>g*1.5&&r>b*1.5?'red':'';};
  const highlighted=eligible.some(({row})=>(row.runs||[]).some(r=>shade(r.hex)==='marked'&&norm(r.text)));
+ if(!highlighted)return {kind:'unmarked',label:'자막 표시 없음',blocks:[]};
  const blocks=[];let current=null;
  for(const {row,start} of eligible){
   const group=row.paragraph==null?Symbol():String(row.source??'')+':'+row.paragraph;if(current?.group!==group)current=null;
-  const runs=row.runs?.map(r=>({text:r.text,red:shade(r.hex)==='red',include:!highlighted||!!shade(r.hex)}))||[{text:row.text,red:false,include:!highlighted}];
+  const runs=row.runs?.map(r=>({text:r.text,red:shade(r.hex)==='red',include:!!shade(r.hex)}))||[];
   let at=start;for(const run of runs){if(!run.include){at+=norm(run.text).length;current=null;continue;}if(!current){current={layout:'proverb',group,chars:[]};blocks.push(current);}for(const ch of run.text||''){const n=norm(ch).length;current.chars.push({ch,red:run.red,start:at,end:at+n});at+=n;}}
   if(current)current.chars.push({ch:'\n',red:false,start:at,end:at});
  }
- return {kind:highlighted?'highlighted':'paragraphs',label:highlighted?'색상 표시 구간':'본문 문단',blocks:blocks.filter(b=>b.chars.some(c=>norm(c.ch)))};
+ return {kind:'highlighted',label:'색상 표시 구간',blocks:blocks.filter(b=>b.chars.some(c=>norm(c.ch)))};
 }
 function header(project){
  const rows=project.lines.map((text,i)=>({text:String(text).trim(),i})),ranges=[];let at=0;for(const row of rows){ranges.push({start:at,end:at+norm(row.text).length});at+=norm(row.text).length;}
