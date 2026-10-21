@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>템플릿 만들기</title>
 <script src="../ui-theme.js?v=20261021-template-name1"></script>
-<link rel="stylesheet" href="make.css?v=20261021-drive-layout1">
+<link rel="stylesheet" href="make.css?v=20261021-inputs1">
 <link rel="stylesheet" href="../ppt/editor.css?v=20261021-balanced1"></head>
 <body>
 <header class="top">
@@ -16,6 +16,7 @@
     <button role="tab" data-tab="templates">② 템플릿</button>
     <button role="tab" data-tab="master">③ 마스터 편집</button>
   </nav>
+  <div class="account" aria-label="구글 로그인"><span id="loginNote" class="login-note" role="status" hidden></span><span id="loginAccount" class="login-account" hidden></span><button id="googleConnect" type="button" class="login-btn">구글 로그인</button><button id="googleDisconnect" type="button" class="login-btn" hidden>로그아웃</button></div>
   <a class="back" href="../ppt/">방송용 PPT ↗</a>
 </header>
 
@@ -23,10 +24,13 @@
   <!-- ① 만들기 -->
   <section id="tab-make" class="tab">
     <div class="card">
-      <h2>한글 원고로 PPT 만들기</h2>
-      <label class="field">원고 (HWP · HWPX · DOCX · TXT)
-        <input id="makeScript" type="file" accept=".hwp,.hwpx,.docx,.txt">
+      <h2>원고로 PPT 만들기</h2>
+      <label class="field">원고 파일 (HWP · HWPX · DOCX · TXT, 여러 개 선택)
+        <input id="makeScript" type="file" accept=".hwp,.hwpx,.docx,.txt" multiple>
       </label>
+      <p id="makeScriptFiles" class="hint"></p>
+      <details class="more manuscript-paste"><summary>원고 복사·붙여넣기 / 직접 입력</summary><div id="makePasteList"></div><button id="makePasteAdd" type="button">+ 붙여넣을 원고 추가</button></details>
+      <p class="hint">여러 파일은 위에 표시된 순서대로 이어지고, 붙여넣은 원고는 그 뒤에 추가됩니다.</p>
       <label class="field">템플릿
         <select id="makeTemplate"></select>
       </label>
@@ -55,7 +59,6 @@
     </div>
     <div class="card" id="tplDriveCard">
       <h2>내 구글 드라이브</h2>
-    <div class="account" aria-label="구글 로그인"><span id="loginNote" class="login-note" role="status" hidden></span><span id="loginAccount" class="login-account" hidden></span><button id="googleConnect" type="button" class="login-btn">구글 로그인</button><button id="googleDisconnect" type="button" class="login-btn" hidden>로그아웃</button></div>
       <p id="tplDriveState" class="hint" role="status"></p>
       <div class="row"><button id="tplDriveSync" type="button" disabled>드라이브에 모두 저장</button><button id="tplDriveList" type="button" disabled>드라이브에서 불러오기</button></div>
       <div id="tplDriveFiles" class="list" hidden></div>
@@ -68,18 +71,21 @@
   <!-- ② 템플릿 -->
   <section id="tab-templates" class="tab" hidden>
     <div class="card">
-      <h2>저장된 템플릿</h2>
-      <div id="tplList" class="list"></div>
-      <p class="hint">템플릿은 이 컴퓨터의 크롬에 저장되며 방송용 PPT 앱과 함께 씁니다.</p>
-    </div>
-    <div class="card">
-      <h2>원고 + 완성 PPT로 새 템플릿</h2>
-      <p class="hint">같은 설교의 한글 원고와, 그 원고로 만든 완성 PPT를 넣으면 글꼴·크기·위치·배경을 배워 템플릿으로 저장합니다.</p>
-      <label class="field">한글 원고<input id="pairScript" type="file" accept=".hwp,.hwpx,.docx,.txt"></label>
+      <h2>원고 + 완성 PPT로 템플릿 만들기</h2>
+      <p class="hint">같은 내용의 원고와, 그 원고로 만든 완성 PPT를 넣으면 글꼴·크기·위치·배경을 배워 템플릿으로 저장합니다.</p>
+      <label class="field">원고 파일 (여러 개 선택)<input id="pairScript" type="file" accept=".hwp,.hwpx,.docx,.txt" multiple></label>
+      <p id="pairScriptFiles" class="hint"></p>
+      <details class="more manuscript-paste"><summary>원고 복사·붙여넣기 / 직접 입력</summary><div id="pairPasteList"></div><button id="pairPasteAdd" type="button">+ 붙여넣을 원고 추가</button></details>
+      <p class="hint">여러 파일은 위에 표시된 순서대로 이어지고, 붙여넣은 원고는 그 뒤에 추가됩니다.</p>
       <label class="field">완성 PPT<input id="pairDeck" type="file" accept=".pptx"></label>
       <label class="field">템플릿 이름<input id="pairName" type="text" placeholder="예: 주일말씀"></label>
       <div class="row"><button id="pairRun" class="primary">비교해서 템플릿 만들기</button></div>
       <p id="pairStatus" class="status" aria-live="polite"></p>
+    </div>
+    <div class="card">
+      <h2>저장된 템플릿</h2>
+      <div id="tplList" class="list"></div>
+      <p class="hint">템플릿은 이 컴퓨터의 크롬에 저장되며 방송용 PPT 앱과 함께 씁니다.</p>
     </div>
     <div class="card">
       <h2>기본 디자인으로 새 템플릿</h2>
@@ -168,6 +174,7 @@
 </main>
 
 <div id="toast" class="toast" hidden></div>
+<dialog id="copyTemplateDialog" class="template-copy-dialog" aria-labelledby="copyTemplateTitle"><div class="editor-heading"><h2 id="copyTemplateTitle">템플릿 복제</h2><button id="copyTemplateClose" type="button">취소</button></div><p id="copyTemplateSource" class="hint"></p><label class="field">복제본 이름<input id="copyTemplateName" type="text" maxlength="120"></label><p id="copyTemplateStatus" class="status" role="status"></p><button id="copyTemplateRun" type="button" class="primary">복제하고 편집</button></dialog>
 <dialog id="instructionsDialog">
   <div class="editor-heading"><h2 id="instrTitle">지침 수정</h2><button id="instrClose" type="button">닫기</button></div>
   <p class="editor-small">이 템플릿에 붙어 있는 만들기 지침 글입니다(색 규칙·글꼴·줄간격·누적 공개 같은 약속을 적어 둔 메모). 템플릿과 함께 저장되고 「파일로 받기」·드라이브 저장에도 들어갑니다. 슬라이드의 모양 자체는 ③ 마스터 편집에서 고칩니다.</p>
@@ -188,11 +195,11 @@
 <script src="../ppt/builder.js?v=20261021-media1"></script>
 <script src="../ppt/pptx-export.js?v=20261021-media1"></script>
 <script src="../ppt/pair-template.js?v=20261018-proverb1"></script>
-<script src="make.js?v=20261021-fill1"></script>
+<script src="manuscripts.js?v=20261021-inputs1"></script><script src="make.js?v=20261021-inputs1"></script>
 <script src="../ppt/font-picker.js?v=20261017-font1"></script>
 <script src="../ppt/editor-media.js?v=20261021-media1"></script><script src="../ppt/editor.js?v=20261021-stay1"></script>
 <script src="../ppt/drive-config.js?v=20261020-sync1"></script>
 <script src="login.js?v=20261021-drive1"></script>
-<script src="drive.js?v=20261021-drive-layout1"></script>
+<script src="drive.js?v=20261021-inputs1"></script>
 </body>
 </html>

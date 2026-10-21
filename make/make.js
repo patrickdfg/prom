@@ -14,6 +14,10 @@ function status(id,msg,error=false){const s=$(id);s.textContent=msg||'';s.classL
 const stem=name=>String(name||'').replace(/\.[^.]+$/,'');
 function readData(file){return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok({name:file.name,data:r.result});r.onerror=()=>no(Error('파일을 읽지 못했습니다.'));r.readAsDataURL(file);});}
 
+const makeInputs=MakeManuscripts.mount({input:$('makeScript'),list:$('makePasteList'),add:$('makePasteAdd'),filesNote:$('makeScriptFiles')});
+const pairInputs=MakeManuscripts.mount({input:$('pairScript'),list:$('pairPasteList'),add:$('pairPasteAdd'),filesNote:$('pairScriptFiles')});
+async function combinedSource(rich,files){if(files.length===1&&rich.names.length===1)return readData(files[0]);return readData(new File([rich.lines.join('\n')],stem(rich.name)+'.txt',{type:'text/plain'}));}
+
 /* ---------- 템플릿 보관함 (IndexedDB, 방송용 PPT 앱과 공유) ---------- */
 let dbp;
 function db(){return dbp||(dbp=new Promise((ok,no)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('templates',{keyPath:'id'});r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error);}));}
@@ -58,6 +62,7 @@ function renderList(){
     row.append(name,
       btn('마스터 편집',()=>{$('mTemplate').value=r.id;openMaster(r.id);showTab('master');}),
       btn('지침 수정',()=>openInstructions(r.id)),
+      btn('복제 · 이름 변경',()=>duplicateTemplate(r.id)),
       btn('이름 바꾸기',async()=>{const n=prompt('새 이름',r.name);if(!n||!n.trim()||n.trim()===r.name)return;await put({...r,name:n.trim()});toast('이름을 바꿨습니다.');}),
       btn('드라이브에 저장',()=>window.dispatchEvent(new CustomEvent('make-template-upload',{detail:{id:r.id}}))),
       btn('파일로 받기',()=>exportTemplate(r)),
@@ -71,6 +76,18 @@ function renderList(){
   input.onchange=async()=>{const f=input.files[0];if(!f)return;try{const rec=JSON.parse(await f.text());if(rec?.version!==1||!rec.design?.layouts)throw Error('템플릿 파일이 아닙니다.');rec.id=crypto.randomUUID();if(records.some(r=>r.name===rec.name))rec.name+=' (가져옴)';await put(rec);toast(`"${rec.name}" 템플릿을 가져왔습니다.`);}catch(e){toast(e.message,6000);}input.value='';};
   imp.append(input);box.append(imp);
 }
+let copyTemplateId='';
+function duplicateTemplate(id){const original=byId(id);if(!original)return;copyTemplateId=id;
+ const base=original.name+' 복사본';let suggested=base,n=2;while(records.some(r=>r.name===suggested))suggested=base+' '+n++;
+ $('copyTemplateSource').textContent='원본: '+original.name+' · 원본과 별개로 저장합니다.';$('copyTemplateName').value=suggested;$('copyTemplateStatus').textContent='';$('copyTemplateDialog').showModal();$('copyTemplateName').focus();$('copyTemplateName').select();
+}
+$('copyTemplateClose').onclick=()=>$('copyTemplateDialog').close();
+$('copyTemplateRun').onclick=async()=>{const original=byId(copyTemplateId),name=$('copyTemplateName').value.trim();if(!original)return;
+ if(!name){status('copyTemplateStatus','복제본 이름을 넣으세요.',true);return;}if(records.some(r=>r.name===name)){status('copyTemplateStatus','같은 이름이 있습니다. 복제본은 다른 이름으로 만들어 주세요.',true);return;}
+ $('copyTemplateRun').disabled=$('copyTemplateClose').disabled=true;
+ try{const rec={...clone(original),id:crypto.randomUUID(),name,copiedFrom:original.id,createdAt:Date.now()};delete rec.builtin;delete rec.builtinVersion;delete rec.edited;await put(rec);useForMake(rec.id);$('mTemplate').value=rec.id;$('copyTemplateDialog').close();await openMaster(rec.id);if(draftId===rec.id)showTab('master');toast('"'+name+'" 복제본을 만들었습니다. 원본과 따로 수정할 수 있습니다.');}catch(e){status('copyTemplateStatus','복제하지 못했습니다: '+e.message,true);}
+ finally{$('copyTemplateRun').disabled=$('copyTemplateClose').disabled=false;}
+};
 function exportTemplate(r){const blob=new Blob([JSON.stringify(r)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=r.name+'_템플릿.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);}
 
 /* ---------- 탭 ---------- */
@@ -79,18 +96,18 @@ for(const b of document.querySelectorAll('.tabs button'))b.onclick=()=>showTab(b
 
 /* ---------- ② 템플릿 만들기 ---------- */
 $('pairRun').onclick=async()=>{
-  if(busy)return;const sf=$('pairScript').files[0],df=$('pairDeck').files[0];
-  if(!sf||!df){status('pairStatus','한글 원고와 완성 PPT를 둘 다 고르세요.',true);return;}
-  busy=true;$('pairRun').disabled=true;status('pairStatus','두 파일을 읽고 원고와 슬라이드를 맞춰 보는 중…');
+  if(busy)return;const files=pairInputs.files(),pastes=pairInputs.pastes(),df=$('pairDeck').files[0];
+  if(!df){status('pairStatus','완성 PPT를 고르고 원고 파일 또는 붙여넣은 글을 넣으세요.',true);return;}
+  busy=true;$('pairRun').disabled=true;status('pairStatus','원고와 완성 PPT를 읽고 슬라이드를 맞춰 보는 중…');
   try{
-    const rich=await CaptionImport.manuscriptRich(sf),parsed=await CaptionImport.deck(df);rich.name=sf.name;parsed.name=df.name;
+    const rich=await MakeManuscripts.read(files,pastes,CaptionImport.manuscriptRich),parsed=await CaptionImport.deck(df);parsed.name=df.name;
     const analysis=CaptionPairTemplate.analyze(rich,parsed);
     if(!analysis.candidates.length)throw Error('원고와 정확히 연결되는 슬라이드를 찾지 못했습니다. 같은 설교의 원고와 PPT인지 확인하세요.');
     const result=CaptionPairTemplate.build(analysis,parsed.slides,await defaultDesign());
-    const name=$('pairName').value.trim()||stem(sf.name)+' 템플릿';
+    const name=$('pairName').value.trim()||stem(rich.name)+' 템플릿';
     const same=records.find(r=>r.name===name);if(same&&!confirm(`"${name}" 템플릿이 이미 있습니다. 덮어쓸까요?`))throw Error('취소했습니다. 다른 이름을 넣으세요.');
     const rec={version:1,id:same?.id||crypto.randomUUID(),name,instructions:result.instructions,options:{...DEFAULT_OPTIONS,cumulative:result.options?.cumulative??true},
-      pair:{version:1,sources:{script:await readData(sf),deck:await readData(df)},evidence:result.evidence,extractedInstructions:result.instructions},fixedSlides:result.fixedSlides||[],design:flatten(result.design)};
+      pair:{version:1,sources:{script:await combinedSource(rich,files),deck:await readData(df),...(files.length>1?{scriptFiles:await Promise.all(files.map(readData))}:{}),pastedScripts:pastes.filter(t=>t.trim())},evidence:result.evidence,extractedInstructions:result.instructions},fixedSlides:result.fixedSlides||[],design:flatten(result.design)};
     await put(rec);
     const learned=[...new Set(analysis.candidates.map(c=>B.layouts[c.layout]||c.layout))];
     status('pairStatus',`"${name}" 템플릿을 만들었습니다.\n원고와 연결된 슬라이드 ${analysis.matchedSlides}/${analysis.totalSlides}장 · 배운 레이아웃: ${learned.join(', ')}${rec.fixedSlides.length?`\n연결되지 않은 ${rec.fixedSlides.length}장은 고정 슬라이드로 넣었습니다.`:''}\n③ 마스터 편집에서 다듬을 수 있습니다.`);
@@ -277,11 +294,11 @@ function renderGrid(slides){
 }
 function markSelected(){[...$('makeGrid').children].forEach((t,i)=>t.classList.toggle('selected',i===selected));}
 $('makeRun').onclick=async()=>{
-  if(busy)return;const f=$('makeScript').files[0];if(!f){status('makeStatus','원고 파일을 고르세요.',true);return;}
+  if(busy)return;
   busy=true;$('makeRun').disabled=true;$('makeDownload').disabled=true;status('makeStatus','원고를 읽고 PPT를 만드는 중…');
   try{
-    const rec=byId($('makeTemplate').value),rich=await CaptionImport.manuscriptRich(f);
-    const project={lines:rich.lines,richLines:rich.richLines,scriptName:f.name,slides:[],links:[]};
+    const rec=byId($('makeTemplate').value),rich=await makeInputs.read(CaptionImport.manuscriptRich,{pasteColor:'0000FF',plainColor:'0000FF',markedColor:hex=>B.colorType('#'+hex)!=='black'});
+    const project={lines:rich.lines,richLines:rich.richLines,scriptName:rich.name,slides:[],links:[]};
     await B.useTemplate(rec?.design||null);
     const opts={allText:$('makeAll').checked,cumulative:$('makeCumulative').checked,greenLayout:$('makeGreen').value,title:$('makeTitle').value.trim(),date:$('makeDate').value.trim()};
     let result;
@@ -289,11 +306,11 @@ $('makeRun').onclick=async()=>{
     catch(e){if(!opts.allText&&/찾지 못했습니다/.test(e.message)){result=await B.generate(project,{...opts,allText:true});$('makeAll').checked=true;toast('원고에 색 표시가 없어 원고 전체로 만들었습니다.',5000);}else throw e;}
     const woven=rec?.fixedSlides?.length?CaptionPairTemplate.weave(rec.fixedSlides,result.slides,result.links):result;
     // 크기(960×540·1280×720 혼재)는 편집 창이 장면을 다시 만들 때 어긋나지 않도록 여기서 바꾸지 않고, PPTX로 내려받을 때 모두 1920×1080으로 맞춘다.
-    deck={...project,slides:woven.slides,links:woven.links,deckName:stem(f.name)+'_자막.pptx',generationTemplate:rec?structuredClone(rec):null,exportSize:{width:1920,height:1080}};deckTemplate=rec?.design||null;deckTemplateRec=rec||null;selected=-1;
+    deck={...project,slides:woven.slides,links:woven.links,deckName:stem(rich.name)+'_자막.pptx',generationTemplate:rec?structuredClone(rec):null,exportSize:{width:1920,height:1080}};deckTemplate=rec?.design||null;deckTemplateRec=rec||null;selected=-1;
     renderGrid(deck.slides);$('makeDownload').disabled=false;$('makeToLive').disabled=false;$('makeEditTools').hidden=false;
     status('makeStatus',`${deck.slides.length}장을 만들었습니다${rec?` (템플릿: ${rec.name})`:''}. 확인 후 PPTX 다운로드를 누르세요.`);
   }catch(e){status('makeStatus',e.message||String(e),true);}
-  finally{busy=false;$('makeRun').disabled=false;}
+  finally{busy=false;$('makeRun').disabled=false;$('makeDownload').disabled=!deck;$('makeToLive').disabled=!deck;}
 };
 $('makeDownload').onclick=async()=>{
   if(!deck||busy)return;busy=true;$('makeDownload').disabled=true;status('makeStatus','PPTX 파일을 만드는 중…');
