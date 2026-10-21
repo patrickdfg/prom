@@ -299,7 +299,16 @@ addEventListener('keydown',e=>{
 
 /* ---------- ① 만들기 ---------- */
 function scopeHint(){const rec=byId($('makeTemplate').value),omit=R.worshipOmit(rec);if(R.mode(rec)==='spirit'){$('makeScopeHint').textContent='성령말씀: 텍스트 원고 전체를 문장별 누적 자막으로 만듭니다. 제목은 표지에 한 번만 표시합니다.';return;}$('makeScopeHint').textContent=R.mode(rec)==='worship'?'제목·성경본문만 교체합니다.'+(omit.length?' 대표기도·성가대/특송은 제외합니다.':'')+' 교독문·광고 등은 원본 PPT 내용이므로 확인해 주세요.':'등록한 같은 원고는 원본 PPT 모양과 순서로 재현합니다. 다른 주일·수요·새벽 원고는 자동 인식합니다. 여러 번호 항목이 있으면 항목별로, 없으면 파랑은 하단 2줄, 초록은 말씀·성구 화면으로 만듭니다. 둘 다 없으면 자막을 생성하지 않습니다.';}
-$('makeTemplate').onchange=()=>{const rec=byId($('makeTemplate').value);try{localStorage.setItem(LAST,$('makeTemplate').value)}catch{}$('makeScope').value=R.mode(rec);scopeHint();};
+function adaptMakeInputs(){
+ const rec=byId($('makeTemplate').value),spirit=R.mode(rec)==='spirit';
+ $('makePastePanel').open=spirit;
+ $('makeAdsField').hidden=spirit;
+ $('makeAdsHint').hidden=spirit;
+ $('makeAnnouncements').disabled=spirit;
+ $('makeFileField').querySelector('input').accept=spirit?'.hwp,.hwpx,.docx,.txt,.pdf':'.hwp,.hwpx,.docx,.txt';
+ $('makeFileField').firstChild.textContent=spirit?'원고 파일 (PDF · HWP · HWPX · DOCX · TXT, 선택)':'원고 파일 (HWP · HWPX · DOCX · TXT, 여러 개 선택)';
+}
+$('makeTemplate').onchange=()=>{const rec=byId($('makeTemplate').value);try{localStorage.setItem(LAST,$('makeTemplate').value)}catch{}$('makeScope').value=R.mode(rec);scopeHint();adaptMakeInputs();};
 $('makeScope').onchange=async()=>{scopeHint();const rec=byId($('makeTemplate').value);if(rec)await put({...rec,options:{...rec.options,sourceMode:$('makeScope').value,allText:false},instructions:R.instructions(rec.instructions,$('makeScope').value)});};
 let observer=null;
 function renderGrid(slides){
@@ -317,7 +326,7 @@ $('makeRun').onclick=async()=>{
   try{
     let rec=byId($('makeTemplate').value);const rich=await makeInputs.read(CaptionImport.manuscriptRich);
     const project={lines:rich.lines,richLines:rich.richLines,scriptName:rich.name,slides:[],links:[]};
-    const opts={title:$('makeTitle').value.trim(),date:$('makeDate').value.trim(),announcements:$('makeAnnouncements').value};
+    const opts={title:$('makeTitle').value.trim(),date:$('makeDate').value.trim(),announcements:R.mode(rec)==='spirit'?'':$('makeAnnouncements').value};
     const woven=await MakePptEngine.generate(project,rec,opts);rec=woven.record;const summary=woven.summary||'원고를 자동 인식했습니다.';
     if(rec?.worship&&!byId(rec.id)?.worship){await put(rec);$('mTemplate').value=rec.id;draft=null;dirty=false;}
     // 편집 중 장면 좌표는 유지하고, 다운로드 크기는 공통 엔진의 결과를 따른다.
