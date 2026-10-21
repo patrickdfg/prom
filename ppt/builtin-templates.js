@@ -16,7 +16,7 @@ function req(d,mode,fn){return new Promise((ok,no)=>{const tx=d.transaction('tem
 function spiritPreset(rec){
  rec.name='성령말씀';
  rec.worship=false;
- rec.options={...(rec.options||{}),sourceMode:'numbered',cumulative:true,allText:false,greenLayout:'word'};
+ rec.options={...(rec.options||{}),sourceMode:'spirit',cumulative:true,allText:false,greenLayout:'word'};
  rec.instructions=`# 성령말씀 — 성령사연 클로드 스킬 기반
 - 성령사연 PDF·텍스트 원고의 문장을 원문 그대로 살리고 요약·문장 병합·삭제를 하지 않는다.
 - 표지는 한 장만 만들며 '20XX년 성령 사연 N' 제목만 파란 굵은 글씨로 표시한다. 서두 인용문은 본문 첫 문장으로 보낸다.
