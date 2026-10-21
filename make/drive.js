@@ -39,11 +39,13 @@ async function findRemote(tid){
   return found.files?.[0]||null;
 }
 async function listRemote(){
+  const mine=L().token();
   const q="trashed = false and appProperties has { key='promApp' and value='"+APP+"' }";
   const out=[];let pageToken='';
   do{
     const params={q,fields:'nextPageToken,files(id,name,modifiedTime,appProperties)',orderBy:'modifiedTime desc',pageSize:'100'};if(pageToken)params.pageToken=pageToken;
     const data=await (await L().request(API+'files?'+new URLSearchParams(params))).json();
+    if(L().token()!==mine)throw Error('계정이 변경되어 이전 목록을 표시하지 않습니다.');
     out.push(...(data.files||[]));pageToken=data.nextPageToken||'';
   }while(pageToken);
   return out;
@@ -130,7 +132,7 @@ async function trashRemote(f){
 }
 
 window.addEventListener('make-template-upload',e=>enqueue(()=>saveOne(e.detail.id)));
-window.addEventListener('make-login',e=>{if(e.detail.loggedIn){paint();note('로그인했습니다. 「드라이브에 저장」을 누르면 내 드라이브에 올라갑니다.');}else{remote=[];paint();}});
+window.addEventListener('make-login',e=>{if(e.detail.accountChanged){remote=[];$('tplDriveFiles')?.replaceChildren();if($('tplDriveFiles'))$('tplDriveFiles').hidden=true;}if(e.detail.loggedIn){paint();note('로그인했습니다. 「드라이브에 저장」을 누르면 내 드라이브에 올라갑니다.');}else{remote=[];paint();}});
 $('tplDriveSync')&&($('tplDriveSync').onclick=()=>enqueue(syncAll));
 $('tplDriveList')&&($('tplDriveList').onclick=()=>enqueue(refreshRemote));
 paint();
