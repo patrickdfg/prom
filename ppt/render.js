@@ -32,7 +32,7 @@ function show(host,slide,green='#00ff00'){
     content.appendChild(p);
    }
    textFits.push(()=>{
-    if(shape.pptxText)for(const [i,para] of (shape.paragraphs||[]).entries()){const line=para.lineSpacing;if(line?.unit==='ratio'){const size=Math.max(0,...(para.runs||[]).map(r=>r.size||0))||para.defaultSize||30,run=(para.runs||[]).find(r=>r.size===size)||para.runs?.[0]||{};content.children[i].style.lineHeight=Math.max(1,normalHeight(run,size)*line.value*(1-(shape.lineReduction||0)))+'px';}}
+    if(shape.pptxText||shape.referenceTypography)for(const [i,para] of (shape.paragraphs||[]).entries()){const line=para.lineSpacing;if(line?.unit==='ratio'){const size=Math.max(0,...(para.runs||[]).map(r=>r.size||0))||para.defaultSize||30,run=(para.runs||[]).find(r=>r.size===size)||para.runs?.[0]||{};content.children[i].style.lineHeight=Math.max(1,normalHeight(run,size)*line.value*(1-(shape.lineReduction||0)))+'px';}}
     const padding=(shape.padding||[0,0,0,0]),w=Math.max(1,shape.w-padding[1]-padding[3]),h=Math.max(1,shape.h-padding[0]-padding[2]);
     content.style.width=w+'px';content.style.transform='none';content.style.marginLeft='0';frame.style.height='auto';
     if(shape.pptxText){frame.dataset.scale='1';return;}

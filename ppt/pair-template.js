@@ -4,6 +4,10 @@
 const C=typeof module==='object'&&module.exports?require('./core.js'):root.CaptionCore;
 const textOf=shape=>(shape.paragraphs||[]).map(p=>(p.runs||[]).map(r=>r.text||'').join('')).join('\n');
 const choices={caption:'하단 자막',word:'말씀',wordGod:'하나님 말씀',wordSon:'성자 말씀',wordSpirit:'성령 말씀',wordTeacher:'선생님 말씀 (인물 없음)',verse:'성경 구절',emphasis:'큰 글씨 강조',proverb:'잠언 항목'};
+const copy=x=>structuredClone(x);
+// Compare the complete manuscript, including punctuation and source colors. A similar sermon must never replay old wording.
+const sourceText=p=>JSON.stringify((p.lines||[]).map(s=>String(s).normalize('NFC')));
+const sourceColors=p=>p.richLines?JSON.stringify(p.richLines.map(row=>(row.runs||[]).map(r=>[r.text,String(r.hex||'000000').replace('#','').toUpperCase()]))):null;
 function analyze(manuscript,deck){
  const ix=C.index(manuscript.lines),slides=deck.slides||[],candidates=[];
  const rows=slides.map((slide,index)=>{
@@ -31,7 +35,7 @@ function analyze(manuscript,deck){
  rows.forEach((row,i)=>{if(links[i].status==='exact'){before++;return;}const t=slides[i].shapes.filter(s=>s.type==='text').map(textOf).join(' ').replace(/\s+/g,' ').trim();fixed.push({slideIndex:i,before,total,status:links[i].status,label:t.slice(0,40),keep:true});});
  if(!candidates.length&&!slides.some(s=>s.shapes.some(sh=>sh.type==='text'&&C.normalize(textOf(sh)).length>=2)))throw Error(`이 PPT는 ${slides.length}장 모두 글자가 그림으로 들어 있어(편집 가능한 글자 0개) 서식을 배울 수 없습니다. 글자를 직접 입력한 원본 PPT(그림·PDF로 내보내지 않은 것)로 다시 시도하거나, 목록의 「기본 주일설교 템플릿」을 쓰세요.`);
  if(!candidates.length)throw Error('원고와 정확히 일치하는 편집 가능한 PPT 본문을 찾지 못했습니다. 같은 원고로 만든 PPT인지 확인하세요. 이미지로 된 글자와 중복·유사 문장은 자동 학습하지 않습니다.');
- return {version:1,scriptName:manuscript.name||'',deckName:deck.name||'',totalSlides:slides.length,matchedSlides:candidates.length,candidates,fixed,warnings:deck.warnings||[]};
+ return {version:1,source:{text:sourceText(manuscript),colors:sourceColors(manuscript)},scriptName:manuscript.name||'',deckName:deck.name||'',totalSlides:slides.length,matchedSlides:candidates.length,candidates,fixed,warnings:deck.warnings||[]};
 }
 function build(analysis,slides,design){
  const selected=analysis.candidates.filter(c=>Object.hasOwn(choices,c.layout));
@@ -43,16 +47,51 @@ function build(analysis,slides,design){
   // Use the last/full build-up slide, retaining geometry and visual objects but no old manuscript text.
   const ref=[...list].sort((a,b)=>C.normalize(b.text).length-C.normalize(a.text).length)[0],scene=structuredClone(slides[ref.slideIndex]);
   scene.bodyIndex=ref.bodyIndex;delete scene.editor;delete scene.uid;delete scene.masterId;scene.text='';
-  for(const shape of scene.shapes){delete shape.extraText;delete shape.manualGeometry;if(shape.type!=='text')continue;const p=shape.paragraphs?.[0]||{runs:[]};const runs=(shape.paragraphs||[]).flatMap(p=>p.runs||[]);const base=shape===scene.shapes[scene.bodyIndex]?ref.style:runs[0]||{font:ref.font,size:ref.size};shape.paragraphs=[{...p,runs:[{...base,text:''}]}];}
-  output.layouts[layout]=scene;if(output.layoutMasters)delete output.layoutMasters[layout];
+  scene.shapes.forEach((shape,i)=>{shape.masterSlot||='base:'+i;if(i!==scene.bodyIndex)return;const p=shape.paragraphs?.[0]||{runs:[]};shape.referenceTypography=true;shape.paragraphs=[{...p,fixedLineSpacing:true,runs:[{...ref.style,text:''}]}];});
+  output.layouts[layout]=scene;if(output.layoutMasters){delete output.layoutMasters[layout];delete output.layoutMasters['generated:'+layout];}
   const body=scene.shapes[scene.bodyIndex];
-  notes.push(`${choices[layout]}: ${list.length}장 확인. 대표 ${ref.slideIndex+1}번의 배경·글꼴 ${ref.font}·크기 ${ref.size.toFixed(1)}px·위치 (${body.x.toFixed(1)}, ${body.y.toFixed(1)})·글상자 ${body.w.toFixed(1)}×${body.h.toFixed(1)}px 사용. 관찰된 본문 줄 수 ${Math.min(...list.map(c=>c.lines))}~${Math.max(...list.map(c=>c.lines))}줄. 새 원고는 글상자 너비에 맞춰 재분할, 줄간격은 공통지침의 1.3배 적용.`);
+  notes.push(`${choices[layout]}: ${list.length}장 확인. 대표 ${ref.slideIndex+1}번의 배경·글꼴 ${ref.font}·크기 ${ref.size.toFixed(1)}px·위치 (${body.x.toFixed(1)}, ${body.y.toFixed(1)})·글상자 ${body.w.toFixed(1)}×${body.h.toFixed(1)}px 사용. 관찰된 본문 줄 수 ${Math.min(...list.map(c=>c.lines))}~${Math.max(...list.map(c=>c.lines))}줄. 다른 원고는 글상자 너비에 맞춰 재분할하고 원본 줄간격·여백·자간을 유지.`);
  }
  const cumulative=selected.some(c=>c.cumulative);
  notes.push(cumulative?'이전 문구 뒤에 본문이 늘어나는 누적 공개 확인: 누적 공개 옵션 켬.':'누적 공개를 확정할 근거 없음: 기존 누적 공개 선택 유지.','PPT의 예전 본문·날짜·제목은 서식에 고정하지 않고 비워 둠. 새 원고의 글자는 편집 가능한 본문으로 생성.','글자가 이미지에 포함된 배경, 표·차트·그룹의 원본 재현은 별도 확인 필요. 자유 메모는 자동 실행되지 않음.');
  const fixedSlides=(analysis.fixed||[]).filter(f=>f.keep!==false).map(f=>{const slide=structuredClone(slides[f.slideIndex]);delete slide.uid;delete slide.masterId;delete slide.editor;return {before:f.before,total:f.total,label:f.label,slide};});
  if(fixedSlides.length)notes.push(`원고에 연결되지 않은 고정 슬라이드 ${fixedSlides.length}장(${fixedSlides.map(f=>f.label||'그림·장식').slice(0,6).join(' / ')})은 새 원고로 만들 때도 그대로 유지.`);
+ notes.push('등록한 원고와 글자·색상이 같은 원고는 원본 PPT의 장별 서식·글자 크기·좌표·줄바꿈·누적 공개 순서와 슬라이드 크기로 재현. 학습에서 제외한 장·해제한 고정 장은 제외. 원고 내용이 바뀌면 원본 문구를 재사용하지 않고 새 원고로 생성.');
  return {design:output,fixedSlides,instructions:notes.join('\n'),options:cumulative?{cumulative:true}:{},evidence:{...structuredClone(analysis),candidates:structuredClone(selected)}};
+}
+function matches(project,record){const source=record?.pair?.evidence?.source;return !!(source&&record.pair.sources?.deck?.data&&source.text===sourceText(project)&&(source.colors===null||source.colors===sourceColors(project)));}
+function hasReference(record){return !!(record?.pair?.sources?.deck?.data&&record.pair.evidence?.candidates?.length);}
+async function sourceFile(source){const blob=await(await fetch(source.data)).blob();return new File([blob],source.name);}
+let cachedSource='',cachedDeck=null;
+async function generate(project,record,importer,reader,options={}){
+ if(!hasReference(record)||options.title||options.date)return null;
+ // Older saved templates already contain both originals; add exact-source evidence without making the user register them again.
+ if(!record.pair.evidence.source&&record.pair.sources.script?.data&&reader){const rich=await reader(await sourceFile(record.pair.sources.script));record={...record,pair:{...record.pair,evidence:{...record.pair.evidence,source:{text:sourceText(rich),colors:sourceColors(rich)}}}};}
+ if(!matches(project,record))return null;
+ const source=record.pair.sources.deck;if(cachedSource!==source.data){cachedDeck=await importer(await sourceFile(source));cachedSource=source.data;}
+ const result=reproduce(project,record,cachedDeck,options);return result?{...result,record}:null;
+}
+// Transfer edits to a learned prototype back onto each original slide, keeping its own body text and geometry unless explicitly edited.
+function designPatch(raw,c,base,edited,M){
+ if(!M||!base||!edited)return raw;
+ const a=M.identify(copy(base)),b=M.identify(copy(edited)),s=M.identify(copy(raw));s.bodyIndex=c.bodyIndex;
+ const mapping=new Map();a.shapes.forEach((sh,i)=>{const at=i===a.bodyIndex?c.bodyIndex:s.shapes.findIndex((other,j)=>j!==c.bodyIndex&&other.type===sh.type&&(sh.src?other.src===sh.src:sh.type==='text'?textOf(other)===textOf(sh):other.x===sh.x&&other.y===sh.y&&other.w===sh.w&&other.h===sh.h));if(at>=0)mapping.set(sh.masterSlot,s.shapes[at].masterSlot);});
+ const patch=M.diff(a,b),remap=id=>mapping.get(id)||(id.startsWith('added:')?id:null);
+ a.shapes.forEach((sh,i)=>{if(i===a.bodyIndex||sh.type!=='text')return;const next=b.shapes.find(other=>other.masterSlot===sh.masterSlot);if(next&&textOf(sh)!==textOf(next)){patch.$elements||={};patch.$elements[sh.masterSlot]||={};patch.$elements[sh.masterSlot].templateParagraphs=copy(next.paragraphs);}});
+ if(patch.$elements)patch.$elements=Object.fromEntries(Object.entries(patch.$elements).map(([id,p])=>[remap(id),p]).filter(([id])=>id));
+ if(patch.$structure){const st=patch.$structure;st.order=st.order.map(remap).filter(Boolean);st.removed=st.removed.map(remap).filter(Boolean);}
+ return Object.keys(patch).length?M.apply(s,patch):raw;
+}
+function reproduce(project,record,deck,options={}){
+ if(!matches(project,record)||options.title||options.date)return null;
+ const evidence=record.pair.evidence;if(deck.slides.length!==evidence.totalSlides)throw Error('템플릿의 원본 PPT 장수가 다릅니다. 두 원본으로 템플릿을 다시 등록해 주세요.');
+ const candidates=new Map(evidence.candidates.filter(c=>choices[c.layout]).map(c=>[c.slideIndex,c])),fixed=new Set((evidence.fixed||[]).filter(f=>f.keep!==false).map(f=>f.slideIndex)),slides=[],links=[],M=root.CaptionMasters;
+ const baseline=build(evidence,deck.slides,record.design).design;
+ deck.slides.forEach((original,i)=>{const c=candidates.get(i);if(!c&&!fixed.has(i))return;let s=copy(original);
+  if(c){s.bodyIndex=c.bodyIndex;let edited=record.design.layouts[c.layout];if(M){for(const key of [c.layout,'generated:'+c.layout])if(record.design.layoutMasters?.[key])edited=M.apply(edited,record.design.layoutMasters[key]);s=designPatch(s,c,baseline.layouts[c.layout],edited,M);const patch=record.design.layoutMasters?.[M.key(original)];if(patch)s=M.apply(s,patch);}}
+  s.uid=root.crypto?.randomUUID?.()||String(Math.random());slides.push(s);links.push(c?{status:'exact',start:c.start,end:c.end,score:1,reason:c.cumulative?'cumulative':'source'}:{status:'unlinked',start:null,end:null,score:0});
+ });
+ return {slides,links,reproduced:true,exportSize:{width:deck.slides[0].width,height:deck.slides[0].height},summary:`같은 원고 확인 · 원본 PPT ${slides.length}장의 장별 서식·줄바꿈·순서 재현`};
 }
 // 고정 슬라이드를 새로 만든 자막 사이에 되돌려 넣는다. 맨 앞·맨 뒤는 그대로, 중간은 원래 위치의 비율로 놓고 누적 묶음은 쪼개지 않는다.
 function weave(fixed,slides,links){
@@ -62,5 +101,5 @@ function weave(fixed,slides,links){
  for(let k=0;k<=n;k++){fixed.forEach((f,i)=>{if(at[i]!==k)return;const s=structuredClone(f.slide);s.uid=uid();out.push(s);outLinks.push({status:'unlinked',start:null,end:null,score:0});});if(k<n){out.push(slides[k]);outLinks.push(links[k]);}}
  return {slides:out,links:outLinks};
 }
-const api={analyze,build,choices,weave};if(typeof module==='object'&&module.exports)module.exports=api;else root.CaptionPairTemplate=api;
+const api={analyze,build,choices,weave,matches,hasReference,reproduce,generate};if(typeof module==='object'&&module.exports)module.exports=api;else root.CaptionPairTemplate=api;
 })(typeof window==='object'?window:globalThis);

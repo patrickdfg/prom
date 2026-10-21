@@ -11,9 +11,9 @@ function styledRuns(text,base){let color=base.color||'#111111';const runs=[];for
 async function scene(layout,text,options={}){
  const bank=await templates(),result=clone(bank[layout]||bank[layoutFallback[layout]]||bank.caption),bodyIndex=result.bodyIndex,body=result.shapes[bodyIndex],para=body.paragraphs[0]||{runs:[]},base=clone(para.runs.find(r=>r.size)||{size:32,bold:true,font:'마루 부리OTF 굵은',color:'#111111'});
  for(const key of ['font','size','bold','color'])if(options[key]!==undefined)base[key]=options[key];
- Object.assign(body,{x:options.x??body.x,y:options.y??body.y,w:options.w??body.w,h:options.h??body.h,anchor:options.anchor||body.anchor,wrap:true,lineReduction:0});
+ Object.assign(body,{x:options.x??body.x,y:options.y??body.y,w:options.w??body.w,h:options.h??body.h,anchor:options.anchor||body.anchor,wrap:true,lineReduction:body.referenceTypography?(body.lineReduction||0):0});
  let textLines=String(text).split('\n');if(options.padToLines)while(textLines.length<options.padToLines)textLines.push(' ');// 줄 높이를 맞추는 빈 줄. 특수 공백(U+00A0)은 일부 글꼴에서 네모로 보인다.
- body.paragraphs=textLines.map(line=>({...clone(para),align:options.align||para.align||'center',lineSpacing:clone(options.lineSpacing||(para.fixedLineSpacing&&para.lineSpacing)||{unit:'ratio',value:1.3}),runs:styledRuns(line,base),defaultSize:base.size}));
+ body.paragraphs=textLines.map(line=>({...clone(para),align:options.align||para.align||'center',lineSpacing:clone(options.lineSpacing!==undefined?options.lineSpacing:para.fixedLineSpacing?para.lineSpacing:{unit:'ratio',value:1.3}),runs:styledRuns(line,base),defaultSize:base.size}));
  // The template's empty placeholders stay empty; only body/reference/date fields are populated.
  if((layout==='verse'||layout==='passage')&&options.ref){const refRun={...base,color:layout==='verse'?'#2683c6':'#000000'};if(layout==='passage'){const ref=result.shapes[4],rp=clone(ref.paragraphs[0]),rr=rp.runs.find(r=>r.size)||refRun;ref.paragraphs=[{...rp,runs:styledRuns(options.ref,rr)}];}else body.paragraphs.unshift({...clone(para),align:'left',lineSpacing:clone(options.lineSpacing||{unit:'ratio',value:1.3}),runs:styledRuns(options.ref,refRun)});}
  if(layout==='cover'&&options.date){const date=result.shapes[6],dp=clone(date.paragraphs[0]),dr=dp.runs.find(r=>r.size)||base;date.paragraphs=[{...dp,runs:styledRuns(options.date,dr)}];}
@@ -31,7 +31,7 @@ function speakerLayout(text,fallback='word'){
 }
 function metrics(layout,bank=templateBank){
  const original=bank?.[layout]||bank?.[layoutFallback[layout]],s=original&&window.CaptionMasters?CaptionMasters.inherit({...original,editor:{layout}},masterOverrides):original,b=s?.shapes[s.bodyIndex],p=b?.paragraphs[0],r=p?.runs.find(r=>r.size)||{size:30.6667,font:'마루 부리OTF 굵은',bold:true},pad=b?.padding||[4.8,9.6,4.8,9.6];
- const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d'),font=/마루\s*부리|maru\s*buri/i.test(r.font)?'"PROM MaruBuri"':JSON.stringify(r.font||'Malgun Gothic');ctx.font=`${r.bold?700:400} ${r.size}px ${font}, "Malgun Gothic", serif`;
+ const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d'),font=JSON.stringify(r.font||'Malgun Gothic')+(/마루\s*부리|maru\s*buri/i.test(r.font)?', "PROM MaruBuri"':'');ctx.font=`${r.bold?700:400} ${r.size}px ${font}, "Malgun Gothic", serif`;
  return {width:(b?.w||900)-pad[1]-pad[3]-2,measure:text=>ctx.measureText(text).width+Math.max(0,text.length-1)*(r.spacing||0),maxLines:Math.max(1,Math.min(layout==='caption'?2:layout==='verse'?8:layout==='proverb'?99:5,Math.floor(((b?.h||406)-pad[0]-pad[2])/(p?.lineSpacing?.unit==='px'?p.lineSpacing.value:r.size*(p?.lineSpacing?.value||1.3)))))};
 }
 // 줄을 바꾸기 좋은 곳/나쁜 곳. 앞 낱말 끝과 뒤 낱말 앞을 보고 점수를 준다(작을수록 좋음).

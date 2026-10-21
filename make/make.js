@@ -114,7 +114,7 @@ $('pairRun').onclick=async()=>{
       pair:{version:1,sources:{script:await combinedSource(rich,files),deck:await readData(df),...(files.length>1?{scriptFiles:await Promise.all(files.map(readData))}:{}),pastedScripts:pastes.filter(t=>t.trim())},evidence:result.evidence,extractedInstructions:result.instructions},fixedSlides:result.fixedSlides||[],design:flatten(result.design)};
     await put(rec);
     const learned=L.catalog(rec,B.layouts).map(e=>L.label(rec,e));
-    status('pairStatus',scope==='worship'?`"${name}" 예배 전반 템플릿을 만들었습니다. 제목·성경본문 자리만 교체하며 원본 ${parsed.slides.length}장의 예배 순서를 유지합니다.`:`"${name}" 템플릿을 만들었습니다.\n원고와 연결된 슬라이드 ${analysis.matchedSlides}/${analysis.totalSlides}장 · 배운 레이아웃: ${learned.join(', ')}${rec.fixedSlides.length?`\n연결되지 않은 ${rec.fixedSlides.length}장은 고정 슬라이드로 넣었습니다.`:''}\n③ 마스터 편집에서 다듬을 수 있습니다.`);
+    status('pairStatus',scope==='worship'?`"${name}" 예배 전반 템플릿을 만들었습니다. 제목·성경본문 자리만 교체하며 원본 ${parsed.slides.length}장의 예배 순서를 유지합니다.`:`"${name}" 템플릿을 만들었습니다.\n원고와 연결된 슬라이드 ${analysis.matchedSlides}/${analysis.totalSlides}장 · 배운 레이아웃: ${learned.join(', ')}${rec.fixedSlides.length?`\n연결되지 않은 ${rec.fixedSlides.length}장은 고정 슬라이드로 넣었습니다.`:''}\n같은 원고를 다시 올리면 장별 원본 모양·줄바꿈·순서로 재현합니다. ③ 마스터 편집에서 다듬을 수 있습니다.`);
     useForMake(rec.id);$('mTemplate').value=rec.id;draft=null;
   }catch(e){status('pairStatus',e.message||String(e),true);}
   finally{busy=false;$('pairRun').disabled=false;}
@@ -174,7 +174,7 @@ function fillControls(){
   $('mDel').disabled=isBody(shapeIx);$('mDup').disabled=isBody(shapeIx);
   if(isText){
     const {p,r}=textBase(sh);$('mTextRow').hidden=isBody(shapeIx);$('mText').value=plainText(sh);
-    $('mFont').value=r.font||'';$('mSize').value=+(r.size||p.defaultSize||32).toFixed(1);$('mBold').checked=!!r.bold;$('mItalic').checked=!!r.italic;$('mUnder').checked=!!r.underline&&r.underline!=='none';
+    $('mFont').value=r.font||'';$('mSize').value=+((r.size||p.defaultSize||32)*72/96).toFixed(3);$('mBold').checked=!!r.bold;$('mItalic').checked=!!r.italic;$('mUnder').checked=!!r.underline&&r.underline!=='none';
     $('mColor').value=hex(r.color,'#ffffff');$('mAlign').value=p.align||'center';$('mAnchor').value=sh.anchor||'t';
     $('mLine').value=p.lineSpacing?.unit==='ratio'?+p.lineSpacing.value.toFixed(2):p.lineSpacing?.unit==='px'&&r.size?+(p.lineSpacing.value/r.size).toFixed(2):1.3;
   }
@@ -208,13 +208,13 @@ function select(i){shapeIx=i;$('mShape').value=i;fillControls();outline();}
 function applyGeometry(){const sh=cur();if(!sh)return;mark('geo');for(const [id,k] of [['mX','x'],['mY','y'],['mW','w'],['mH','h']]){const v=parseFloat($(id).value);if(Number.isFinite(v))sh[k]=k==='w'||k==='h'?Math.max(4,v):v;}changed();}
 function applyText(e){
   const sh=cur();if(!sh||sh.type!=='text')return;mark('text:'+(e?.target?.id||''));
-  const {r:old}=textBase(sh),font=$('mFont').value.trim()||old.font||'Malgun Gothic',size=Math.max(6,parseFloat($('mSize').value)||old.size||32),line=Math.min(3,Math.max(.5,parseFloat($('mLine').value)||1.3));
+  const {r:old}=textBase(sh),font=$('mFont').value.trim()||old.font||'Malgun Gothic',size=Number.isFinite(parseFloat($('mSize').value))?Math.max(6,parseFloat($('mSize').value))*96/72:old.size||32,line=Math.min(3,Math.max(.5,parseFloat($('mLine').value)||1.3));
   const style={font,size,bold:$('mBold').checked,italic:$('mItalic').checked,underline:$('mUnder').checked?'sng':'none'},color=$('mColor').value,align=$('mAlign').value;
   const lines=isBody(shapeIx)?null:$('mText').value.split('\n');
   const base=sh.paragraphs?.[0]||{runs:[{text:''}]};
   const paras=lines?lines.map((t,i)=>({...clone(sh.paragraphs?.[i]||base),runs:[{...(textBase(sh).r),text:t}]})):(sh.paragraphs?.length?sh.paragraphs:[base]);
-  sh.paragraphs=paras.map(p=>({...p,align,defaultSize:size,lineSpacing:{unit:'ratio',value:line},fixedLineSpacing:true,runs:(p.runs?.length?p.runs:[{text:''}]).map(r=>({...r,...style,color:(r.color||old.color)===old.color||lines?color:r.color}))}));
-  sh.anchor=$('mAnchor').value;sh.lineReduction=0;sh.wrap=true;
+  sh.paragraphs=paras.map(p=>({...p,align,defaultSize:size,lineSpacing:e?.target?.id==='mLine'?{unit:'ratio',value:line}:clone(p.lineSpacing||null),fixedLineSpacing:true,runs:(p.runs?.length?p.runs:[{text:''}]).map(r=>({...r,...style,color:(r.color||old.color)===old.color||lines?color:r.color}))}));
+  sh.anchor=$('mAnchor').value;if(e?.target?.id==='mLine')sh.lineReduction=0;sh.wrap=true;
   if(lines)$('mShape').options[shapeIx].text=shapeLabel(sh,shapeIx,scene());
   changed();
 }
@@ -230,7 +230,7 @@ $('mBgClear').onclick=()=>{if(!draft)return;const s=scene(),body=s.shapes[s.body
 $('mBgGreen').onclick=()=>{if(!draft)return;mark();scene().background='#00ff00';$('mBg').value='#00ff00';changed();};
 
 // 넣기·복제·삭제·순서
-function insert(sh){if(!draft)return;mark();const s=scene();s.shapes.push(sh);fillShapes();select(s.shapes.length-1);changed();}
+function insert(sh){if(!draft)return;mark();const s=scene();sh.masterSlot='added:'+crypto.randomUUID();s.shapes.push(sh);fillShapes();select(s.shapes.length-1);changed();}
 const box=(w,h)=>{const s=scene();return {x:Math.round((s.width-w)/2),y:Math.round((s.height-h)/2),w,h};};
 $('mAddText').onclick=()=>{if(!draft)return;const b=box(Math.round(scene().width*.5),90);insert({type:'text',...b,anchor:'ctr',padding:[4,8,4,8],wrap:true,lineReduction:0,paragraphs:[{align:'center',defaultSize:40,lineSpacing:{unit:'ratio',value:1.2},fixedLineSpacing:true,runs:[{text:'글자를 입력하세요',font:'Malgun Gothic',size:40,bold:true,color:'#ffffff'}]}]});$('mText').focus();$('mText').select();};
 $('mAddRect').onclick=()=>insert({type:'rect',geom:'rect',...box(300,160),color:'#1f6feb',line:null});
@@ -298,7 +298,7 @@ addEventListener('keydown',e=>{
 (()=>{const names=['마루 부리OTF 굵은','Malgun Gothic','맑은 고딕','바탕','궁서','돋움','굴림','HY견고딕','HY견명조','나눔고딕','나눔명조','나눔스퀘어','Noto Sans KR','Noto Serif KR','Pretendard','Arial'];for(const n of names){const o=document.createElement('option');o.value=n;$('mFonts').append(o);}})();
 
 /* ---------- ① 만들기 ---------- */
-function scopeHint(){const rec=byId($('makeTemplate').value),omit=R.worshipOmit(rec);$('makeScopeHint').textContent=R.mode(rec)==='worship'?'제목·성경본문만 교체합니다.'+(omit.length?' 대표기도·성가대/특송은 제외합니다.':'')+' 교독문·광고 등은 원본 PPT 내용이므로 확인해 주세요.':'주일·수요·새벽 원고를 자동 인식합니다. 여러 번호 항목이 있으면 항목별로, 없으면 파랑은 하단 2줄, 초록은 말씀·성구 화면으로 만듭니다. 둘 다 없으면 자막을 생성하지 않습니다.';}
+function scopeHint(){const rec=byId($('makeTemplate').value),omit=R.worshipOmit(rec);$('makeScopeHint').textContent=R.mode(rec)==='worship'?'제목·성경본문만 교체합니다.'+(omit.length?' 대표기도·성가대/특송은 제외합니다.':'')+' 교독문·광고 등은 원본 PPT 내용이므로 확인해 주세요.':'등록한 같은 원고는 원본 PPT 모양과 순서로 재현합니다. 다른 주일·수요·새벽 원고는 자동 인식합니다. 여러 번호 항목이 있으면 항목별로, 없으면 파랑은 하단 2줄, 초록은 말씀·성구 화면으로 만듭니다. 둘 다 없으면 자막을 생성하지 않습니다.';}
 $('makeTemplate').onchange=()=>{const rec=byId($('makeTemplate').value);try{localStorage.setItem(LAST,$('makeTemplate').value)}catch{}$('makeScope').value=R.mode(rec);scopeHint();};
 $('makeScope').onchange=async()=>{scopeHint();const rec=byId($('makeTemplate').value);if(rec)await put({...rec,options:{...rec.options,sourceMode:$('makeScope').value,allText:false},instructions:R.instructions(rec.instructions,$('makeScope').value)});};
 let observer=null;
@@ -317,15 +317,11 @@ $('makeRun').onclick=async()=>{
   try{
     let rec=byId($('makeTemplate').value);const rich=await makeInputs.read(CaptionImport.manuscriptRich);
     const project={lines:rich.lines,richLines:rich.richLines,scriptName:rich.name,slides:[],links:[]};
-    await B.useTemplate(rec?.design||null);
-    const opts={title:$('makeTitle').value.trim(),date:$('makeDate').value.trim()},scope=R.mode(rec);
-    let woven,summary='';
-    if(scope==='worship'){
-      const result=R.generateWorship(project,rec,await R.sourceDeck(rec,CaptionImport.deck),opts);rec=L.prepare(result.record,B.layouts);woven=result;summary=result.summary;
-      if(!byId(rec.id)?.worship){await put(rec);$('mTemplate').value=rec.id;draft=null;dirty=false;}
-    }else{const result=await B.generate(project,opts);woven=rec?.fixedSlides?.length?CaptionPairTemplate.weave(rec.fixedSlides,result.slides,result.links):result;summary=(result.summary||'원고를 자동 인식했습니다.').replace(/[.]$/,'');}
-    // 크기(960×540·1280×720 혼재)는 편집 창이 장면을 다시 만들 때 어긋나지 않도록 여기서 바꾸지 않고, PPTX로 내려받을 때 모두 1920×1080으로 맞춘다.
-    deck={...project,slides:woven.slides,links:woven.links,deckName:stem(rich.name)+'_자막.pptx',generationTemplate:rec?structuredClone(rec):null,exportSize:{width:1920,height:1080}};deckTemplate=rec?.design||null;deckTemplateRec=rec||null;selected=-1;
+    const opts={title:$('makeTitle').value.trim(),date:$('makeDate').value.trim()};
+    const woven=await MakePptEngine.generate(project,rec,opts);rec=woven.record;const summary=woven.summary||'원고를 자동 인식했습니다.';
+    if(rec?.worship&&!byId(rec.id)?.worship){await put(rec);$('mTemplate').value=rec.id;draft=null;dirty=false;}
+    // 편집 중 장면 좌표는 유지하고, 다운로드 크기는 공통 엔진의 결과를 따른다.
+    deck={...project,slides:woven.slides,links:woven.links,deckName:stem(rich.name)+'_자막.pptx',generationTemplate:rec?structuredClone(rec):null,exportSize:woven.exportSize||{width:1920,height:1080}};deckTemplate=rec?.design||null;deckTemplateRec=rec||null;selected=-1;
     renderGrid(deck.slides);$('makeDownload').disabled=false;$('makeToLive').disabled=false;$('makeEditTools').hidden=false;
     status('makeStatus',`${deck.slides.length}장을 만들었습니다${rec?` (템플릿: ${rec.name})`:''}. ${summary}. 확인 후 PPTX 다운로드를 누르세요.`);
   }catch(e){status('makeStatus',e.message||String(e),true);}
@@ -333,7 +329,7 @@ $('makeRun').onclick=async()=>{
 };
 $('makeDownload').onclick=async()=>{
   if(!deck||busy)return;busy=true;$('makeDownload').disabled=true;status('makeStatus','PPTX 파일을 만드는 중…');
-  try{const out=structuredClone(deck);CaptionSize.unify(out.slides,1920,1080);const blob=await CaptionPptx.create(out),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=deck.deckName;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);status('makeStatus',`${deck.deckName} 를 받았습니다.`);}
+  try{const out=structuredClone(deck);CaptionSize.unify(out.slides,deck.exportSize?.width||1920,deck.exportSize?.height||1080);const blob=await CaptionPptx.create(out),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=deck.deckName;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);status('makeStatus',`${deck.deckName} 를 받았습니다.`);}
   catch(e){status('makeStatus',e.message||String(e),true);}
   finally{busy=false;$('makeDownload').disabled=false;}
 };
@@ -361,7 +357,7 @@ $('makeToLive').onclick=async()=>{
     }
     const project={version:1,lines:deck.lines,richLines:deck.richLines,scriptName:deck.scriptName||'',deckName:deck.deckName||'',slides:structuredClone(deck.slides),links:structuredClone(deck.links),layoutMasters:{},
       generationTemplate:deckTemplateRec?structuredClone(deckTemplateRec):null,
-      exportSize:{width:1920,height:1080}};   // 방송용 PPT에서 PPTX로 내려받을 때도 1920×1080
+      exportSize:structuredClone(deck.exportSize||{width:1920,height:1080})};   // 동일 원고 재현은 원본 크기도 유지
     const stamp=crypto.randomUUID(),packed=packLive({...project,makeTransferId:stamp});
     await new Promise((ok,no)=>{const tx=db.transaction('projects','readwrite'),store=tx.objectStore('projects'),r=store.get('last');
       r.onsuccess=()=>{const previous=r.result;if(previous&&(previous.slides?.length||previous.lines?.length||previous.standby))store.put(previous,'beforeMake');store.put(packed,'last');};
