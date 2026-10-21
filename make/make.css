@@ -85,3 +85,6 @@ details.more{margin:4px 0 10px}details.more summary{cursor:pointer;color:var(--a
 
 .template-copy-dialog{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:20px;width:min(520px,94vw)}
 .template-copy-dialog::backdrop{background:#000b}
+
+/* Template-selected panels must stay hidden even when .field defines display:flex. */
+#tab-make [hidden]{display:none!important}
