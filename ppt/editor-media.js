@@ -7,6 +7,16 @@ async function clipboard(){if(!navigator.clipboard?.read)throw Error('미리보�
 async function decode(file){if(!imageType(file?.type))throw Error('PNG·JPG 등 그림 파일을 골라 주세요.');if(file.size>8*1024*1024)throw Error('그림은 8MB 이하로 넣어 주세요.');const src=await new Promise((ok,no)=>{const reader=new FileReader();reader.onload=()=>ok(reader.result);reader.onerror=()=>no(Error('그림을 읽지 못했습니다.'));reader.readAsDataURL(file);});const img=new Image();img.src=src;try{await img.decode();}catch{throw Error('그림 형식을 읽지 못했습니다. PNG 또는 JPG로 다시 넣어 주세요.');}if(!(img.naturalWidth>0&&img.naturalHeight>0))throw Error('그림 크기를 읽지 못했습니다.');return {src,width:img.naturalWidth,height:img.naturalHeight};}
 function backdrop(sh,s){return sh.editorBackground||root.CaptionSize?.fullBleed(sh,s)||(sh.type==='rect'&&!sh.extraShape&&!sh.manualGeometry&&!sh.rotate&&Math.abs(sh.x)<=s.width*.1&&Math.abs(sh.y)<=s.height*.1&&Math.abs(s.width-sh.x-sh.w)<=s.width*.1&&Math.abs(s.height-sh.y-sh.h)<=s.height*.1);}
 function background(s,images=[],color=s.background){const body=s.shapes[s.bodyIndex];s.shapes=s.shapes.filter(sh=>!backdrop(sh,s));s.shapes.unshift(...images.map(sh=>({...structuredClone(sh),type:'image',editorBackground:true,background:true,x:0,y:0,w:s.width,h:s.height,manualGeometry:false})));if(body)s.bodyIndex=s.shapes.indexOf(body);s.background=color;s.backgroundEdited=true;return s;}
-function keep(next,from){if(from.backgroundEdited)background(next,from.shapes.filter(sh=>sh.editorBackground),from.background);const boxes=from.shapes.filter(sh=>sh.extraShape).map(sh=>structuredClone(sh));if(boxes.length){const first=next.shapes.findIndex(sh=>sh.type==='text'),at=first<0?next.shapes.length:first;next.shapes.splice(at,0,...boxes);if(Number.isInteger(next.bodyIndex)&&next.bodyIndex>=at)next.bodyIndex+=boxes.length;}next.shapes.push(...from.shapes.filter(sh=>sh.extraImage||sh.extraText).map(sh=>structuredClone(sh)));return next;}
+function keep(next,from){
+ if(from.backgroundEdited)background(next,from.shapes.filter(sh=>sh.editorBackground),from.background);
+ const pending=[];
+ for(const sh of from.shapes.filter(sh=>sh.extraText||sh.extraShape||sh.extraImage)){
+  const at=sh.masterSlot?next.shapes.findIndex(other=>other.masterSlot===sh.masterSlot):-1;
+  if(at>=0)next.shapes[at]=structuredClone(sh);else pending.push(sh);
+ }
+ const boxes=pending.filter(sh=>sh.extraShape).map(sh=>structuredClone(sh));
+ if(boxes.length){const first=next.shapes.findIndex(sh=>sh.type==='text'),at=first<0?next.shapes.length:first;next.shapes.splice(at,0,...boxes);if(Number.isInteger(next.bodyIndex)&&next.bodyIndex>=at)next.bodyIndex+=boxes.length;}
+ next.shapes.push(...pending.filter(sh=>sh.extraImage||sh.extraText).map(sh=>structuredClone(sh)));return next;
+}
 const api={imageType,fromEvent,clipboard,decode,background,keep};if(typeof module==='object'&&module.exports)module.exports=api;else root.CaptionMedia=api;
 })(typeof window==='object'?window:globalThis);
