@@ -15,6 +15,13 @@ const record={name:'주일예배전반',options:{allText:true},design:{layouts:{
 const result=R.generateWorship(script,record,original);assert.equal(result.slides.length,5);assert.equal(result.record.layoutCatalog.length,2);assert.equal(result.slides[0].shapes[0].paragraphs[0].runs[0].text,'2026.10.18');assert.equal(JSON.stringify(original),snapshot);
 const all=result.slides.flatMap(s=>s.shapes).flatMap(sh=>(sh.paragraphs||[]).flatMap(p=>p.runs.map(r=>r.text))).join(' ');assert(!all.includes('절대 자막'));assert(!all.includes('옛 제목'));assert(all.includes('교회 광고'));assert(all.includes('요한복음 3장 16절'));
 assert.equal(result.links.filter(l=>l.status==='exact').length,3);for(const link of result.links.filter(l=>l.status==='exact'))assert(link.start>=0&&link.end>link.start);
+// Only the specified Sunday full-service template omits representative prayer/music; era scripture remains.
+const cues={slides:[...original.slides.slice(0,2),slide([tx('대표기도'),tx('기도자 이름',300)]),slide([tx('성가대 & 가정국 특송'),tx('곡목 : 감사',300)]),...original.slides.slice(2)]};
+const omitted=R.generateWorship(script,record,cues),cueText=omitted.slides.flatMap(s=>s.shapes).map(sh=>(sh.paragraphs||[]).flatMap(p=>p.runs.map(r=>r.text)).join('')).join(' ');
+assert.equal(omitted.slides.length,5);assert(!cueText.includes('대표기도'));assert(!cueText.includes('성가대'));assert(cueText.includes('시대 성경'));assert(cueText.includes('요한복음 3장 16절'));assert.equal(omitted.links.length,omitted.slides.length);
+assert.equal(R.generateWorship(script,{...record,name:'다른 예배 템플릿'},cues).slides.length,7,'other templates retain their own service cues');
+assert.equal(R.generateWorship(script,{...omitted.record,name:'이름을 바꾼 복제본'},cues).slides.length,5,'a copied template retains its saved omission rules');
+assert.match(omitted.summary,/2장 제외/);
 const customized=structuredClone(result.record);customized.design.layouts.worshipTitle.background='#abcdef';assert.equal(R.generateWorship(script,customized,original).slides.at(-1).background,'#abcdef');
 assert.throws(()=>R.generateWorship(script,record,{slides:[slide([tx('자리 표시가 없는 PPT')])]}),/제목 또는 성경봉독/);
 const clean=R.instructions('파랑: 하단 자막.\n하단 자막은 900px 글상자 폭에서 두 줄씩 분할.\n내가 적은 보존할 메모','numbered');assert(!clean.includes('두 줄씩 분할'));assert(clean.includes('보존할 메모'));assert.equal(R.instructions(clean,'numbered'),clean);

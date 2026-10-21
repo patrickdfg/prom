@@ -4,6 +4,9 @@
 const norm=s=>String(s||'').normalize('NFKC').toLowerCase().replace(/[^가-힣a-z0-9]/g,''),copy=x=>structuredClone(x);
 const text=sh=>(sh?.paragraphs||[]).map(p=>(p.runs||[]).map(r=>r.text||'').join('')).join('\n');
 function mode(rec){return ['numbered','worship'].includes(rec?.options?.sourceMode)?rec.options.sourceMode:/예배\s*(?:전반|전체|순서)|전반\s*예배/.test(rec?.name||'')?'worship':'numbered';}
+// Exclude the requested service cues by their heading, so changing Bible passage counts cannot shift the wrong slide out.
+function worshipOmit(record){const saved=record?.options?.worshipOmit;if(Array.isArray(saved))return [...new Set(saved.filter(k=>['prayer','music'].includes(k)))];return /주일\s*예배\s*전반/.test(record?.name||'')?['prayer','music']:[];}
+function omittedCue(slide,omit){const headings=(slide.shapes||[]).filter(sh=>sh.type==='text').map(sh=>norm(text(sh)));return omit.includes('prayer')&&headings.includes('대표기도')||omit.includes('music')&&headings.some(t=>/^(?:성가대(?:가정국)?(?:특송)?|가정국특송|특송)$/.test(t));}
 function rule(value){return value==='worship'?'[현재 제작 규칙]\n예배 전반: 원고 앞부분의 제목과 성경본문만 가져와 원본 PPT의 해당 자리를 교체합니다. 설교 본문은 자막으로 만들지 않습니다.\n교독문·광고·기도·찬양 등 나머지 순서는 원본 PPT 내용을 유지하므로 송출 전에 확인합니다.':'[현재 제작 규칙]\n주일·수요·새벽 설교: 번호가 붙은 항목만 자막으로 만듭니다. 번호 없는 설명·설교 전문은 제외합니다.\n한 항목을 템플릿의 항목 레이아웃으로 만들고, 길면 다음 장으로 이어갑니다. 원고 전체를 두 줄 자막으로 바꾸지 않습니다.';}
 function instructions(value,scope){const lines=String(value||'').split('\n').filter(l=>!/^\[현재 제작 규칙\]|^(?:주일·수요·새벽 설교:|예배 전반: 원고 앞부분|교독문·광고·기도·찬양 등|한 항목을 템플릿)/.test(l)&&!/(?:파랑: 하단 자막|초록: 말씀|검정: 설교 전문|전체 화면 말씀의 첫 두 줄|하단 자막은 .*두 줄|전체 원고.*(?:하단|자막)|누적 공개.*(?:확인|선택|연결|옵션))/.test(l));return rule(scope)+'\n\n'+lines.join('\n').trim();}
 function numbered(project){
@@ -59,19 +62,19 @@ function learn(deck){
 function prepareWorship(record,deck){
  const slots=learn(deck),layouts={...record.design.layouts},catalog=[];
  for(const [kind,items] of [['Title',slots.title],['Scripture',slots.scripture]])items.forEach((slot,i)=>{const key='worship'+kind+(i||'');slot.key=key;layouts[key]=record.worship?.version===1&&layouts[key]?layouts[key]:slot.scene;catalog.push({key,name:record.worship?.version===1&&record.layoutCatalog?.find(e=>e.key===key)?.name||(kind==='Title'?'말씀 제목'+(i?' '+(i+1):''):'성경본문 '+(i+1))});});
- return {...record,options:{...record.options,sourceMode:'worship',allText:false},worship:{version:1,title:slots.title.map(({index,key})=>({index,key})),scripture:slots.scripture.map(({index,key})=>({index,key}))},layoutCatalog:catalog,design:{...record.design,layouts},instructions:instructions(record.instructions,'worship')};
+ return {...record,options:{...record.options,sourceMode:'worship',allText:false,worshipOmit:worshipOmit(record)},worship:{version:1,title:slots.title.map(({index,key})=>({index,key})),scripture:slots.scripture.map(({index,key})=>({index,key}))},layoutCatalog:catalog,design:{...record.design,layouts},instructions:instructions(record.instructions,'worship')};
 }
 function dateText(value,h){if(!h.date)return value;const [y,m,d]=h.date;return value.replace(/20\d{2}\s*년\s*\d{1,2}\s*월\s*\d{1,2}\s*일/g,`${y}년 ${m}월 ${d}일`).replace(/20\d{2}[./-]\d{1,2}[./-]\d{1,2}/g,`${y}.${String(m).padStart(2,'0')}.${String(d).padStart(2,'0')}`);}
 function generateWorship(project,record,deck,options={}){
  const h=header(project);if(options.title)h.title=options.title;
- const rec=prepareWorship(record,deck),slots=rec.worship,titles=new Map(slots.title.map(s=>[s.index,s])),scripts=slots.scripture,first=scripts[0].index,indices=new Set(scripts.map(s=>s.index));const slides=[],links=[];
+ const rec=prepareWorship(record,deck),slots=rec.worship,titles=new Map(slots.title.map(s=>[s.index,s])),scripts=slots.scripture,first=scripts[0].index,indices=new Set(scripts.map(s=>s.index));const slides=[],links=[],omit=worshipOmit(rec);let omitted=0;
  function add(raw,kind,range,key,value,ref){const s=copy(raw);s.uid=root.crypto?.randomUUID?.()||String(Math.random());for(const sh of s.shapes)if(sh.type==='text')setText(sh,dateText(text(sh),h));
   if(kind){setText(s.shapes[s.bodyIndex],value);if(kind==='scripture')setText(s.shapes[s.worshipReferenceIndex],ref);s.layoutName=record.name+' · '+rec.layoutCatalog.find(e=>e.key===key).name;s.editor={layout:key,text:value,ref:ref||'',date:h.date?`${h.date[0]}년 ${h.date[1]}월 ${h.date[2]}일`:''};}
   slides.push(s);links.push(range?{status:'exact',start:range.start,end:range.end,score:1,reason:'worship-'+kind}:{status:'unlinked',start:null,end:null,score:0});}
- deck.slides.forEach((s,i)=>{if(i===first)h.passages.forEach((p,n)=>{const at=Math.min(n,scripts.length-1),key='worshipScripture'+(at||'');add(rec.design.layouts[key],'scripture',p,key,p.text,p.ref);});if(indices.has(i))return;const t=titles.get(i);if(t)add(rec.design.layouts[t.key],'title',h.titleRange,t.key,h.title);else add(s);});
- return {slides,links,record:rec,summary:`제목 ${titles.size}장 · 성경본문 ${h.passages.length}장 · 나머지 예배 순서 ${slides.length-titles.size-h.passages.length}장 유지`};
+ deck.slides.forEach((s,i)=>{if(i===first)h.passages.forEach((p,n)=>{const at=Math.min(n,scripts.length-1),key='worshipScripture'+(at||'');add(rec.design.layouts[key],'scripture',p,key,p.text,p.ref);});if(indices.has(i))return;const t=titles.get(i);if(t)add(rec.design.layouts[t.key],'title',h.titleRange,t.key,h.title);else if(omittedCue(s,omit))omitted++;else add(s);});
+ return {slides,links,record:rec,summary:`제목 ${titles.size}장 · 성경본문 ${h.passages.length}장 · 나머지 예배 순서 ${slides.length-titles.size-h.passages.length}장 유지${omitted?` · 대표기도·성가대/특송 ${omitted}장 제외`:''}`};
 }
 let cachedSource='',cachedDeck=null;
 async function sourceDeck(record,importer){const src=record?.pair?.sources?.deck;if(!src?.data)throw Error('예배 전반 템플릿에는 원본 PPT가 필요합니다. 원고와 완성 PPT로 템플릿을 다시 등록해 주세요.');if(src.data!==cachedSource){const blob=await(await fetch(src.data)).blob();cachedDeck=await importer(new File([blob],src.name));cachedSource=src.data;}return cachedDeck;}
-const api={mode,rule,instructions,numbered,header,learn,prepareWorship,generateWorship,sourceDeck,dateText};if(typeof module==='object'&&module.exports)module.exports=api;else root.CaptionContentRules=api;
+const api={mode,worshipOmit,rule,instructions,numbered,header,learn,prepareWorship,generateWorship,sourceDeck,dateText};if(typeof module==='object'&&module.exports)module.exports=api;else root.CaptionContentRules=api;
 })(typeof window==='object'?window:globalThis);
