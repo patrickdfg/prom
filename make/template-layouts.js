@@ -3,6 +3,11 @@
 'use strict';
 function catalog(record,defaults={}){
  const bank=record.design?.layouts||{},saved=record.layoutCatalog;
+ // 성령말씀은 실제 생성에 쓰는 표지와 누적 본문만 마스터 목록에 노출합니다.
+ // 숨겨진 레이아웃 데이터는 삭제하지 않아 기존 사용자 편집과 엔진 호환성을 보존합니다.
+ if(record.id==='builtin-spirit-word'||record.copiedFrom==='builtin-spirit-word'){
+  return [{key:'cover',name:'성령말씀 표지'},{key:'word',name:'성령말씀 누적 본문'}].filter(e=>Object.hasOwn(bank,e.key));
+ }
  let entries;
  if(Array.isArray(saved)&&saved.length)entries=saved;
  else {
