@@ -13,7 +13,7 @@
   <div class="brand"><b>PROM</b><span>템플릿 만들기</span></div>
   <nav class="tabs" role="tablist">
     <button role="tab" data-tab="make" aria-selected="true">① 만들기</button>
-    <button role="tab" data-tab="templates">② 템플릿</button>
+    <button role="tab" data-tab="templates">② 템플릿 만들기</button>
     <button role="tab" data-tab="master">③ 마스터 편집</button>
   </nav>
   <div class="account" aria-label="구글 로그인"><span id="loginNote" class="login-note" role="status" hidden></span><span id="loginAccount" class="login-account" hidden></span><button id="googleConnect" type="button" class="login-btn">구글 로그인</button><button id="googleDisconnect" type="button" class="login-btn" hidden>로그아웃</button></div>
@@ -62,13 +62,13 @@
       <p id="tplDriveState" class="hint" role="status"></p>
       <div class="row"><button id="tplDriveSync" type="button" disabled>드라이브에 모두 저장</button><button id="tplDriveList" type="button" disabled>드라이브에서 불러오기</button></div>
       <div id="tplDriveFiles" class="list" hidden></div>
-      <p class="hint">드라이브에 올리고 가져오는 것은 모두 버튼을 눌렀을 때만 합니다. ② 템플릿 목록의 「드라이브에 저장」으로 하나씩, 여기의 「드라이브에 모두 저장」으로 한꺼번에 올립니다.</p>
+      <p class="hint">드라이브에 올리고 가져오는 것은 모두 버튼을 눌렀을 때만 합니다. ② 템플릿 만들기 목록의 「드라이브에 저장」으로 하나씩, 여기의 「드라이브에 모두 저장」으로 한꺼번에 올립니다.</p>
     </div>
     <div id="makeEditTools" class="row" hidden><button id="makeEditSelected" type="button">선택한 슬라이드 편집</button><button id="makeAddCaption" type="button">+ 자막</button><span class="hint">슬라이드를 눌러 고르고, 두 번 누르거나 「편집」을 누르면 편집 창이 열립니다. 고친 내용은 PPTX에 그대로 들어갑니다.</span></div>
     <div id="makeGrid" class="grid"></div>
   </section>
 
-  <!-- ② 템플릿 -->
+  <!-- ② 템플릿 만들기 -->
   <section id="tab-templates" class="tab" hidden>
     <div class="card">
       <h2>원고 + 완성 PPT로 템플릿 만들기</h2>
