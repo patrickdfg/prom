@@ -18,7 +18,7 @@ function note(msg){const n=$('tplDriveState');if(n)n.textContent=msg||'';}
 function paint(){
   const on=!!L()?.loggedIn();
   for(const id of ['tplDriveSync','tplDriveList'])if($(id))$(id).disabled=!on||busy;
-  if(!on){note('상단에서 구글 로그인하면 템플릿을 내 드라이브에 저장하고 불러올 수 있습니다.');const box=$('tplDriveFiles');if(box){box.replaceChildren();box.hidden=true;}}
+  if(!on){note('구글 로그인하면 템플릿을 내 드라이브에 저장하고 불러올 수 있습니다.');const box=$('tplDriveFiles');if(box){box.replaceChildren();box.hidden=true;}}
 }
 // 한 번에 하나씩 순서대로(저장 순서가 뒤바뀌어 옛 것이 덮어쓰지 않게)
 const enqueue=fn=>(chain=chain.then(fn,fn));
@@ -64,7 +64,7 @@ async function upload(rec,existing){
 async function saveOne(id){
   const rec=M()?.get(id);if(!rec)return;
   if(rec.builtin&&!rec.edited){note('사이트 기본 템플릿은 고치기 전에는 올리지 않아도 누구나 쓸 수 있습니다. 고친 뒤에 저장하세요.');return;}
-  if(!L()?.loggedIn()){note('먼저 상단에서 구글 로그인해 주세요.');M()?.toast?.('먼저 상단에서 구글 로그인해 주세요.');return;}
+  if(!L()?.loggedIn()){note('① 만들기에서 구글 로그인해 주세요.');M()?.toast?.('① 만들기에서 구글 로그인해 주세요.');return;}
   busy=true;paint();note('드라이브에 저장 중… · '+rec.name);
   try{await upload(rec,await findRemote(rec.id));note('드라이브에 저장했습니다 · '+rec.name+' · '+when(Date.now()));M()?.toast?.(`"${rec.name}" 템플릿을 드라이브에 저장했습니다.`);}
   catch(e){note(e.message+' 이 컴퓨터 저장은 그대로입니다.');}

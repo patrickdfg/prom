@@ -4,19 +4,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PPT 자동 제작</title>
-<script src="../ui-theme.js?v=20261021-family1"></script>
-<link rel="stylesheet" href="make.css?v=20261021-compact1">
+<title>템플릿 만들기</title>
+<script src="../ui-theme.js?v=20261021-template-name1"></script>
+<link rel="stylesheet" href="make.css?v=20261021-drive-layout1">
 <link rel="stylesheet" href="../ppt/editor.css?v=20261021-balanced1"></head>
 <body>
 <header class="top">
-  <div class="brand"><b>PROM</b><span>PPT 자동 제작</span></div>
+  <div class="brand"><b>PROM</b><span>템플릿 만들기</span></div>
   <nav class="tabs" role="tablist">
     <button role="tab" data-tab="make" aria-selected="true">① 만들기</button>
     <button role="tab" data-tab="templates">② 템플릿</button>
     <button role="tab" data-tab="master">③ 마스터 편집</button>
   </nav>
-  <div class="account" aria-label="구글 로그인"><span id="loginNote" class="login-note" role="status" hidden></span><span id="loginAccount" class="login-account" hidden></span><button id="googleConnect" type="button" class="login-btn">구글 로그인</button><button id="googleDisconnect" type="button" class="login-btn" hidden>로그아웃</button></div>
   <a class="back" href="../ppt/">방송용 PPT ↗</a>
 </header>
 
@@ -54,19 +53,20 @@
       </div>
       <p id="makeStatus" class="status" aria-live="polite"></p>
     </div>
+    <div class="card" id="tplDriveCard">
+      <h2>내 구글 드라이브</h2>
+    <div class="account" aria-label="구글 로그인"><span id="loginNote" class="login-note" role="status" hidden></span><span id="loginAccount" class="login-account" hidden></span><button id="googleConnect" type="button" class="login-btn">구글 로그인</button><button id="googleDisconnect" type="button" class="login-btn" hidden>로그아웃</button></div>
+      <p id="tplDriveState" class="hint" role="status"></p>
+      <div class="row"><button id="tplDriveSync" type="button" disabled>드라이브에 모두 저장</button><button id="tplDriveList" type="button" disabled>드라이브에서 불러오기</button></div>
+      <div id="tplDriveFiles" class="list" hidden></div>
+      <p class="hint">드라이브에 올리고 가져오는 것은 모두 버튼을 눌렀을 때만 합니다. ② 템플릿 목록의 「드라이브에 저장」으로 하나씩, 여기의 「드라이브에 모두 저장」으로 한꺼번에 올립니다.</p>
+    </div>
     <div id="makeEditTools" class="row" hidden><button id="makeEditSelected" type="button">선택한 슬라이드 편집</button><button id="makeAddCaption" type="button">+ 자막</button><span class="hint">슬라이드를 눌러 고르고, 두 번 누르거나 「편집」을 누르면 편집 창이 열립니다. 고친 내용은 PPTX에 그대로 들어갑니다.</span></div>
     <div id="makeGrid" class="grid"></div>
   </section>
 
   <!-- ② 템플릿 -->
   <section id="tab-templates" class="tab" hidden>
-    <div class="card" id="tplDriveCard">
-      <h2>내 구글 드라이브</h2>
-      <p id="tplDriveState" class="hint" role="status"></p>
-      <div class="row"><button id="tplDriveSync" type="button" disabled>드라이브에 모두 저장</button><button id="tplDriveList" type="button" disabled>드라이브에서 불러오기</button></div>
-      <div id="tplDriveFiles" class="list" hidden></div>
-      <p class="hint">드라이브에 올리고 가져오는 것은 모두 버튼을 눌렀을 때만 합니다. 아래 템플릿 줄의 「드라이브에 저장」으로 하나씩, 위 「드라이브에 모두 저장」으로 한꺼번에 올립니다.</p>
-    </div>
     <div class="card">
       <h2>저장된 템플릿</h2>
       <div id="tplList" class="list"></div>
@@ -193,6 +193,6 @@
 <script src="../ppt/editor-media.js?v=20261021-media1"></script><script src="../ppt/editor.js?v=20261021-stay1"></script>
 <script src="../ppt/drive-config.js?v=20261020-sync1"></script>
 <script src="login.js?v=20261021-drive1"></script>
-<script src="drive.js?v=20261021-drive3"></script>
+<script src="drive.js?v=20261021-drive-layout1"></script>
 </body>
 </html>

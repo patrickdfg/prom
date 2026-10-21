@@ -9,7 +9,7 @@ html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 "Malgun 
 .tabs{display:flex;gap:6px;flex-wrap:wrap}
 .tabs button{background:transparent;border:1px solid var(--line);color:var(--dim)}
 .tabs button[aria-selected="true"]{background:var(--card);color:var(--text);border-color:var(--accent2)}
-.back{color:var(--dim);text-decoration:none;font-size:13px}
+.back{margin-left:auto;color:var(--dim);text-decoration:none;font-size:13px}
 .account{margin-left:auto;display:flex;align-items:center;gap:8px;min-width:0}
 .login-btn{background:var(--card);border:1px solid var(--accent2);color:var(--text);white-space:nowrap;font-size:13px;padding:6px 10px}
 .login-btn:disabled{opacity:.6}
@@ -77,3 +77,7 @@ details.more{margin:4px 0 10px}details.more summary{cursor:pointer;color:var(--a
 /* 지침 수정 창 */
 #instructionsDialog{background:#152131;color:#e7edf5;border:1px solid #52647a;border-radius:14px;padding:20px;width:min(780px,94vw);max-height:94dvh;overflow:auto}#instructionsDialog::backdrop{background:#000b}
 #instructionsDialog textarea{display:block;width:100%;background:#0c1726;color:#edf5ff;border:1px solid #4b607a;border-radius:6px;padding:10px;font:inherit;line-height:1.6;resize:vertical;margin:10px 0}#instructionsDialog [hidden]{display:none!important}
+
+/* 구글 계정과 드라이브는 만들기 바로 아래에서 함께 관리한다. */
+#tplDriveCard .account{margin:0 0 10px;justify-content:flex-start;flex-wrap:wrap}
+#tplDriveCard .login-note{max-width:none;text-align:left}
