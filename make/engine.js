@@ -5,12 +5,22 @@ window.MakePptEngine=(()=>{
  // Plain-text 성령말씀 workflow. No numbered list or font-color markers required.
  async function generateSpirit(project,record,options={}){
   const raw=(project.lines||[]).map(v=>String(v??'').trim());
+  // A sermon title belongs to the cover once, not the cumulative body.
+  const titlePattern=/(20\d{2}\s*년\s*성령\s*(?:말씀|사연)\s*\d+)/;
+  let extractedTitle='';
+  for(let i=0;i<raw.length;i++){
+    const match=raw[i].match(titlePattern);
+    if(match){
+      extractedTitle=match[1].replace(/성령\s+말씀/,'성령말씀').replace(/성령\s+사연/,'성령사연').replace(/\s+/g,' ').trim();
+      raw[i]=(raw[i].slice(0,match.index)+raw[i].slice(match.index+match[0].length)).trim();
+      break;
+    }
+  }
   const blocks=[];let active=[];
   for(const line of raw){if(!line){if(active.length){blocks.push(active);active=[];}continue;}active.push(line);}
   if(active.length)blocks.push(active);
   if(!blocks.length)throw Error('성령말씀 원고가 비어 있습니다. 글을 붙여넣어 주세요.');
-  const all=blocks.flat().join(' ');
-  const title=options.title||all.match(/20\d{2}\s*년\s*성령\s*사연\s*\d+/)?.[0]||'성령말씀';
+  const title=options.title||extractedTitle||'성령말씀';
   await B.useTemplate(record.design);
   const slides=[],links=[];
   const cover=await B.scene('cover',title);slides.push(cover);links.push({status:'unlinked',start:null,end:null,score:0,reason:'cover'});
