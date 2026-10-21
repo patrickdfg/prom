@@ -3,7 +3,7 @@ window.MakePptEngine=(()=>{
  'use strict';
  const B=CaptionBuilder,R=CaptionContentRules,P=CaptionPairTemplate,L=MakeTemplateLayouts;
  async function generate(project,template,options={}){
-  let record=template?L.prepare(structuredClone(template),B.layouts):null;
+  let record=template?L.prepare(window.MakeAnnouncements?MakeAnnouncements.upgrade(structuredClone(template)):structuredClone(template),B.layouts):null;
   await B.useTemplate(record?.design||null);
   const run=async()=>{
    if(R.mode(record)==='worship'){
@@ -18,7 +18,7 @@ window.MakePptEngine=(()=>{
   };
   // A previously open PPT must not add its project-specific master overrides to a different selected template.
   const result=await (window.CaptionMasters?.withRecords?CaptionMasters.withRecords({},run):run());
-  return options.announcements?.trim()?MakeAnnouncements.replace(result,result.record,options.announcements):{...result,announcements:String(options.announcements||'')};
+  return options.announcements?.trim()||result.record?.announcementTemplate?MakeAnnouncements.replace(result,result.record,options.announcements):{...result,announcements:String(options.announcements||'')};
  }
  return {generate};
 })();

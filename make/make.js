@@ -23,11 +23,11 @@ async function combinedSource(rich,files){if(files.length===1&&rich.names.length
 let dbp;
 function db(){return dbp||(dbp=new Promise((ok,no)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('templates',{keyPath:'id'});r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error);}));}
 async function store(mode,fn){const d=await db();return new Promise((ok,no)=>{const tx=d.transaction('templates',mode),req=fn(tx.objectStore('templates'));tx.oncomplete=()=>ok(req?.result);tx.onerror=()=>no(tx.error);});}
-async function load(){await window.PromBuiltinTemplates?.ready;records=(await store('readonly',s=>s.getAll())||[]).map(r=>L.prepare({...r,options:{...r.options,allText:false,sourceMode:R.mode(r),...(R.mode(r)==='worship'?{worshipOmit:R.worshipOmit(r)}:{})},instructions:R.instructions(r.instructions,R.mode(r))},B.layouts)).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));fillSelects();renderList();}
+async function load(){await window.PromBuiltinTemplates?.ready;records=(await store('readonly',s=>s.getAll())||[]).map(r=>L.prepare({...MakeAnnouncements.upgrade(r),options:{...r.options,allText:false,sourceMode:R.mode(r),...(R.mode(r)==='worship'?{worshipOmit:R.worshipOmit(r)}:{})},instructions:R.instructions(r.instructions,R.mode(r))},B.layouts)).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));fillSelects();renderList();}
 // 저장할 때마다 수정 시각을 남긴다(드라이브에 올릴 때 어느 쪽이 더 새로운지 비교하는 데 쓴다). 드라이브 업로드는 사용자가 버튼을 눌렀을 때만 한다.
-async function put(rec){rec=L.prepare({...rec,updatedAt:Date.now()},B.layouts);await store('readwrite',s=>s.put(rec));await load();}
+async function put(rec){rec=L.prepare(MakeAnnouncements.collapse(MakeAnnouncements.upgrade({...rec,updatedAt:Date.now()})),B.layouts);await store('readwrite',s=>s.put(rec));await load();}
 // 드라이브에서 가져온 템플릿은 원래 id·수정 시각 그대로 넣는다(알림 없이).
-async function putSynced(rec){rec=L.prepare(rec,B.layouts);await store('readwrite',s=>s.put(rec));await load();}
+async function putSynced(rec){rec=L.prepare(MakeAnnouncements.collapse(MakeAnnouncements.upgrade(rec)),B.layouts);await store('readwrite',s=>s.put(rec));await load();}
 const byId=id=>records.find(r=>r.id===id)||null;
 function useForMake(id){try{localStorage.setItem(LAST,id)}catch{}$('makeTemplate').value=id;$('makeTemplate').onchange();}   // 방금 만들거나 고친 템플릿을 만들기에서 바로 쓰게 한다
 
@@ -58,7 +58,7 @@ function renderList(){
     const row=document.createElement('div');row.className='tpl';
     const name=document.createElement('b');name.textContent=r.name;
     const info=document.createElement('small');const ev=r.pair?.evidence;
-    info.textContent=(r.builtin?'사이트 기본 템플릿'+(r.edited?' (고친 것)':'')+' · ':'')+(r.worship?'예배 전반 · 제목·성경본문 교체':ev?`원고-PPT 학습 · 연결 ${ev.matchedSlides}/${ev.totalSlides}장`:'기본 디자인에서 시작')+(r.fixedSlides?.length?` · 고정 슬라이드 ${r.fixedSlides.length}장`:'')+` · 레이아웃 ${L.catalog(r,B.layouts).length}개`;
+    info.textContent=(r.builtin?'사이트 기본 템플릿'+(r.edited?' (고친 것)':'')+' · ':'')+(r.worship?'예배 전반 · 제목·성경본문 교체':ev?`원고-PPT 학습 · 연결 ${ev.matchedSlides}/${ev.totalSlides}장`:'기본 디자인에서 시작')+(r.fixedSlides?.length?` · 고정 슬라이드 ${r.fixedSlides.length}장`:'')+(r.announcementTemplate?` · 광고 양식 ${r.announcementTemplate.slots.length}개 (v2)`:'')+` · 레이아웃 ${L.catalog(r,B.layouts).length}개`;
     const btn=(label,fn,cls)=>{const b=document.createElement('button');b.textContent=label;if(cls)b.className=cls;b.onclick=fn;return b;};
     row.append(name,
       btn('마스터 편집',()=>{$('mTemplate').value=r.id;openMaster(r.id);showTab('master');}),
@@ -89,7 +89,7 @@ $('copyTemplateRun').onclick=async()=>{const original=byId(copyTemplateId),name=
  try{const rec={...clone(original),id:crypto.randomUUID(),name,copiedFrom:original.id,createdAt:Date.now()};delete rec.builtin;delete rec.builtinVersion;delete rec.edited;await put(rec);useForMake(rec.id);$('mTemplate').value=rec.id;$('copyTemplateDialog').close();await openMaster(rec.id);if(draftId===rec.id)showTab('master');toast('"'+name+'" 복제본을 만들었습니다. 원본과 따로 수정할 수 있습니다.');}catch(e){status('copyTemplateStatus','복제하지 못했습니다: '+e.message,true);}
  finally{$('copyTemplateRun').disabled=$('copyTemplateClose').disabled=false;}
 };
-function exportTemplate(r){const blob=new Blob([JSON.stringify(r)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=r.name+'_템플릿.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);}
+function exportTemplate(r){const blob=new Blob([JSON.stringify(MakeAnnouncements.collapse(MakeAnnouncements.upgrade(r)))],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=r.name+'_템플릿.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);}
 
 /* ---------- 탭 ---------- */
 function showTab(name){for(const b of document.querySelectorAll('.tabs button'))b.setAttribute('aria-selected',String(b.dataset.tab===name));for(const s of document.querySelectorAll('.tab'))s.hidden=s.id!=='tab-'+name;if(name==='master'&&!draft)openMaster($('mTemplate').value);}
@@ -155,9 +155,9 @@ async function openMaster(id){
   if(dirty&&draft&&!confirm('저장하지 않은 변경이 있습니다. 버리고 다른 템플릿을 열까요?')){$('mTemplate').value=draftId;return;}
   const keep=draftId===id?layoutKey:'';
   draftId=id||'';const rec=byId(draftId);undoStack=[];redoStack=[];paintHistory();
-  draftCatalog=rec?L.catalog(rec,B.layouts):[];fillLayouts(keep);
+  const editable=rec?MakeAnnouncements.expand(rec):null;draftCatalog=editable?L.catalog(editable,B.layouts):[];fillLayouts(keep);
   if(!rec||!draftCatalog.length){draft=null;dirty=false;$('mPreview').replaceChildren();status('mStatus',records.length?'편집할 템플릿을 고르세요.':'먼저 ② 템플릿 만들기에서 템플릿을 만드세요.');return;}
-  $('mTemplate').value=rec.id;draft=flatten(rec.design);dirty=false;
+  $('mTemplate').value=rec.id;draft=flatten(editable.design);dirty=false;
   shapeIx=scene().bodyIndex;fillShapes();await preview();status('mStatus','');
 }
 function fillShapes(){
@@ -187,11 +187,11 @@ function wrapSample(text,m){const out=[];for(const para of String(text).split('\
 async function preview(){
   if(!draft)return;const seq=++previewSeq;
   await B.useTemplate(draft);const m=B.metrics(layoutKey),lines=wrapSample($('mSample').value||'미리보기',m),shown=lines.slice(0,m.maxLines);
-  const s=await B.scene(layoutKey,shown.join('\n'));
+  const isAd=/^announcement\d+$/.test(layoutKey),s=isAd?MakeAnnouncements.preview(scene(),$('mSample').value):await B.scene(layoutKey,shown.join('\n'));
   if(seq!==previewSeq)return;previewScene=s;CaptionRender.show($('mPreview'),s,s.background||'#00ff00');outline();
   const body=scene().shapes[scene().bodyIndex],{p,r}=textBase(body),size=r.size||32,lh=size*(p.fixedLineSpacing&&p.lineSpacing?.unit==='ratio'?p.lineSpacing.value:p.fixedLineSpacing&&p.lineSpacing?.unit==='px'?p.lineSpacing.value/size:1.3),pad=body.padding||[0,0,0,0],inner=body.h-pad[0]-pad[2];
   const perLine=Math.max(1,Math.floor(m.width/m.measure('가')));
-  $('mFit').textContent=`이 설정이면 한 장에 ${m.maxLines}줄, 한 줄에 약 ${perLine}자 들어갑니다.`+(inner<lh?' ⚠ 글상자 높이가 글자 한 줄보다 낮아서 글자가 작게 줄어 보입니다. 높이를 키우거나 글자 크기를 줄이세요.':'')+(lines.length>m.maxLines?` (예시 문구 ${lines.length}줄 중 ${m.maxLines}줄만 이 장에 들어가고 나머지는 다음 장으로 넘어갑니다.)`:'');
+  $('mFit').textContent=isAd?'광고 전용 양식입니다. 배경·글꼴·크기·본문 위치를 저장하면 다음 광고 제작에 적용됩니다.':`이 설정이면 한 장에 ${m.maxLines}줄, 한 줄에 약 ${perLine}자 들어갑니다.`+(inner<lh?' ⚠ 글상자 높이가 글자 한 줄보다 낮아서 글자가 작게 줄어 보입니다. 높이를 키우거나 글자 크기를 줄이세요.':'')+(lines.length>m.maxLines?` (예시 문구 ${lines.length}줄 중 ${m.maxLines}줄만 이 장에 들어가고 나머지는 다음 장으로 넘어갑니다.)`:'');
 }
 function geometry(){const host=$('mPreview'),s=previewScene;const k=Math.min(host.clientWidth/s.width,host.clientHeight/s.height);return {k,ox:(host.clientWidth-s.width*k)/2,oy:(host.clientHeight-s.height*k)/2};}
 const HANDLES=['nw','n','ne','e','se','s','sw','w'];
