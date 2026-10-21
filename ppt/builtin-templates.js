@@ -46,11 +46,17 @@ function spiritPreset(rec){
 }
 async function seed(){
   let done={};try{done=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(_){}
-  const todo=LIST.filter(t=>done[t.id]!==t.version);if(!todo.length)return 0;
+  // Name migration must run even when built-in version is already marked installed.
+  const todo=LIST;if(!todo.length)return 0;
   const d=await db();let added=0;
   for(const t of todo){
     try{
       const have=await req(d,'readonly',s=>s.get(t.id));
+      // Rename the existing public spirit preset without replacing locally edited artwork.
+      if(t.id==='builtin-spirit-word'&&have?.name==='성령말씀'){
+        have.name='기본 성령말씀 템플릿';
+        await req(d,'readwrite',s=>s.put(have));
+      }
       if(have&&(have.edited||have.builtinVersion>=t.version)){done[t.id]=t.version;continue;}
       const res=await fetch(new URL(t.file+'?v='+t.version,base));if(!res.ok)continue;
       let rec=await res.json();if(rec?.version!==1||!rec.design?.layouts)continue;
