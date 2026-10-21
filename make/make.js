@@ -76,18 +76,6 @@ function fillSelects(){
   }
 }
 
-const ADMIN_EMAIL='egibynote105g@gmail.com';
-function canPreparePublicTemplate(){return window.MakeLogin?.loggedIn()&&window.MakeLogin.account()?.toLowerCase()===ADMIN_EMAIL;}
-function preparePublicRelease(rec){
- // The browser cannot securely push to GitHub; GitHub repository permissions guard publication.
- const safe=MakeAnnouncements.collapse(MakeAnnouncements.upgrade(clone(rec)));
- safe.name='기본 성령말씀 템플릿';safe.id='builtin-spirit-word';safe.builtin=true;
- safe.options={...(safe.options||{}),sourceMode:'spirit'};
- delete safe.edited;delete safe.updatedAt;
- const blob=new Blob([JSON.stringify(safe)],{type:'application/json'}),a=document.createElement('a');
- a.href=URL.createObjectURL(blob);a.download='spirit.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
- toast('공용 배포용 spirit.json을 받았습니다. GitHub 저장소 권한을 통해 게시해야 모든 사용자에게 적용됩니다.',8000);
-}
 function renderList(){
   const box=$('tplList');box.replaceChildren();
   if(!records.length){const p=document.createElement('p');p.className='hint';p.textContent='아직 템플릿이 없습니다. 아래에서 만들어 주세요.';box.append(p);}
@@ -104,7 +92,6 @@ function renderList(){
       btn('이름 바꾸기',async()=>{const n=prompt('새 이름',r.name);if(!n||!n.trim()||n.trim()===r.name)return;await put({...r,name:n.trim()});toast('이름을 바꿨습니다.');}),
       btn('드라이브에 저장',()=>window.dispatchEvent(new CustomEvent('make-template-upload',{detail:{id:r.id}}))),
       btn('파일로 받기',()=>exportTemplate(r)),
-      ...(canPreparePublicTemplate()&&r.id==='builtin-spirit-word'?[btn('공용 배포 파일 준비',()=>preparePublicRelease(r))]:[]),
       btn('삭제',async()=>{if(!confirm(`"${r.name}" 템플릿을 삭제할까요? 되돌릴 수 없습니다.`))return;await store('readwrite',s=>s.delete(r.id));if(draftId===r.id){draftId='';draft=null;}await load();toast('삭제했습니다.');},'danger'),
       info);
     box.append(row);
@@ -448,7 +435,6 @@ $('makeEditSelected').onclick=()=>{if(selected<0||!deck?.slides[selected]){toast
 $('makeAddCaption').onclick=()=>CaptionEditor.open(-1);
 
 /* ---------- 시작 ---------- */
-window.addEventListener('make-login',()=>renderList());
 load().then(()=>$('makeTemplate').onchange()).catch(e=>toast('템플릿 보관함을 열지 못했습니다: '+e.message,6000));
 window.PromMake={load,openMaster,get deck(){return deck},get draft(){return draft},records:()=>records.slice(),get:byId,putSynced,toast};
 })();
