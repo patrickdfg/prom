@@ -5,7 +5,7 @@ window.PromBuiltinTemplates=(()=>{
 const LIST=[
   {id:'builtin-sunday',file:'sunday.json',version:1},
   {id:'builtin-dawn',file:'dawn.json',version:2},
-  {id:'builtin-spirit-word',file:'sunday.json',version:3,transform:'spirit'},
+  {id:'builtin-spirit-word',file:'sunday.json',version:4,transform:'spirit'},
 ];
 const KEY='promBuiltinTemplates',DB='prom-ppt-generation-templates';
 const base=new URL('templates/',document.currentScript.src);
@@ -14,7 +14,7 @@ function req(d,mode,fn){return new Promise((ok,no)=>{const tx=d.transaction('tem
 // '성령말씀'은 클로드 성령사연 스킬의 문장 리빌 제작 규칙을 따르는 공용 프리셋입니다.
 // 기존 사이트 템플릿의 레이아웃 스키마를 유지하면서 편집 가능한 진남색/흰색 자막 디자인을 만듭니다.
 function spiritPreset(rec){
- rec.name='성령말씀';
+ rec.name='기본 성령말씀 템플릿';
  rec.worship=false;
  rec.options={...(rec.options||{}),sourceMode:'spirit',cumulative:true,allText:false,greenLayout:'word'};
  rec.instructions=`# 성령말씀 — 성령사연 클로드 스킬 기반
