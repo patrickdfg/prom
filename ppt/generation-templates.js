@@ -5,7 +5,7 @@ window.CaptionRecipes=(()=>{
   const $=id=>document.getElementById(id),B=CaptionBuilder,W=CaptionWorkspace;
   const scriptureInstructions='[성경 본문 생략·부분 낭독] 성구 표기가 있는 구간에서는 본문 전체를 반드시 읽도록 기다리지 않음. 일부 절만 읽으면 실제 읽은 문구로, 전체를 생략하면 이어지는 해설 문구로 원고 위치를 복원. 자동으로 무조건 건너뛰지 않고 충분한 문장 일치로 확인. 반복 성구는 앞뒤 문맥 또는 이어지는 추가 발화가 확인될 때만 이동. 원고·성구 표시와 PPT 연결 위치는 유지.';
   const addScriptureInstructions=text=>text.includes('[성경 본문 생략·부분 낭독]')?text:text+'\n'+scriptureInstructions;
-  const defaultInstructions=R.rule('numbered')+'\n원본 템플릿의 글꼴·위치·여백과 항목 레이아웃을 유지합니다. 요약·재작성 없이 원고의 번호 항목을 사용합니다.';
+  const defaultInstructions=R.rule('numbered')+'\n원본 템플릿의 글꼴·위치·여백과 항목 레이아웃을 유지합니다. 요약·재작성 없이 자동 인식한 원고 구간을 사용합니다.';
   const defaults={title:'',date:'',greenLayout:'word',cumulative:false,allText:false,sourceMode:'numbered'};
   let applied,database,selected='',records=[],working=null,loading=false,pair=null,pendingPair=null,fixed=[];
   function db(){return database||(database=new Promise((resolve,reject)=>{const r=indexedDB.open('prom-ppt-generation-templates',1);r.onupgradeneeded=()=>r.result.createObjectStore('templates',{keyPath:'id'});r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);}));}
