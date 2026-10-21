@@ -16,6 +16,31 @@ const stem=name=>String(name||'').replace(/\.[^.]+$/,'');
 function readData(file){return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok({name:file.name,data:r.result});r.onerror=()=>no(Error('파일을 읽지 못했습니다.'));r.readAsDataURL(file);});}
 
 const makeInputs=MakeManuscripts.mount({input:$('makeScript'),list:$('makePasteList'),add:$('makePasteAdd'),filesNote:$('makeScriptFiles')});
+
+async function spiritManuscriptImporter(file){
+ if(!/\.pdf$/i.test(file.name))return CaptionImport.manuscriptRich(file);
+ if(!window.pdfjsLib)throw Error('PDF 읽기 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하세요.');
+ window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+ const doc=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+ const lines=[];
+ for(let page=1;page<=doc.numPages;page++){
+  const contents=await (await doc.getPage(page)).getTextContent();
+  let current='',previousY=null;
+  for(const item of contents.items){
+   const str=String(item.str||'').trim();
+   if(!str)continue;
+   const y=item.transform?.[5]??0;
+   if(previousY!==null&&Math.abs(y-previousY)>3&&current.trim()){lines.push(current.trim());current='';}
+   else if(current&&!/\s$/.test(current))current+=' ';
+   current+=str;previousY=y;
+   if(item.hasEOL){if(current.trim())lines.push(current.trim());current='';previousY=null;}
+  }
+  if(current.trim())lines.push(current.trim());
+ }
+ if(!lines.length)throw Error('PDF에서 텍스트를 추출하지 못했습니다. 스캔 PDF는 문자 인식(OCR)된 파일을 사용하거나 원고를 붙여넣어 주세요.');
+ return {lines,richLines:lines.map((text,paragraph)=>({text,runs:[{text,hex:'000000'}],paragraph}))};
+}
+
 const pairInputs=MakeManuscripts.mount({input:$('pairScript'),list:$('pairPasteList'),add:$('pairPasteAdd'),filesNote:$('pairScriptFiles')});
 async function combinedSource(rich,files){if(files.length===1&&rich.names.length===1)return readData(files[0]);return readData(new File([rich.lines.join('\n')],stem(rich.name)+'.txt',{type:'text/plain'}));}
 
@@ -324,7 +349,7 @@ $('makeRun').onclick=async()=>{
   if(busy)return;
   busy=true;$('makeRun').disabled=true;$('makeDownload').disabled=true;status('makeStatus','원고를 읽고 PPT를 만드는 중…');
   try{
-    let rec=byId($('makeTemplate').value);const rich=await makeInputs.read(CaptionImport.manuscriptRich);
+    let rec=byId($('makeTemplate').value);const rich=await makeInputs.read(R.mode(rec)==='spirit'?spiritManuscriptImporter:CaptionImport.manuscriptRich);
     const project={lines:rich.lines,richLines:rich.richLines,scriptName:rich.name,slides:[],links:[]};
     const opts={title:$('makeTitle').value.trim(),date:$('makeDate').value.trim(),announcements:R.mode(rec)==='spirit'?'':$('makeAnnouncements').value};
     const woven=await MakePptEngine.generate(project,rec,opts);rec=woven.record;const summary=woven.summary||'원고를 자동 인식했습니다.';
