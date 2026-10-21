@@ -10,7 +10,7 @@ window.MakePptEngine=(()=>{
   if(active.length)blocks.push(active);
   if(!blocks.length)throw Error('성령말씀 원고가 비어 있습니다. 글을 붙여넣어 주세요.');
   const all=blocks.flat().join(' ');
-  const title=options.title||all.match(/20\\d{2}\\s*년\\s*성령\\s*사연\\s*\\d+/)?.[0]||'성령말씀';
+  const title=options.title||all.match(/20\d{2}\s*년\s*성령\s*사연\s*\d+/)?.[0]||'성령말씀';
   await B.useTemplate(record.design);
   const slides=[],links=[];
   const cover=await B.scene('cover',title);slides.push(cover);links.push({status:'unlinked',start:null,end:null,score:0,reason:'cover'});
@@ -19,7 +19,7 @@ window.MakePptEngine=(()=>{
   const estimatedLimit=Math.max(24,Math.floor((body?.w||width*.8)/28/1.05));
   const sentences=text=>String(text).match(/[^.!?。]+(?:[.!?。]+[”’"'）)]*|$)/g)?.map(s=>s.trim()).filter(Boolean)||[text.trim()];
   const wrapSentence=s=>{
-   const parts=s.split(/\\s+/),out=[],row=[];
+   const parts=s.split(/\s+/),out=[],row=[];
    for(const part of parts){if(row.length&&(row.join(' ').length+part.length+1)>estimatedLimit){out.push(row.join(' '));row.length=0;}row.push(part);}
    if(row.length)out.push(row.join(' '));return out;
   };
@@ -28,20 +28,20 @@ window.MakePptEngine=(()=>{
    let queue=[];
    // Each paragraph is a semantic block, with a fresh cumulative sequence.
    for(const line of lines){
-    if(line===title||/^20\\d{2}\\s*년\\s*성령\\s*사연\\s*\\d+$/.test(line))continue;
+    if(line===title||/^20\d{2}\s*년\s*성령\s*사연\s*\d+$/.test(line))continue;
     for(const sentence of sentences(line)){
      const wrapped=wrapSentence(sentence);
      if(queue.length&&queue.reduce((n,x)=>n+x.length,0)+wrapped.length>6)queue=[];
      if(wrapped.length>6){
        for(let start=0;start<wrapped.length;start+=6){
          const piece=wrapped.slice(start,start+6);
-         const sc=await B.scene('word',piece.join('\\n'));sc.editor.group='spirit-'+slides.length;sc.editor.cumulative=false;sc.editor.step=1;
+         const sc=await B.scene('word',piece.join('\n'));sc.editor.group='spirit-'+slides.length;sc.editor.cumulative=false;sc.editor.step=1;
          slides.push(sc);links.push({status:'unlinked',start:null,end:null,score:0,reason:'spirit-text'});
        }
        queue=[];continue;
      }
      queue.push(wrapped);
-     const sc=await B.scene('word',queue.flat().join('\\n'));
+     const sc=await B.scene('word',queue.flat().join('\n'));
      sc.editor.group='spirit-'+blocks.indexOf(lines)+'-'+sourceAt;sc.editor.cumulative=true;sc.editor.step=queue.length;
      slides.push(sc);links.push({status:'unlinked',start:null,end:null,score:0,reason:'spirit-text'});
      sourceAt++;
