@@ -115,6 +115,6 @@ $('driveLogin')&&($('driveLogin').onclick=login);
 $('driveRefresh')&&($('driveRefresh').onclick=list);
 if(window.PROM_GOOGLE_CLIENT_ID)sdk().then(initClient).catch(()=>{});
 window.PromDrive={save,list,loggedIn};
-shared.subscribe(session=>{const changed=shownToken!==(session?.token||'');shownToken=session?.token||'';token=shownToken;expires=session?.expires||0;account=session?.account||'';if(changed){$('driveFiles')?.replaceChildren();if($('driveFiles'))$('driveFiles').hidden=true;note(token?account+' · 연결됨':'구글 로그인하면 저장한 원고를 다른 컴퓨터에서도 열 수 있습니다.');}paint();if(changed&&loggedIn())list();});
+shared.subscribe(session=>{const accountChanged=account!==(session?.account||''),changed=shownToken!==(session?.token||'');shownToken=session?.token||'';token=shownToken;expires=session?.expires||0;account=session?.account||'';if(changed){$('driveFiles')?.replaceChildren();if($('driveFiles'))$('driveFiles').hidden=true;note(token?account+' · 연결됨':'구글 로그인하면 저장한 원고를 다른 컴퓨터에서도 열 수 있습니다.');}paint();if((changed||accountChanged)&&loggedIn())list();});
 paint();
 })();
