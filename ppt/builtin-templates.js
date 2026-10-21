@@ -5,7 +5,7 @@ window.PromBuiltinTemplates=(()=>{
 const LIST=[
   {id:'builtin-sunday',file:'sunday.json',version:1},
   {id:'builtin-dawn',file:'dawn.json',version:2},
-  {id:'builtin-spirit-word',file:'sunday.json',version:2,transform:'spirit'},
+  {id:'builtin-spirit-word',file:'sunday.json',version:3,transform:'spirit'},
 ];
 const KEY='promBuiltinTemplates',DB='prom-ppt-generation-templates';
 const base=new URL('templates/',document.currentScript.src);
