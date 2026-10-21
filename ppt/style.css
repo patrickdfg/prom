@@ -33,9 +33,9 @@ main{grid-template-columns:minmax(0,var(--script-width,36%)) 9px minmax(0,1fr);g
 .overview-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:0 18px 12px;border-bottom:1px solid #29394e}
 .overview-toolbar button{font-size:12px;padding:7px 10px}.view-buttons{display:flex;gap:4px}.view-buttons [aria-pressed=true]{background:#335b65;border-color:#64d9c0;color:#fff}
 .overview-toolbar label{display:flex;align-items:center;gap:7px;font-size:12px;margin-left:auto}.overview-toolbar input{width:105px;accent-color:#64d9c0}.overview-toolbar output{min-width:4ch}
-#slideList{grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--card-width,280px)),1fr));gap:16px;padding:4px 18px 20px;align-content:start;align-items:start;overscroll-behavior:contain}
+#slideList{grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--card-width,280px)),1fr));gap:6px;padding:4px 8px 8px;align-content:start;align-items:start;overscroll-behavior:contain}
 #slideList[hidden],.preview-trio[hidden],#mappingSettings[hidden]{display:none!important}
-.slide-card{padding:8px;border-radius:9px}.slide-card.live{border-color:#ffbb77;box-shadow:0 0 0 2px #ffbb77}.card-info{align-items:center;font-size:11px;flex-wrap:wrap}.card-info strong{margin-right:auto}.card-live{display:none;background:#ffbb77;color:#34200c;border-radius:4px;padding:2px 5px;font-weight:700}.slide-card.live .card-live{display:inline-block}
+.slide-card{padding:4px;border-radius:7px}.slide-card.live{border-color:#ffbb77;box-shadow:0 0 0 2px #ffbb77}.card-info{align-items:center;font-size:11px;flex-wrap:wrap}.card-info strong{margin-right:auto}.card-live{display:none;background:#ffbb77;color:#34200c;border-radius:4px;padding:2px 5px;font-weight:700}.slide-card.live .card-live{display:inline-block}
 .mapping-actions{display:flex;gap:6px}.mapping{flex-shrink:0}.mapping #mappingSettings{max-height:24vh;overflow:auto}
 .single-view .preview-trio{display:block;flex:1;min-height:0;overflow:auto;padding:12px 18px}.single-view .preview-trio>section:not(.current-preview){display:none}.single-view .link-summary{flex-shrink:0}
 

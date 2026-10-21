@@ -31,7 +31,7 @@ button.danger{color:var(--danger)}
 .status.error{color:var(--danger)}
 .hint{color:var(--dim);font-size:13px;margin:0 0 10px}
 details.more{margin:4px 0 10px}details.more summary{cursor:pointer;color:var(--accent2);margin-bottom:10px}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px}
 .thumb{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#000}
 .thumb .host{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden}
 .thumb small{position:absolute;left:6px;top:4px;z-index:2;background:rgba(0,0,0,.6);color:#fff;padding:0 6px;border-radius:4px;font-size:12px}
