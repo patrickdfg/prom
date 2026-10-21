@@ -19,7 +19,7 @@ async function manuscriptRich(file){
  }else if(ext==='txt')paras=new TextDecoder().decode(buf).split(/\r?\n/).map(text=>[{text,hex:'000000'}]);
  else throw Error('원고는 HWP, HWPX, DOCX, TXT를 선택하세요.');
  const richLines=[];
- for(const para of paras){const chars=[];for(const r of para)for(const ch of r.text)chars.push({ch,hex:r.hex});let row=[];const flush=()=>{while(row.length&&/\s/.test(row[0].ch))row.shift();while(row.length&&/\s/.test(row[row.length-1].ch))row.pop();if(row.length){const runs=[];for(const c of row){const last=runs[runs.length-1];if(last?.hex===c.hex)last.text+=c.ch;else runs.push({text:c.ch,hex:c.hex});}richLines.push({text:row.map(c=>c.ch).join(''),runs});}row=[];};for(const c of chars){if(c.ch==='\n'||c.ch==='\r')flush();else row.push(c);}flush();}
+ for(const [paragraph,para] of paras.entries()){const chars=[];for(const r of para)for(const ch of r.text)chars.push({ch,hex:r.hex});let row=[];const flush=()=>{while(row.length&&/\s/.test(row[0].ch))row.shift();while(row.length&&/\s/.test(row[row.length-1].ch))row.pop();if(row.length){const runs=[];for(const c of row){const last=runs[runs.length-1];if(last?.hex===c.hex)last.text+=c.ch;else runs.push({text:c.ch,hex:c.hex});}richLines.push({text:row.map(c=>c.ch).join(''),runs,paragraph});}row=[];};for(const c of chars){if(c.ch==='\n'||c.ch==='\r')flush();else row.push(c);}flush();}
  if(!richLines.length)throw Error('원고 본문을 찾지 못했습니다.');return {lines:richLines.map(r=>r.text),richLines};
 }
 

@@ -1,0 +1,25 @@
+const assert=require('node:assert/strict'),R=require('../content-rules.js');
+const rows=(values)=>({lines:values,richLines:values.map((text,i)=>({text,runs:[{text,hex:'0000FF'}],paragraph:i,source:0}))});
+assert.equal(R.mode({name:'주일예배전반',options:{allText:true}}),'worship');
+for(const name of ['주일말씀','수요말씀','새벽말씀'])assert.equal(R.mode({name}),'numbered');
+assert.equal(R.numbered(rows(['색깔이 있는 설명입니다.','본문 전체입니다.'])).length,0);
+const numbered=rows(['머리말입니다.','1. 첫 번째 항목입니다.','줄을 바꾼 같은 항목입니다.','2) 둘째 항목입니다.','설교 전문입니다.','주일예배 광고','1. 광고는 자막이 아닙니다.']);numbered.richLines[2].paragraph=1;
+const blocks=R.numbered(numbered);assert.equal(blocks.length,2);assert.match(blocks[0].chars.map(c=>c.ch).join(''),/줄을 바꾼/);assert(!blocks.flatMap(b=>b.chars).map(c=>c.ch).join('').includes('설교 전문'));
+const script=rows(['<2026년 10월 18일 주일말씀>','서로 사랑하며','부지런히 행하라.','본 문 :','<시대 성경> “서로 돕고 살아라.”','<요한복음 3장 16절> “하나님이 세상을 사랑하사.”','할렐루야!','이 아래의 설교 전문은 절대 자막으로 만들지 않습니다.']);
+const h=R.header(script);assert.equal(h.passages.length,2);assert.equal(h.title,'서로 사랑하며\n부지런히 행하라.');assert.deepEqual(h.date,[2026,10,18]);assert(!JSON.stringify(h).includes('절대 자막'));
+assert.throws(()=>R.header(rows(['제목','설교 전문뿐입니다.'])),/본문/);
+const tx=(text,y=200)=>({type:'text',x:50,y,w:800,h:80,paragraphs:[{runs:[{text,font:'Arial',size:32}]}]});
+const slide=shapes=>({width:960,height:540,background:'#123456',shapes});
+const original={slides:[slide([tx('2026.10.11')]),slide([tx('교회 광고')]),slide([tx('성경봉독',0),tx('로마서 12장 11절',100),tx('옛 본문 상단',220),tx('옛 본문 하단',310)]),slide([tx('2026년 10월 11일 주일말씀 주제',0),tx('옛 제목 앞줄',120),tx('옛 제목 뒷줄',220)])]};
+const record={name:'주일예배전반',options:{allText:true},design:{layouts:{caption:slide([tx('기본')])}}},snapshot=JSON.stringify(original);
+const result=R.generateWorship(script,record,original);assert.equal(result.slides.length,5);assert.equal(result.record.layoutCatalog.length,2);assert.equal(result.slides[0].shapes[0].paragraphs[0].runs[0].text,'2026.10.18');assert.equal(JSON.stringify(original),snapshot);
+const all=result.slides.flatMap(s=>s.shapes).flatMap(sh=>(sh.paragraphs||[]).flatMap(p=>p.runs.map(r=>r.text))).join(' ');assert(!all.includes('절대 자막'));assert(!all.includes('옛 제목'));assert(all.includes('교회 광고'));assert(all.includes('요한복음 3장 16절'));
+assert.equal(result.links.filter(l=>l.status==='exact').length,3);for(const link of result.links.filter(l=>l.status==='exact'))assert(link.start>=0&&link.end>link.start);
+const customized=structuredClone(result.record);customized.design.layouts.worshipTitle.background='#abcdef';assert.equal(R.generateWorship(script,customized,original).slides.at(-1).background,'#abcdef');
+assert.throws(()=>R.generateWorship(script,record,{slides:[slide([tx('자리 표시가 없는 PPT')])]}),/제목 또는 성경봉독/);
+const clean=R.instructions('파랑: 하단 자막.\n하단 자막은 900px 글상자 폭에서 두 줄씩 분할.\n내가 적은 보존할 메모','numbered');assert(!clean.includes('두 줄씩 분할'));assert(clean.includes('보존할 메모'));assert.equal(R.instructions(clean,'numbered'),clean);
+// The obsolete allText flag cannot turn an unnumbered sermon into captions.
+global.window=global;global.CaptionContentRules=R;global.CaptionCore=require('../core.js');global.document={currentScript:{src:'http://localhost/ppt/builder.js'},fonts:{load:async()=>{}},createElement:()=>({getContext:()=>({font:'',measureText:t=>({width:t.length*15})})})};global.crypto=require('node:crypto').webcrypto;require('../builder.js');
+assert.deepEqual(CaptionBuilder.analyze(rows(['본문입니다. 두 줄 자막으로 바꾸면 안 됩니다.']),{allText:true}),[]);
+const out=CaptionBuilder.analyze(rows(['본문의 설명입니다.','1. 짧은 항목입니다.','2. 둘째 항목입니다.']),{});assert.equal(out.length,2);assert(out.every(s=>s.layout==='proverb'));assert.equal(out[0].start,require('../core.js').normalize('본문의 설명입니다.').length);
+console.log('PASS numbered-only scope for all sermons, paragraph continuation, ad exclusion, old allText rejection, header extraction, worship slots/order/count/links, saved master style and fail-closed behavior');

@@ -2,9 +2,9 @@
 (()=>{
 'use strict';
 const $=id=>document.getElementById(id),B=CaptionBuilder,clone=x=>structuredClone(x);
-const L=MakeTemplateLayouts;
+const L=MakeTemplateLayouts,R=CaptionContentRules;
 const DB='prom-ppt-generation-templates',LAST='promMakeTemplate';
-const DEFAULT_OPTIONS={title:'',date:'',greenLayout:'word',cumulative:true,allText:false};
+const DEFAULT_OPTIONS={title:'',date:'',greenLayout:'word',cumulative:false,allText:false,sourceMode:'numbered'};
 let selected=-1,deckTemplate=null,deckTemplateRec=null;   // 편집 창: 고른 슬라이드 번호, 이 덱을 만든 템플릿 디자인(편집 창이 새 장면을 만들 때 같은 템플릿을 쓰게)
 let records=[],busy=false,deck=null,draft=null,draftId='',layoutKey='caption',shapeIx=0,dirty=false,draftCatalog=[];
 
@@ -23,7 +23,7 @@ async function combinedSource(rich,files){if(files.length===1&&rich.names.length
 let dbp;
 function db(){return dbp||(dbp=new Promise((ok,no)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('templates',{keyPath:'id'});r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error);}));}
 async function store(mode,fn){const d=await db();return new Promise((ok,no)=>{const tx=d.transaction('templates',mode),req=fn(tx.objectStore('templates'));tx.oncomplete=()=>ok(req?.result);tx.onerror=()=>no(tx.error);});}
-async function load(){await window.PromBuiltinTemplates?.ready;records=(await store('readonly',s=>s.getAll())||[]).map(r=>L.prepare(r,B.layouts)).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));fillSelects();renderList();}
+async function load(){await window.PromBuiltinTemplates?.ready;records=(await store('readonly',s=>s.getAll())||[]).map(r=>L.prepare({...r,options:{...r.options,allText:false,sourceMode:R.mode(r)},instructions:R.instructions(r.instructions,R.mode(r))},B.layouts)).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));fillSelects();renderList();}
 // 저장할 때마다 수정 시각을 남긴다(드라이브에 올릴 때 어느 쪽이 더 새로운지 비교하는 데 쓴다). 드라이브 업로드는 사용자가 버튼을 눌렀을 때만 한다.
 async function put(rec){rec=L.prepare({...rec,updatedAt:Date.now()},B.layouts);await store('readwrite',s=>s.put(rec));await load();}
 // 드라이브에서 가져온 템플릿은 원래 id·수정 시각 그대로 넣는다(알림 없이).
@@ -58,7 +58,7 @@ function renderList(){
     const row=document.createElement('div');row.className='tpl';
     const name=document.createElement('b');name.textContent=r.name;
     const info=document.createElement('small');const ev=r.pair?.evidence;
-    info.textContent=(r.builtin?'사이트 기본 템플릿'+(r.edited?' (고친 것)':'')+' · ':'')+(ev?`원고-PPT 학습 · 연결 ${ev.matchedSlides}/${ev.totalSlides}장`:'기본 디자인에서 시작')+(r.fixedSlides?.length?` · 고정 슬라이드 ${r.fixedSlides.length}장`:'')+` · 레이아웃 ${L.catalog(r,B.layouts).length}개`;
+    info.textContent=(r.builtin?'사이트 기본 템플릿'+(r.edited?' (고친 것)':'')+' · ':'')+(r.worship?'예배 전반 · 제목·성경본문 교체':ev?`원고-PPT 학습 · 연결 ${ev.matchedSlides}/${ev.totalSlides}장`:'기본 디자인에서 시작')+(r.fixedSlides?.length?` · 고정 슬라이드 ${r.fixedSlides.length}장`:'')+` · 레이아웃 ${L.catalog(r,B.layouts).length}개`;
     const btn=(label,fn,cls)=>{const b=document.createElement('button');b.textContent=label;if(cls)b.className=cls;b.onclick=fn;return b;};
     row.append(name,
       btn('마스터 편집',()=>{$('mTemplate').value=r.id;openMaster(r.id);showTab('master');}),
@@ -102,16 +102,19 @@ $('pairRun').onclick=async()=>{
   busy=true;$('pairRun').disabled=true;status('pairStatus','원고와 완성 PPT를 읽고 슬라이드를 맞춰 보는 중…');
   try{
     const rich=await MakeManuscripts.read(files,pastes,CaptionImport.manuscriptRich),parsed=await CaptionImport.deck(df);parsed.name=df.name;
-    const analysis=CaptionPairTemplate.analyze(rich,parsed);
-    if(!analysis.candidates.length)throw Error('원고와 정확히 연결되는 슬라이드를 찾지 못했습니다. 같은 설교의 원고와 PPT인지 확인하세요.');
-    const result=CaptionPairTemplate.build(analysis,parsed.slides,await defaultDesign());
-    const name=$('pairName').value.trim()||stem(rich.name)+' 템플릿';
+    const name=$('pairName').value.trim()||stem(rich.name)+' 템플릿',scope=$('pairScope').value==='auto'?R.mode({name}):$('pairScope').value;
+    let analysis,result;
+    if(scope==='worship'){
+      const prepared=R.prepareWorship({name,options:{},design:await defaultDesign()},parsed);
+      analysis={scope:'worship',matchedSlides:0,totalSlides:parsed.slides.length,candidates:[]};
+      result={...prepared,evidence:analysis,fixedSlides:[],options:{cumulative:false}};
+    }else{analysis=CaptionPairTemplate.analyze(rich,parsed);result=CaptionPairTemplate.build(analysis,parsed.slides,await defaultDesign());}
     const same=records.find(r=>r.name===name);if(same&&!confirm(`"${name}" 템플릿이 이미 있습니다. 덮어쓸까요?`))throw Error('취소했습니다. 다른 이름을 넣으세요.');
-    const rec={version:1,id:same?.id||crypto.randomUUID(),name,instructions:result.instructions,options:{...DEFAULT_OPTIONS,cumulative:result.options?.cumulative??true},
+    const rec={version:1,id:same?.id||crypto.randomUUID(),name,instructions:R.instructions(result.instructions,scope),options:{...DEFAULT_OPTIONS,sourceMode:scope},...(result.worship?{worship:result.worship,layoutCatalog:result.layoutCatalog}:{}),
       pair:{version:1,sources:{script:await combinedSource(rich,files),deck:await readData(df),...(files.length>1?{scriptFiles:await Promise.all(files.map(readData))}:{}),pastedScripts:pastes.filter(t=>t.trim())},evidence:result.evidence,extractedInstructions:result.instructions},fixedSlides:result.fixedSlides||[],design:flatten(result.design)};
     await put(rec);
     const learned=L.catalog(rec,B.layouts).map(e=>L.label(rec,e));
-    status('pairStatus',`"${name}" 템플릿을 만들었습니다.\n원고와 연결된 슬라이드 ${analysis.matchedSlides}/${analysis.totalSlides}장 · 배운 레이아웃: ${learned.join(', ')}${rec.fixedSlides.length?`\n연결되지 않은 ${rec.fixedSlides.length}장은 고정 슬라이드로 넣었습니다.`:''}\n③ 마스터 편집에서 다듬을 수 있습니다.`);
+    status('pairStatus',scope==='worship'?`"${name}" 예배 전반 템플릿을 만들었습니다. 제목·성경본문 자리만 교체하며 원본 ${parsed.slides.length}장의 예배 순서를 유지합니다.`:`"${name}" 템플릿을 만들었습니다.\n원고와 연결된 슬라이드 ${analysis.matchedSlides}/${analysis.totalSlides}장 · 배운 레이아웃: ${learned.join(', ')}${rec.fixedSlides.length?`\n연결되지 않은 ${rec.fixedSlides.length}장은 고정 슬라이드로 넣었습니다.`:''}\n③ 마스터 편집에서 다듬을 수 있습니다.`);
     useForMake(rec.id);$('mTemplate').value=rec.id;draft=null;
   }catch(e){status('pairStatus',e.message||String(e),true);}
   finally{busy=false;$('pairRun').disabled=false;}
@@ -119,7 +122,7 @@ $('pairRun').onclick=async()=>{
 $('blankRun').onclick=async()=>{
   const name=$('blankName').value.trim();if(!name){toast('템플릿 이름을 넣으세요.');return;}
   if(records.some(r=>r.name===name)){toast('같은 이름의 템플릿이 있습니다.');return;}
-  const rec={version:1,id:crypto.randomUUID(),name,options:{...DEFAULT_OPTIONS},pair:null,fixedSlides:[],design:flatten(await defaultDesign())};
+  const rec={version:1,id:crypto.randomUUID(),name,options:{...DEFAULT_OPTIONS},instructions:R.rule('numbered'),pair:null,fixedSlides:[],design:flatten(await defaultDesign())};
   await put(rec);useForMake(rec.id);$('blankName').value='';$('mTemplate').value=rec.id;openMaster(rec.id);showTab('master');toast(`"${name}" 템플릿을 만들었습니다. 디자인을 고친 뒤 저장하세요.`);
 };
 
@@ -295,7 +298,9 @@ addEventListener('keydown',e=>{
 (()=>{const names=['마루 부리OTF 굵은','Malgun Gothic','맑은 고딕','바탕','궁서','돋움','굴림','HY견고딕','HY견명조','나눔고딕','나눔명조','나눔스퀘어','Noto Sans KR','Noto Serif KR','Pretendard','Arial'];for(const n of names){const o=document.createElement('option');o.value=n;$('mFonts').append(o);}})();
 
 /* ---------- ① 만들기 ---------- */
-$('makeTemplate').onchange=()=>{const rec=byId($('makeTemplate').value);try{localStorage.setItem(LAST,$('makeTemplate').value)}catch{}const o={...DEFAULT_OPTIONS,...(rec?.options||{})};$('makeGreen').value=o.greenLayout;$('makeCumulative').checked=o.cumulative;$('makeAll').checked=o.allText;};
+function scopeHint(){$('makeScopeHint').textContent=$('makeScope').value==='worship'?'제목·성경본문만 교체합니다. 교독문·광고 등 나머지 예배 순서는 원본 PPT 내용이므로 확인해 주세요.':'주일·수요·새벽 모두 번호가 붙은 항목만 만듭니다. 번호 없는 설교 본문은 제외합니다.';}
+$('makeTemplate').onchange=()=>{const rec=byId($('makeTemplate').value);try{localStorage.setItem(LAST,$('makeTemplate').value)}catch{}$('makeScope').value=R.mode(rec);scopeHint();};
+$('makeScope').onchange=async()=>{scopeHint();const rec=byId($('makeTemplate').value);if(rec)await put({...rec,options:{...rec.options,sourceMode:$('makeScope').value,allText:false},instructions:R.instructions(rec.instructions,$('makeScope').value)});};
 let observer=null;
 function renderGrid(slides){
   const grid=$('makeGrid');observer?.disconnect();for(const h of grid.querySelectorAll('.host'))CaptionRender.release?.(h);grid.replaceChildren();
@@ -310,18 +315,19 @@ $('makeRun').onclick=async()=>{
   if(busy)return;
   busy=true;$('makeRun').disabled=true;$('makeDownload').disabled=true;status('makeStatus','원고를 읽고 PPT를 만드는 중…');
   try{
-    const rec=byId($('makeTemplate').value),rich=await makeInputs.read(CaptionImport.manuscriptRich,{pasteColor:'0000FF',plainColor:'0000FF',markedColor:hex=>B.colorType('#'+hex)!=='black'});
+    let rec=byId($('makeTemplate').value);const rich=await makeInputs.read(CaptionImport.manuscriptRich);
     const project={lines:rich.lines,richLines:rich.richLines,scriptName:rich.name,slides:[],links:[]};
     await B.useTemplate(rec?.design||null);
-    const opts={allText:$('makeAll').checked,cumulative:$('makeCumulative').checked,greenLayout:$('makeGreen').value,title:$('makeTitle').value.trim(),date:$('makeDate').value.trim()};
-    let result;
-    try{result=await B.generate(project,opts);}
-    catch(e){if(!opts.allText&&/찾지 못했습니다/.test(e.message)){result=await B.generate(project,{...opts,allText:true});$('makeAll').checked=true;toast('원고에 색 표시가 없어 원고 전체로 만들었습니다.',5000);}else throw e;}
-    const woven=rec?.fixedSlides?.length?CaptionPairTemplate.weave(rec.fixedSlides,result.slides,result.links):result;
+    const opts={title:$('makeTitle').value.trim(),date:$('makeDate').value.trim()},scope=$('makeScope').value;
+    let woven,summary='';
+    if(scope==='worship'){
+      const result=R.generateWorship(project,rec,await R.sourceDeck(rec,CaptionImport.deck),opts);rec=L.prepare(result.record,B.layouts);woven=result;summary=result.summary;
+      if(!byId(rec.id)?.worship){await put(rec);$('mTemplate').value=rec.id;draft=null;dirty=false;}
+    }else{const result=await B.generate(project,opts);woven=rec?.fixedSlides?.length?CaptionPairTemplate.weave(rec.fixedSlides,result.slides,result.links):result;summary='번호가 붙은 항목만 생성';}
     // 크기(960×540·1280×720 혼재)는 편집 창이 장면을 다시 만들 때 어긋나지 않도록 여기서 바꾸지 않고, PPTX로 내려받을 때 모두 1920×1080으로 맞춘다.
     deck={...project,slides:woven.slides,links:woven.links,deckName:stem(rich.name)+'_자막.pptx',generationTemplate:rec?structuredClone(rec):null,exportSize:{width:1920,height:1080}};deckTemplate=rec?.design||null;deckTemplateRec=rec||null;selected=-1;
     renderGrid(deck.slides);$('makeDownload').disabled=false;$('makeToLive').disabled=false;$('makeEditTools').hidden=false;
-    status('makeStatus',`${deck.slides.length}장을 만들었습니다${rec?` (템플릿: ${rec.name})`:''}. 확인 후 PPTX 다운로드를 누르세요.`);
+    status('makeStatus',`${deck.slides.length}장을 만들었습니다${rec?` (템플릿: ${rec.name})`:''}. ${summary}. 확인 후 PPTX 다운로드를 누르세요.`);
   }catch(e){status('makeStatus',e.message||String(e),true);}
   finally{busy=false;$('makeRun').disabled=false;$('makeDownload').disabled=!deck;$('makeToLive').disabled=!deck;}
 };
