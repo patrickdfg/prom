@@ -34,7 +34,7 @@
       <label class="field">템플릿
         <select id="makeTemplate"></select>
       </label>
-      <label class="field">만들기 방식<select id="makeScope"><option value="numbered">설교 자막 · 번호가 붙은 항목만</option><option value="worship">예배 전반 · 제목과 성경본문만</option></select></label>
+      <label hidden>제작 대상<select id="makeScope"><option value="numbered">설교 원고 · 자동 인식</option><option value="worship">예배 전반 · 제목과 성경본문만</option></select></label>
       <p id="makeScopeHint" class="hint"></p>
       <details class="more">
         <summary>만들기 설정</summary>
@@ -70,7 +70,7 @@
       <p class="hint">여러 파일은 위에 표시된 순서대로 이어지고, 붙여넣은 원고는 그 뒤에 추가됩니다.</p>
       <label class="field">완성 PPT<input id="pairDeck" type="file" accept=".pptx"></label>
       <label class="field">템플릿 이름<input id="pairName" type="text" placeholder="예: 주일말씀"></label>
-      <div class="row"><label class="field">만들기 방식<select id="pairScope"><option value="auto">템플릿 이름에 맞춤</option><option value="numbered">설교 자막 · 번호가 붙은 항목만</option><option value="worship">예배 전반 · 제목과 성경본문만</option></select></label><button id="pairRun" class="primary">비교해서 템플릿 만들기</button></div>
+      <div class="row"><label class="field">제작 대상<select id="pairScope"><option value="auto">템플릿 이름에 맞춤</option><option value="numbered">설교 원고 · 자동 인식</option><option value="worship">예배 전반 · 제목과 성경본문만</option></select></label><button id="pairRun" class="primary">비교해서 템플릿 만들기</button></div>
       <p id="pairStatus" class="status" aria-live="polite"></p>
     </div>
     <div class="card">
@@ -184,12 +184,12 @@
 <script src="../ppt/slide-size.js?v=20261021-fill1"></script><script src="../ppt/render.js?v=20261021-fill1"></script>
 <script src="../ppt/builtin-templates.js?v=20261021-tpl2"></script>
 <script src="../ppt/layout-masters.js?v=20261017-master2"></script>
-<script src="../ppt/content-rules.js?v=20261021-cues1"></script><script src="../ppt/builder.js?v=20261021-scope1"></script>
+<script src="../ppt/content-rules.js?v=20261021-auto2"></script><script src="../ppt/builder.js?v=20261021-auto2"></script>
 <script src="../ppt/pptx-export.js?v=20261021-layout1"></script>
 <script src="../ppt/pair-template.js?v=20261018-proverb1"></script>
-<script src="manuscripts.js?v=20261021-scope1"></script><script src="template-layouts.js?v=20261021-layout1"></script><script src="make.js?v=20261021-cues1"></script>
+<script src="manuscripts.js?v=20261021-scope1"></script><script src="template-layouts.js?v=20261021-layout1"></script><script src="make.js?v=20261021-auto2"></script>
 <script src="../ppt/font-picker.js?v=20261017-font1"></script>
-<script src="../ppt/editor-media.js?v=20261021-media1"></script><script src="../ppt/editor.js?v=20261021-scope1"></script>
+<script src="../ppt/editor-media.js?v=20261021-media1"></script><script src="../ppt/editor.js?v=20261021-auto2"></script>
 <script src="../ppt/drive-config.js?v=20261020-sync1"></script>
 <script src="login.js?v=20261021-drive1"></script>
 <script src="drive.js?v=20261021-inputs1"></script>

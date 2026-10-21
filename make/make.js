@@ -298,7 +298,7 @@ addEventListener('keydown',e=>{
 (()=>{const names=['마루 부리OTF 굵은','Malgun Gothic','맑은 고딕','바탕','궁서','돋움','굴림','HY견고딕','HY견명조','나눔고딕','나눔명조','나눔스퀘어','Noto Sans KR','Noto Serif KR','Pretendard','Arial'];for(const n of names){const o=document.createElement('option');o.value=n;$('mFonts').append(o);}})();
 
 /* ---------- ① 만들기 ---------- */
-function scopeHint(){const omit=R.worshipOmit(byId($('makeTemplate').value));$('makeScopeHint').textContent=$('makeScope').value==='worship'?'제목·성경본문만 교체합니다.'+(omit.length?' 대표기도·성가대/특송은 제외합니다.':'')+' 교독문·광고 등은 원본 PPT 내용이므로 확인해 주세요.':'주일·수요·새벽 모두 번호가 붙은 항목만 만듭니다. 번호 없는 설교 본문은 제외합니다.';}
+function scopeHint(){const rec=byId($('makeTemplate').value),omit=R.worshipOmit(rec);$('makeScopeHint').textContent=R.mode(rec)==='worship'?'제목·성경본문만 교체합니다.'+(omit.length?' 대표기도·성가대/특송은 제외합니다.':'')+' 교독문·광고 등은 원본 PPT 내용이므로 확인해 주세요.':'주일·수요·새벽 원고를 자동 인식합니다. 번호 항목이 있으면 항목별로, 없으면 색상 표시 구간을, 색상도 없으면 본문 문단을 전체 화면 자막으로 만듭니다.';}
 $('makeTemplate').onchange=()=>{const rec=byId($('makeTemplate').value);try{localStorage.setItem(LAST,$('makeTemplate').value)}catch{}$('makeScope').value=R.mode(rec);scopeHint();};
 $('makeScope').onchange=async()=>{scopeHint();const rec=byId($('makeTemplate').value);if(rec)await put({...rec,options:{...rec.options,sourceMode:$('makeScope').value,allText:false},instructions:R.instructions(rec.instructions,$('makeScope').value)});};
 let observer=null;
@@ -318,12 +318,12 @@ $('makeRun').onclick=async()=>{
     let rec=byId($('makeTemplate').value);const rich=await makeInputs.read(CaptionImport.manuscriptRich);
     const project={lines:rich.lines,richLines:rich.richLines,scriptName:rich.name,slides:[],links:[]};
     await B.useTemplate(rec?.design||null);
-    const opts={title:$('makeTitle').value.trim(),date:$('makeDate').value.trim()},scope=$('makeScope').value;
+    const opts={title:$('makeTitle').value.trim(),date:$('makeDate').value.trim()},scope=R.mode(rec);
     let woven,summary='';
     if(scope==='worship'){
       const result=R.generateWorship(project,rec,await R.sourceDeck(rec,CaptionImport.deck),opts);rec=L.prepare(result.record,B.layouts);woven=result;summary=result.summary;
       if(!byId(rec.id)?.worship){await put(rec);$('mTemplate').value=rec.id;draft=null;dirty=false;}
-    }else{const result=await B.generate(project,opts);woven=rec?.fixedSlides?.length?CaptionPairTemplate.weave(rec.fixedSlides,result.slides,result.links):result;summary='번호가 붙은 항목만 생성';}
+    }else{const result=await B.generate(project,opts);woven=rec?.fixedSlides?.length?CaptionPairTemplate.weave(rec.fixedSlides,result.slides,result.links):result;summary=(result.summary||'원고를 자동 인식했습니다.').replace(/[.]$/,'');}
     // 크기(960×540·1280×720 혼재)는 편집 창이 장면을 다시 만들 때 어긋나지 않도록 여기서 바꾸지 않고, PPTX로 내려받을 때 모두 1920×1080으로 맞춘다.
     deck={...project,slides:woven.slides,links:woven.links,deckName:stem(rich.name)+'_자막.pptx',generationTemplate:rec?structuredClone(rec):null,exportSize:{width:1920,height:1080}};deckTemplate=rec?.design||null;deckTemplateRec=rec||null;selected=-1;
     renderGrid(deck.slides);$('makeDownload').disabled=false;$('makeToLive').disabled=false;$('makeEditTools').hidden=false;
