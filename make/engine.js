@@ -33,31 +33,42 @@ window.MakePptEngine=(()=>{
    for(const part of parts){if(row.length&&(row.join(' ').length+part.length+1)>estimatedLimit){out.push(row.join(' '));row.length=0;}row.push(part);}
    if(row.length)out.push(row.join(' '));return out;
   };
-  let sourceAt=0;
+  let groupCount=0;
+  // 완성 그룹의 줄 수를 먼저 정한 뒤, 모든 단계에 같은 빈 줄을 패딩합니다.
+  // 가운데 정렬을 유지하되 실제 첫 줄의 세로 좌표는 전 단계에서 고정됩니다.
+  async function emitGroup(sentencesInGroup){
+   if(!sentencesInGroup.length)return;
+   const finalLineCount=sentencesInGroup.reduce((n,rows)=>n+rows.length,0);
+   const gid='spirit-cumulative-'+(++groupCount);
+   const visible=[];
+   for(let i=0;i<sentencesInGroup.length;i++){
+    visible.push(...sentencesInGroup[i]);
+    const sc=await B.scene('word',visible.join('\n'),{padToLines:finalLineCount});
+    sc.editor.group=gid;sc.editor.cumulative=true;sc.editor.step=i+1;
+    slides.push(sc);links.push({status:'unlinked',start:null,end:null,score:0,reason:'spirit-text'});
+    if(slides.length>1000)throw Error('생성된 자막이 너무 많습니다. 원고를 나누어 넣어 주세요.');
+   }
+  }
   for(const lines of blocks){
-   let queue=[];
-   // Each paragraph is a semantic block, with a fresh cumulative sequence.
+   let queue=[],rowCount=0;
    for(const line of lines){
-    if(line===title||/^20\d{2}\s*년\s*성령\s*사연\s*\d+$/.test(line))continue;
+    if(line===title||/^20\d{2}\s*년\s*성령\s*(?:말씀|사연)\s*\d+$/.test(line))continue;
     for(const sentence of sentences(line)){
      const wrapped=wrapSentence(sentence);
-     if(queue.length&&queue.reduce((n,x)=>n+x.length,0)+wrapped.length>6)queue=[];
-     if(wrapped.length>6){
-       for(let start=0;start<wrapped.length;start+=6){
-         const piece=wrapped.slice(start,start+6);
-         const sc=await B.scene('word',piece.join('\n'));sc.editor.group='spirit-'+slides.length;sc.editor.cumulative=false;sc.editor.step=1;
-         slides.push(sc);links.push({status:'unlinked',start:null,end:null,score:0,reason:'spirit-text'});
-       }
-       queue=[];continue;
+     if(rowCount+wrapped.length>6){
+      await emitGroup(queue);queue=[];rowCount=0;
      }
-     queue.push(wrapped);
-     const sc=await B.scene('word',queue.flat().join('\n'));
-     sc.editor.group='spirit-'+blocks.indexOf(lines)+'-'+sourceAt;sc.editor.cumulative=true;sc.editor.step=queue.length;
-     slides.push(sc);links.push({status:'unlinked',start:null,end:null,score:0,reason:'spirit-text'});
-     sourceAt++;
-     if(slides.length>1000)throw Error('생성된 자막이 너무 많습니다. 원고를 나누어 넣어 주세요.');
+     if(wrapped.length>6){
+      // A single long sentence requires multiple screens; each has a fixed final baseline.
+      for(let pos=0;pos<wrapped.length;pos+=6){
+       await emitGroup([wrapped.slice(pos,pos+6)]);
+      }
+      continue;
+     }
+     queue.push(wrapped);rowCount+=wrapped.length;
     }
    }
+   await emitGroup(queue);
   }
   if(slides.length===1)throw Error('표지 이외의 본문이 없습니다. 원고 내용을 확인해 주세요.');
   slides.push(structuredClone(slides.at(-1)));links.push({...links.at(-1)});
