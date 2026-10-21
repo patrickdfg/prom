@@ -29,6 +29,7 @@ function analyze(manuscript,deck){
  // 원고에 연결되지 않은 장은 매주 들어가는 고정 장(표지·찬양·광고·마무리 등)으로 보고 템플릿에 함께 담는다.
  const total=links.filter(l=>l.status==='exact').length,fixed=[];let before=0;
  rows.forEach((row,i)=>{if(links[i].status==='exact'){before++;return;}const t=slides[i].shapes.filter(s=>s.type==='text').map(textOf).join(' ').replace(/\s+/g,' ').trim();fixed.push({slideIndex:i,before,total,status:links[i].status,label:t.slice(0,40),keep:true});});
+ if(!candidates.length&&!slides.some(s=>s.shapes.some(sh=>sh.type==='text'&&C.normalize(textOf(sh)).length>=2)))throw Error(`이 PPT는 ${slides.length}장 모두 글자가 그림으로 들어 있어(편집 가능한 글자 0개) 서식을 배울 수 없습니다. 글자를 직접 입력한 원본 PPT(그림·PDF로 내보내지 않은 것)로 다시 시도하거나, 목록의 「기본 주일설교 템플릿」을 쓰세요.`);
  if(!candidates.length)throw Error('원고와 정확히 일치하는 편집 가능한 PPT 본문을 찾지 못했습니다. 같은 원고로 만든 PPT인지 확인하세요. 이미지로 된 글자와 중복·유사 문장은 자동 학습하지 않습니다.');
  return {version:1,scriptName:manuscript.name||'',deckName:deck.name||'',totalSlides:slides.length,matchedSlides:candidates.length,candidates,fixed,warnings:deck.warnings||[]};
 }
