@@ -2,10 +2,11 @@
 (()=>{
 'use strict';
 const $=id=>document.getElementById(id),B=CaptionBuilder,clone=x=>structuredClone(x);
+const L=MakeTemplateLayouts;
 const DB='prom-ppt-generation-templates',LAST='promMakeTemplate';
 const DEFAULT_OPTIONS={title:'',date:'',greenLayout:'word',cumulative:true,allText:false};
 let selected=-1,deckTemplate=null,deckTemplateRec=null;   // 편집 창: 고른 슬라이드 번호, 이 덱을 만든 템플릿 디자인(편집 창이 새 장면을 만들 때 같은 템플릿을 쓰게)
-let records=[],busy=false,deck=null,draft=null,draftId='',layoutKey='caption',shapeIx=0,dirty=false;
+let records=[],busy=false,deck=null,draft=null,draftId='',layoutKey='caption',shapeIx=0,dirty=false,draftCatalog=[];
 
 /* ---------- 공통 ---------- */
 let toastTimer;
@@ -22,11 +23,11 @@ async function combinedSource(rich,files){if(files.length===1&&rich.names.length
 let dbp;
 function db(){return dbp||(dbp=new Promise((ok,no)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('templates',{keyPath:'id'});r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error);}));}
 async function store(mode,fn){const d=await db();return new Promise((ok,no)=>{const tx=d.transaction('templates',mode),req=fn(tx.objectStore('templates'));tx.oncomplete=()=>ok(req?.result);tx.onerror=()=>no(tx.error);});}
-async function load(){await window.PromBuiltinTemplates?.ready;records=(await store('readonly',s=>s.getAll())||[]).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));fillSelects();renderList();}
+async function load(){await window.PromBuiltinTemplates?.ready;records=(await store('readonly',s=>s.getAll())||[]).map(r=>L.prepare(r,B.layouts)).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));fillSelects();renderList();}
 // 저장할 때마다 수정 시각을 남긴다(드라이브에 올릴 때 어느 쪽이 더 새로운지 비교하는 데 쓴다). 드라이브 업로드는 사용자가 버튼을 눌렀을 때만 한다.
-async function put(rec){rec={...rec,updatedAt:Date.now()};await store('readwrite',s=>s.put(rec));await load();}
+async function put(rec){rec=L.prepare({...rec,updatedAt:Date.now()},B.layouts);await store('readwrite',s=>s.put(rec));await load();}
 // 드라이브에서 가져온 템플릿은 원래 id·수정 시각 그대로 넣는다(알림 없이).
-async function putSynced(rec){await store('readwrite',s=>s.put(rec));await load();}
+async function putSynced(rec){rec=L.prepare(rec,B.layouts);await store('readwrite',s=>s.put(rec));await load();}
 const byId=id=>records.find(r=>r.id===id)||null;
 function useForMake(id){try{localStorage.setItem(LAST,id)}catch{}$('makeTemplate').value=id;$('makeTemplate').onchange();}   // 방금 만들거나 고친 템플릿을 만들기에서 바로 쓰게 한다
 
@@ -57,7 +58,7 @@ function renderList(){
     const row=document.createElement('div');row.className='tpl';
     const name=document.createElement('b');name.textContent=r.name;
     const info=document.createElement('small');const ev=r.pair?.evidence;
-    info.textContent=(r.builtin?'사이트 기본 템플릿'+(r.edited?' (고친 것)':'')+' · ':'')+(ev?`원고-PPT 학습 · 연결 ${ev.matchedSlides}/${ev.totalSlides}장`:'기본 디자인에서 시작')+(r.fixedSlides?.length?` · 고정 슬라이드 ${r.fixedSlides.length}장`:'')+` · 레이아웃 ${Object.keys(r.design?.layouts||{}).length}개`;
+    info.textContent=(r.builtin?'사이트 기본 템플릿'+(r.edited?' (고친 것)':'')+' · ':'')+(ev?`원고-PPT 학습 · 연결 ${ev.matchedSlides}/${ev.totalSlides}장`:'기본 디자인에서 시작')+(r.fixedSlides?.length?` · 고정 슬라이드 ${r.fixedSlides.length}장`:'')+` · 레이아웃 ${L.catalog(r,B.layouts).length}개`;
     const btn=(label,fn,cls)=>{const b=document.createElement('button');b.textContent=label;if(cls)b.className=cls;b.onclick=fn;return b;};
     row.append(name,
       btn('마스터 편집',()=>{$('mTemplate').value=r.id;openMaster(r.id);showTab('master');}),
@@ -109,7 +110,7 @@ $('pairRun').onclick=async()=>{
     const rec={version:1,id:same?.id||crypto.randomUUID(),name,instructions:result.instructions,options:{...DEFAULT_OPTIONS,cumulative:result.options?.cumulative??true},
       pair:{version:1,sources:{script:await combinedSource(rich,files),deck:await readData(df),...(files.length>1?{scriptFiles:await Promise.all(files.map(readData))}:{}),pastedScripts:pastes.filter(t=>t.trim())},evidence:result.evidence,extractedInstructions:result.instructions},fixedSlides:result.fixedSlides||[],design:flatten(result.design)};
     await put(rec);
-    const learned=[...new Set(analysis.candidates.map(c=>B.layouts[c.layout]||c.layout))];
+    const learned=L.catalog(rec,B.layouts).map(e=>L.label(rec,e));
     status('pairStatus',`"${name}" 템플릿을 만들었습니다.\n원고와 연결된 슬라이드 ${analysis.matchedSlides}/${analysis.totalSlides}장 · 배운 레이아웃: ${learned.join(', ')}${rec.fixedSlides.length?`\n연결되지 않은 ${rec.fixedSlides.length}장은 고정 슬라이드로 넣었습니다.`:''}\n③ 마스터 편집에서 다듬을 수 있습니다.`);
     useForMake(rec.id);$('mTemplate').value=rec.id;draft=null;
   }catch(e){status('pairStatus',e.message||String(e),true);}
@@ -134,20 +135,26 @@ function shapeLabel(sh,i,s){if(i===s.bodyIndex)return '본문 글상자 (원고 
 
 // 되돌리기·다시 실행: 바꾸기 직전 상태를 쌓는다. 같은 칸을 연달아 고치면 한 번으로 묶는다.
 let undoStack=[],redoStack=[],lastMark=0,lastKey='';
-function mark(key=''){const now=Date.now();if(key&&key===lastKey&&now-lastMark<800){lastMark=now;return;}undoStack.push(JSON.stringify({layoutKey,shapeIx,layouts:draft.layouts}));if(undoStack.length>100)undoStack.shift();redoStack=[];lastMark=now;lastKey=key;paintHistory();}
-function restore(json){const s=JSON.parse(json);draft.layouts=s.layouts;layoutKey=s.layoutKey;shapeIx=s.shapeIx;$('mLayout').value=layoutKey;dirty=true;fillShapes();preview();}
-function undo(){if(!undoStack.length)return;redoStack.push(JSON.stringify({layoutKey,shapeIx,layouts:draft.layouts}));restore(undoStack.pop());lastKey='';paintHistory();}
-function redo(){if(!redoStack.length)return;undoStack.push(JSON.stringify({layoutKey,shapeIx,layouts:draft.layouts}));restore(redoStack.pop());lastKey='';paintHistory();}
+function mark(key=''){const now=Date.now();if(key&&key===lastKey&&now-lastMark<800){lastMark=now;return;}undoStack.push(JSON.stringify({layoutKey,shapeIx,layouts:draft.layouts,catalog:draftCatalog}));if(undoStack.length>100)undoStack.shift();redoStack=[];lastMark=now;lastKey=key;paintHistory();}
+function restore(json){const s=JSON.parse(json);draft.layouts=s.layouts;draftCatalog=s.catalog;layoutKey=s.layoutKey;shapeIx=s.shapeIx;fillLayouts(layoutKey);dirty=true;fillShapes();preview();}
+function undo(){if(!undoStack.length)return;redoStack.push(JSON.stringify({layoutKey,shapeIx,layouts:draft.layouts,catalog:draftCatalog}));restore(undoStack.pop());lastKey='';paintHistory();}
+function redo(){if(!redoStack.length)return;undoStack.push(JSON.stringify({layoutKey,shapeIx,layouts:draft.layouts,catalog:draftCatalog}));restore(redoStack.pop());lastKey='';paintHistory();}
 function paintHistory(){$('mUndo').disabled=!undoStack.length;$('mRedo').disabled=!redoStack.length;}
 
+function fillLayouts(keep){
+ const rec=byId(draftId),sel=$('mLayout');sel.replaceChildren();
+ for(const entry of draftCatalog)sel.append(new Option(L.label(rec,entry),entry.key));
+ sel.value=draftCatalog.some(e=>e.key===keep)?keep:draftCatalog[0]?.key||'';layoutKey=sel.value;
+ $('mLayoutName').value=draftCatalog.find(e=>e.key===layoutKey)?.name||'';
+ sel.disabled=$('mLayoutName').disabled=!draftCatalog.length;
+}
 async function openMaster(id){
   if(dirty&&draft&&!confirm('저장하지 않은 변경이 있습니다. 버리고 다른 템플릿을 열까요?')){$('mTemplate').value=draftId;return;}
+  const keep=draftId===id?layoutKey:'';
   draftId=id||'';const rec=byId(draftId);undoStack=[];redoStack=[];paintHistory();
-  if(!rec){draft=null;$('mPreview').replaceChildren();status('mStatus',records.length?'편집할 템플릿을 고르세요.':'먼저 ② 템플릿에서 템플릿을 만드세요.');return;}
-  draft=flatten(rec.design);dirty=false;
-  const sel=$('mLayout'),keep=sel.value||layoutKey;sel.replaceChildren();
-  for(const k of Object.keys(B.layouts))if(draft.layouts[k])sel.append(new Option(B.layouts[k],k));
-  sel.value=[...sel.options].some(o=>o.value===keep)?keep:'caption';layoutKey=sel.value;
+  draftCatalog=rec?L.catalog(rec,B.layouts):[];fillLayouts(keep);
+  if(!rec||!draftCatalog.length){draft=null;dirty=false;$('mPreview').replaceChildren();status('mStatus',records.length?'편집할 템플릿을 고르세요.':'먼저 ② 템플릿 만들기에서 템플릿을 만드세요.');return;}
+  $('mTemplate').value=rec.id;draft=flatten(rec.design);dirty=false;
   shapeIx=scene().bodyIndex;fillShapes();await preview();status('mStatus','');
 }
 function fillShapes(){
@@ -235,10 +242,16 @@ $('mFront').onclick=()=>order('front');$('mBack').onclick=()=>order('back');$('m
 $('mUndo').onclick=undo;$('mRedo').onclick=redo;
 
 $('mTemplate').onchange=()=>openMaster($('mTemplate').value);
-$('mLayout').onchange=async()=>{layoutKey=$('mLayout').value;shapeIx=scene().bodyIndex;fillShapes();await preview();};
+$('mLayout').onchange=async()=>{layoutKey=$('mLayout').value;$('mLayoutName').value=draftCatalog.find(e=>e.key===layoutKey)?.name||'';shapeIx=scene().bodyIndex;fillShapes();await preview();};
+$('mLayoutName').onchange=()=>{
+ if(!draft)return;const entry=draftCatalog.find(e=>e.key===layoutKey),name=$('mLayoutName').value.trim();
+ if(!name){$('mLayoutName').value=entry.name;return;}
+ if(draftCatalog.some(e=>e.key!==layoutKey&&e.name===name)){toast('이 템플릿에 같은 레이아웃 이름이 있습니다.');$('mLayoutName').value=entry.name;return;}
+ if(name===entry.name)return;mark();entry.name=name;scene().layoutName=L.label(byId(draftId),entry);fillLayouts(layoutKey);changed();
+};
 $('mShape').onchange=()=>select(+$('mShape').value);
 $('mSample').addEventListener('input',()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(preview);});
-$('mSave').onclick=async()=>{const rec=byId(draftId);if(!rec||!draft){toast('편집할 템플릿을 고르세요.');return;}await put({...rec,design:clone(draft),...(rec.builtin?{edited:true}:{})});useForMake(rec.id);dirty=false;status('mStatus',`"${rec.name}" 템플릿에 저장했습니다. 다음 만들기부터 이 디자인으로 나옵니다.`);};
+$('mSave').onclick=async()=>{$('mLayoutName').onchange();const rec=byId(draftId);if(!rec||!draft){toast('편집할 템플릿을 고르세요.');return;}await put({...rec,design:clone(draft),layoutCatalog:clone(draftCatalog),...(rec.builtin?{edited:true}:{})});useForMake(rec.id);dirty=false;status('mStatus',`"${rec.name}" 템플릿에 저장했습니다. 다음 만들기부터 이 디자인으로 나옵니다.`);};
 $('mRevert').onclick=()=>{dirty=false;openMaster(draftId);};
 addEventListener('resize',outline);
 

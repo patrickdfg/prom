@@ -20,14 +20,15 @@ async function create(project){
     const rid='rId'+(rels.length+1);rels.push({Id:rid,Type:R+'/image',Target:'../media/'+entry.file});shapes+='<p:pic><p:nvPicPr><p:cNvPr id="'+id+'" name="Picture '+id+'"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="'+rid+'"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr>'+xfrm(s)+'<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>';
    }
   return shapes;}
- // 장 맨 아래에 깔린 그림·도형(배경·틀)은 PowerPoint 레이아웃으로 뺀다. 같은 배경·틀이면 같은 레이아웃을 쓴다.
+ // 장 맨 아래에 깔린 그림·도형(배경·틀)은 PowerPoint 레이아웃으로 뺀다. 같은 이름·배경·틀이면 같은 레이아웃을 쓴다.
  const drawable=s=>s&&s.w>0&&s.h>0&&((s.type==='image'&&/^data:image\/(png|jpeg|gif|bmp|webp|svg\+xml);base64,/.test(s.src||''))||(s.type==='rect'&&(/^#[a-f\d]{6}$/i.test(s.color||'')||s.line?.width>0)));
  const srcIds=new Map(),srcId=src=>{if(!srcIds.has(src))srcIds.set(src,srcIds.size);return srcIds.get(src);};
  const layouts=new Map(),layoutNames=window.CaptionBuilder?.layouts||{};
  function layoutFor(slide){let k=0;while(k<(slide.shapes||[]).length&&drawable(slide.shapes[k]))k++;
   const decor=slide.shapes.slice(0,k).map(s=>{const c=structuredClone(s);Object.assign(c,CaptionSize.backgroundBox(c,slide));return c;});
-  const key=JSON.stringify([slide.background||'#00ff00',decor.map(s=>[s.type,Math.round(s.x),Math.round(s.y),Math.round(s.w),Math.round(s.h),s.rotate||0,s.src?srcId(s.src):'',s.color||'',s.geom||'',s.line||''])]);
-  if(!layouts.has(key)){const base=layoutNames[slide.editor?.layout]||'레이아웃';let name=base,n=2;const used=new Set([...layouts.values()].map(l=>l.name));while(used.has(name))name=base+' '+n++;layouts.set(key,{index:layouts.size+1,name,decor,background:slide.background||'#00ff00'});}
+  const layoutName=slide.layoutName||project.generationTemplate?.layoutCatalog?.find(e=>e.key===slide.editor?.layout)?.name;
+  const key=JSON.stringify([layoutName||slide.editor?.layout||'',slide.background||'#00ff00',decor.map(s=>[s.type,Math.round(s.x),Math.round(s.y),Math.round(s.w),Math.round(s.h),s.rotate||0,s.src?srcId(s.src):'',s.color||'',s.geom||'',s.line||''])]);
+  if(!layouts.has(key)){const base=slide.layoutName||(layoutName&&project.generationTemplate?.name?project.generationTemplate.name+' · '+layoutName:layoutName)||layoutNames[slide.editor?.layout]||'레이아웃';let name=base,n=2;const used=new Set([...layouts.values()].map(l=>l.name));while(used.has(name))name=base+' '+n++;layouts.set(key,{index:layouts.size+1,name,decor,background:slide.background||'#00ff00'});}
   return {count:k,layout:layouts.get(key)};}
 
  for(let i=0;i<project.slides.length;i++){
@@ -57,7 +58,7 @@ id++;
  const originalTheme=await CaptionBuilder.theme();if(originalTheme)z.file('ppt/theme/theme1.xml',originalTheme);
  const defaults=new Map([['rels','application/vnd.openxmlformats-package.relationships+xml'],['xml','application/xml'],['json','application/json']]);for(const entry of media.values())defaults.set(entry.file.split('.').pop(),entry.mime);
  z.file('[Content_Types].xml',xml('<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+[...defaults].map(([ext,mime])=>'<Default Extension="'+ext+'" ContentType="'+mime+'"/>').join('')+'<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/><Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/><Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>'+types.join('')+'</Types>'));
- z.file('prom/cues.json',JSON.stringify({version:1,normalizedText:CaptionCore.index(project.lines).text,links:project.links,standby:project.standby||null,generationTemplate:project.generationTemplate||null,layoutMasters:project.layoutMasters||{},editors:project.slides.map(s=>({uid:s.uid,editor:s.editor,bodyIndex:s.bodyIndex,masterId:s.masterId,backgroundEdited:s.backgroundEdited,extraImageShapes:s.shapes.map((sh,i)=>sh.extraImage?i:-1).filter(i=>i>=0),extraShapeShapes:s.shapes.map((sh,i)=>sh.extraShape?i:-1).filter(i=>i>=0),editorBackgroundShapes:s.shapes.map((sh,i)=>sh.editorBackground?i:-1).filter(i=>i>=0),extraTextShapes:s.shapes.map((sh,i)=>sh.extraText?i:-1).filter(i=>i>=0),manualShapes:s.shapes.map((sh,i)=>sh.manualGeometry?i:-1).filter(i=>i>=0)}))}));
+ z.file('prom/cues.json',JSON.stringify({version:1,normalizedText:CaptionCore.index(project.lines).text,links:project.links,standby:project.standby||null,generationTemplate:project.generationTemplate||null,layoutMasters:project.layoutMasters||{},editors:project.slides.map(s=>({uid:s.uid,layoutName:s.layoutName,sourceLayoutName:s.sourceLayoutName,editor:s.editor,bodyIndex:s.bodyIndex,masterId:s.masterId,backgroundEdited:s.backgroundEdited,extraImageShapes:s.shapes.map((sh,i)=>sh.extraImage?i:-1).filter(i=>i>=0),extraShapeShapes:s.shapes.map((sh,i)=>sh.extraShape?i:-1).filter(i=>i>=0),editorBackgroundShapes:s.shapes.map((sh,i)=>sh.editorBackground?i:-1).filter(i=>i>=0),extraTextShapes:s.shapes.map((sh,i)=>sh.extraText?i:-1).filter(i=>i>=0),manualShapes:s.shapes.map((sh,i)=>sh.manualGeometry?i:-1).filter(i=>i>=0)}))}));
  return z.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation',compression:'DEFLATE',compressionOptions:{level:3}});
 }
 return {create};
