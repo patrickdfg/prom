@@ -19,7 +19,7 @@ CaptionRender.show(document.getElementById('preview'),s);await document.fonts.re
 assert(document.fonts.check('700 32px "PROM MaruBuri"'),'Bundled font loaded');
 const el=document.querySelector('.slide-text');assert(el.textContent==='  첫  문장 \n둘째 문장','Renderer preserves whitespace');assert(getComputedStyle(el.querySelector('span')).fontWeight==='700','Named bold font face retained');
 // A five-line caption must remain wholly inside its text box after fonts settle.
-const host=document.getElementById('preview'),long={...shapeText,x:30,y:100,w:900,h:140,anchor:'ctr',padding:[5,5,5,5],paragraphs:[{align:'center',lineSpacing:{unit:'ratio',value:1.2},runs:[{text:'첫 번째 자막입니다.\n두 번째 자막입니다.\n세 번째 자막입니다.\n네 번째 자막입니다.\n마지막 줄까지 보입니다.',size:48,font:'마루 부리OTF 굵은',bold:true}]}]};
+const host=document.getElementById('preview'),long={...shapeText,pptxText:false,x:30,y:100,w:900,h:140,anchor:'ctr',padding:[5,5,5,5],paragraphs:[{align:'center',lineSpacing:{unit:'ratio',value:1.2},runs:[{text:'첫 번째 자막입니다.\n두 번째 자막입니다.\n세 번째 자막입니다.\n네 번째 자막입니다.\n마지막 줄까지 보입니다.',size:48,font:'마루 부리OTF 굵은',bold:true}]}]};
 CaptionRender.show(host,{width:960,height:540,shapes:[long]});await document.fonts.ready;await new Promise(requestAnimationFrame);
 let textBox=host.querySelector('.slide-text'),bounds=textBox.getBoundingClientRect();
 assert(+host.querySelector('.slide-text-frame').dataset.scale<1,'Overflow caption shrinks');

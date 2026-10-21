@@ -10,6 +10,7 @@ const px=(v,k)=>{if(v&&typeof v==='object'&&v.unit==='px'&&typeof v.value==='num
 function fullBleed(s,slide){
   if(s.type!=='image'||s.rotate)return false;
   if(s.background)return true;
+  if(slide.preserveGeometry)return false;
   if(s.manualGeometry)return false;
   const ex=slide.width*.1,ey=slide.height*.1;
   return Math.abs(s.x)<=ex&&Math.abs(s.y)<=ey&&Math.abs(slide.width-s.x-s.w)<=ex&&Math.abs(slide.height-s.y-s.h)<=ey;
