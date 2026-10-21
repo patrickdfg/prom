@@ -5,7 +5,7 @@ window.PromBuiltinTemplates=(()=>{
 const LIST=[
   {id:'builtin-sunday',file:'sunday.json',version:1},
   {id:'builtin-dawn',file:'dawn.json',version:2},
-  {id:'builtin-spirit-word',file:'sunday.json',version:4,transform:'spirit'},
+  {id:'builtin-spirit-word',file:'sunday.json',version:5,transform:'spirit'},
 ];
 const KEY='promBuiltinTemplates',DB='prom-ppt-generation-templates';
 const base=new URL('templates/',document.currentScript.src);
@@ -24,7 +24,7 @@ function spiritPreset(rec){
 - 본문은 문장별 누적 공개: 1 → 1+2 → 1+2+3 순으로 구성한다.
 - 누적된 실제 표시 줄 수가 6줄을 초과하면 새로운 그룹에서 다시 한 문장부터 쌓는다.
 - 한 문장이 여러 줄인 경우 원문 줄바꿈을 보존하고, 긴 줄은 단어 단위로 균형 있게 분리한다.
-- 전체 기본 글자 28pt, 흰색 굵은 글자, 가운데 정렬, 짙은 남색 배경과 파란색 강조를 사용한다.
+- 전체 기본 글자 32pt, 줄간격 1.3배, 흰색 굵은 글자, 가운데 정렬, 배경 그림을 유지한다.
 - 누적 그룹의 최종 상태가 화면 가운데 오도록 동일 그룹 전체 슬라이드의 세로 기준선을 고정한다.
 - 마지막 문장까지 누적된 최종 화면은 2번 보여 준다.
 - 여러 사연이 한 원고에 있으면 사연 번호마다 새 표지와 새 누적 흐름을 시작한다.
@@ -37,8 +37,8 @@ function spiritPreset(rec){
    // 원본 템플릿의 이미지와 레이어를 보존합니다.
    body.anchor='ctr';body.wrap=true;body.lineReduction=0;
    for(const p of body.paragraphs||[]){
-     p.align='center';p.defaultSize=28;p.fixedLineSpacing=true;p.lineSpacing={unit:'ratio',value:1.3};
-     for(const run of p.runs||[]){run.font='Malgun Gothic';run.size=28;run.bold=true;run.color=key==='cover'?'#65AFFF':'#FFFFFF';}
+     p.align='center';p.defaultSize=32;p.fixedLineSpacing=true;p.lineSpacing={unit:'ratio',value:1.3};
+     for(const run of p.runs||[]){run.font='Malgun Gothic';run.size=32;run.bold=true;run.color=key==='cover'?'#65AFFF':'#FFFFFF';}
    }
  }
  rec.layoutCatalog=Object.keys(rec.design?.layouts||{}).map(key=>({key,name:key==='cover'?'성령말씀 표지':key==='word'?'성령말씀 누적 본문':key==='wordSpirit'?'성령 말씀':key==='caption'?'성령말씀 자막':key}));
