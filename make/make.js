@@ -298,7 +298,7 @@ addEventListener('keydown',e=>{
 (()=>{const names=['마루 부리OTF 굵은','Malgun Gothic','맑은 고딕','바탕','궁서','돋움','굴림','HY견고딕','HY견명조','나눔고딕','나눔명조','나눔스퀘어','Noto Sans KR','Noto Serif KR','Pretendard','Arial'];for(const n of names){const o=document.createElement('option');o.value=n;$('mFonts').append(o);}})();
 
 /* ---------- ① 만들기 ---------- */
-function scopeHint(){const rec=byId($('makeTemplate').value),omit=R.worshipOmit(rec);$('makeScopeHint').textContent=R.mode(rec)==='worship'?'제목·성경본문만 교체합니다.'+(omit.length?' 대표기도·성가대/특송은 제외합니다.':'')+' 교독문·광고 등은 원본 PPT 내용이므로 확인해 주세요.':'주일·수요·새벽 원고를 자동 인식합니다. 여러 번호 항목이 있으면 항목별로, 없으면 색상 표시 구간을 전체 화면 자막으로 만듭니다. 둘 다 없으면 자막을 생성하지 않습니다.';}
+function scopeHint(){const rec=byId($('makeTemplate').value),omit=R.worshipOmit(rec);$('makeScopeHint').textContent=R.mode(rec)==='worship'?'제목·성경본문만 교체합니다.'+(omit.length?' 대표기도·성가대/특송은 제외합니다.':'')+' 교독문·광고 등은 원본 PPT 내용이므로 확인해 주세요.':'주일·수요·새벽 원고를 자동 인식합니다. 여러 번호 항목이 있으면 항목별로, 없으면 파랑은 하단 2줄, 초록은 말씀·성구 화면으로 만듭니다. 둘 다 없으면 자막을 생성하지 않습니다.';}
 $('makeTemplate').onchange=()=>{const rec=byId($('makeTemplate').value);try{localStorage.setItem(LAST,$('makeTemplate').value)}catch{}$('makeScope').value=R.mode(rec);scopeHint();};
 $('makeScope').onchange=async()=>{scopeHint();const rec=byId($('makeTemplate').value);if(rec)await put({...rec,options:{...rec.options,sourceMode:$('makeScope').value,allText:false},instructions:R.instructions(rec.instructions,$('makeScope').value)});};
 let observer=null;
