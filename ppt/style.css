@@ -87,3 +87,12 @@ body.mic-on .control-pane #status{height:31px;min-height:31px;flex-shrink:0;whit
 #registerFinish{margin-top:12px}#registerFinish[hidden]{display:none}
 .pair-fixed td{vertical-align:middle}.pair-fixed input[type=checkbox]{width:auto;margin-right:6px}
 .pair-thumb{width:168px;margin:0;border:1px solid #52647d;border-radius:4px}
+
+/* 방송용 PPT: 계정 도구는 Family 옆에, 원고는 조금 촘촘하게. */
+.slides-pane>.pane-heading{flex-wrap:wrap;gap:8px}
+.ppt-account-tools{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:6px;margin-left:auto;min-width:0}
+.ppt-account-tools #pptFamily{display:flex}
+.ppt-account-tools button{margin-left:0}
+.ppt-account-tools .drive-bar{padding:0;border:0;background:transparent;gap:6px}
+.ppt-account-tools .drive-bar button{padding:7px 9px;font-size:12px;white-space:nowrap}
+.control-pane .script-line{padding:6px 10px;line-height:1.5}

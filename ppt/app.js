@@ -41,9 +41,24 @@ async function load(file,kind){if(!file||busy)return;busy=true;stopMic();showLiv
  project.sources=project.sources||{};project.sources[kind]=source;if(!preserveLinks)align();rebuild();status(`불러왔습니다. 원고 ${project.lines.length}줄 · 자막 ${project.slides.length}장. 연결 구간을 확인하세요.${project.warnings?.length?' '+project.warnings.join(' '):''}`);
  }catch(e){status(e.message||'파일을 읽지 못했습니다.');}finally{busy=false;$('scriptFile').disabled=$('deckFile').disabled=false;}}
 $('scriptFile').onchange=e=>{load(e.target.files[0],'script');e.target.value='';};$('deckFile').onchange=e=>{load(e.target.files[0],'deck');e.target.value='';};
-const outputScreens=window.CaptionOutputScreens=PromDisplayScreens.create({onLaunch:openOutput,onMessage:status});$('openOutput').before(outputScreens.button);
-function openOutput(){if(!('BroadcastChannel'in window)){status('이 브라우저는 두 창 송출을 지원하지 않습니다. 최신 Chrome 또는 Edge를 사용하세요.');return;}if(!outputScreens.ready()){outputScreens.show();return;}if(!channel){channelId=crypto.randomUUID();channel=new BroadcastChannel('prom-ppt-'+channelId);channel.onmessage=e=>{if(e.data?.type==='fullscreen-state'){outputFullscreen=!!e.data.active;status(outputFullscreen?'송출창 전체화면 시작 · 조작창은 그대로 유지됩니다.':'송출창에서 큰 전체화면 시작 버튼을 한 번 클릭해 주세요.');}if(e.data?.type==='ready'){lastOutputSeen=Date.now();publish();}if(e.data?.type==='alive')lastOutputSeen=Date.now();};}
- if(output&&!output.closed){outputScreens.place(output,'captionFullscreen');publish();return;}output=window.open('output.html#'+channelId,'promPptOutput',outputScreens.features());if(!output){status('팝업을 허용한 뒤 송출창 열기를 다시 눌러 주세요.');return;}status(outputScreens.target()?'선택한 모니터에 송출창을 열었습니다. 전체화면이 제한되면 송출 화면을 한 번 클릭하세요.':'송출창을 원하는 모니터로 이동하고 화면을 클릭해 전체화면으로 전환하세요.');}
+const outputScreens=window.CaptionOutputScreens=PromDisplayScreens.create({automatic:true,onMessage:status});let openingOutput=false;
+async function openOutput(){
+ if(openingOutput)return;
+ if(!('BroadcastChannel'in window)){status('이 브라우저는 두 창 송출을 지원하지 않습니다. 최신 Chrome 또는 Edge를 사용하세요.');return;}
+ if(!channel){channelId=crypto.randomUUID();channel=new BroadcastChannel('prom-ppt-'+channelId);channel.onmessage=e=>{if(e.data?.type==='fullscreen-state'){outputFullscreen=!!e.data.active;status(outputFullscreen?'송출창 전체화면 시작 · 조작창은 그대로 유지됩니다.':'송출창에서 전체화면 버튼을 한 번 클릭해 주세요.');}if(e.data?.type==='ready'){lastOutputSeen=Date.now();publish();outputScreens.place(output,'captionFullscreen');}if(e.data?.type==='alive')lastOutputSeen=Date.now();};}
+ openingOutput=true;status('송출창을 여는 중… 모니터 접근 권한 창이 뜨면 허용해 주세요.');
+ try{
+  // 모니터 권한 확인과 팝업 열기를 클릭 직후에 시작한다. 권한 응답을 기다린 뒤 팝업을 열면 차단될 수 있다.
+  const preparation=outputScreens.prepare(),fresh=!output||output.closed;
+  if(fresh){output=window.open('about:blank','promPptOutput',outputScreens.features());if(!output){status('팝업을 허용한 뒤 송출창 열기를 다시 눌러 주세요.');return;}}
+  const popup=output;await preparation;if(popup.closed)return;
+  await outputScreens.place(popup,'captionFullscreen');
+  if(fresh){popup.location.replace('output.html#'+channelId);}
+  else publish();
+  status(outputScreens.message()||'송출창을 자동 배치했습니다. 전체화면이 제한되면 송출 화면을 한 번 클릭하세요.');
+ }catch{status('송출창을 열지 못했습니다. 송출창 열기를 다시 눌러 주세요.');}
+ finally{openingOutput=false;}
+}
 $('openOutput').onclick=openOutput;
 setInterval(()=>{if(channel&&output&&!output.closed)channel.postMessage({type:'heartbeat'});$('connection').textContent=output&&!output.closed?(Date.now()-lastOutputSeen<8000?(outputFullscreen?'송출창 전체화면':'송출창 클릭 · 전체화면 필요'):'송출창 연결 확인 중'):'송출창 닫힘';if(auto&&listening&&lastHit&&Date.now()-lastHit>8000&&live>=0){showLive(-1);status('원고 추적 대기 · '+frame().label+'. 원고를 이어 읽거나 왼쪽에서 위치를 선택하세요.');}},2000);
 function activateSlide(at){const link=project.links[at];if(auto&&link&&['exact','manual'].includes(link.status)){select(at);seek(link.start,true);status(`${at+1}번 자막으로 이동 · 자동 송출 유지`);}else manualSlide(at);}
@@ -114,16 +129,7 @@ window.CaptionWorkspace={
  open(next){if(busy)throw Error('파일을 읽는 중입니다. 잠시 후 다시 시도하세요.');validate(next);stopMic();project=next;rebuild();status('드라이브 작업을 불러왔습니다. 송출 전 연결 구간을 확인하세요.');},
  validate
 };
-$('restoreBeforeMake').onclick=async()=>{if(busy||transferredElsewhere())return;busy=true;$('restoreBeforeMake').disabled=true;
- try{const database=await db(),backup=await new Promise((ok,no)=>{const tx=database.transaction('projects','readonly'),r=tx.objectStore('projects').get('beforeMake');tx.oncomplete=()=>ok(r.result);tx.onerror=()=>no(tx.error);});
-  if(!backup)throw Error('복원할 이전 작업이 없습니다.');const next=validate(backup);
-  if(!confirm('Make 전환 전의 작업을 불러올까요? 현재 작업도 보관되므로 이 버튼으로 다시 되돌릴 수 있습니다.'))return;
-  clearTimeout(saveTimer);const current=packProject(project);
-  await new Promise((ok,no)=>{const tx=database.transaction('projects','readwrite'),store=tx.objectStore('projects');store.put(current,'beforeMake');store.put(packProject({...next,makeTransferId:projectStamp}),'last');tx.oncomplete=ok;tx.onerror=()=>no(tx.error);tx.onabort=()=>no(tx.error);});
-  stopMic();project=next;rebuild();status('이전 작업을 복원했습니다. 같은 버튼으로 방금 작업을 다시 불러올 수 있습니다.');
- }catch(e){status(e.message||'이전 작업을 복원하지 못했습니다.');}finally{busy=false;$('restoreBeforeMake').disabled=false;}
-};
 CaptionRender.show($('livePreview'),null);
-(async()=>{try{const database=await db(),tx=database.transaction('projects','readonly'),store=tx.objectStore('projects'),r=store.get('last'),backup=store.get('beforeMake');backup.onsuccess=()=>{$('restoreBeforeMake').hidden=!backup.result;};r.onsuccess=()=>{if(r.result&&!project.lines.length&&!busy){try{project=validate(r.result);projectStamp=project.makeTransferId||transferStamp;rebuild();status(project.slides.some(s=>s.renderVersion!==2)?'저장된 작업을 복원했습니다. 정확한 PPT 서식 적용을 위해 자막 PPT 파일을 한 번 다시 불러와 주세요.':new URLSearchParams(location.search).get('from')==='make'?'Make에서 편집한 PPT와 원고 연결을 불러왔습니다. PPTX는 1920×1080으로 내려받습니다.':'이 기기에 저장된 작업을 복원했습니다. 송출 전 연결 구간을 확인하세요.');}catch{status('저장된 작업을 읽지 못했습니다. 파일을 다시 불러오세요.');}}};}catch{$('saveState').textContent='작업 저장 버튼으로 파일을 보관하세요';}})();
+(async()=>{try{const database=await db(),tx=database.transaction('projects','readonly'),store=tx.objectStore('projects'),r=store.get('last');r.onsuccess=()=>{if(r.result&&!project.lines.length&&!busy){try{project=validate(r.result);projectStamp=project.makeTransferId||transferStamp;rebuild();status(project.slides.some(s=>s.renderVersion!==2)?'저장된 작업을 복원했습니다. 정확한 PPT 서식 적용을 위해 자막 PPT 파일을 한 번 다시 불러와 주세요.':new URLSearchParams(location.search).get('from')==='make'?'Make에서 편집한 PPT와 원고 연결을 불러왔습니다. PPTX는 1920×1080으로 내려받습니다.':'이 기기에 저장된 작업을 복원했습니다. 송출 전 연결 구간을 확인하세요.');}catch{status('저장된 작업을 읽지 못했습니다. 파일을 다시 불러오세요.');}}};}catch{$('saveState').textContent='작업 저장 버튼으로 파일을 보관하세요';}})();
 })();
 
