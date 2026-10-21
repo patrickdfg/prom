@@ -5,7 +5,7 @@ window.PromBuiltinTemplates=(()=>{
 const LIST=[
   {id:'builtin-sunday',file:'sunday.json',version:1},
   {id:'builtin-dawn',file:'dawn.json',version:2},
-  {id:'builtin-spirit-word',file:'sunday.json',version:1,transform:'spirit'},
+  {id:'builtin-spirit-word',file:'sunday.json',version:2,transform:'spirit'},
 ];
 const KEY='promBuiltinTemplates',DB='prom-ppt-generation-templates';
 const base=new URL('templates/',document.currentScript.src);
@@ -33,8 +33,8 @@ function spiritPreset(rec){
    if(!Array.isArray(scene.shapes))continue;
    const body=scene.shapes[scene.bodyIndex];
    if(!body||body.type!=='text')continue;
-   // 기존 예배 사진/개인 이미지를 제거하고 내용 상자만 보존합니다.
-   scene.shapes=[body];scene.bodyIndex=0;scene.background='#101A37';
+   // 배경 그림은 레이아웃에 포함된 이미지 도형이므로 제거하지 않습니다.
+   // 원본 템플릿의 이미지와 레이어를 보존합니다.
    body.anchor='ctr';body.wrap=true;body.lineReduction=0;
    for(const p of body.paragraphs||[]){
      p.align='center';p.defaultSize=28;p.fixedLineSpacing=true;p.lineSpacing={unit:'ratio',value:1.3};
