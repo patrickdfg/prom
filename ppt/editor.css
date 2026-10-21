@@ -1,0 +1,17 @@
+/* 두 편집 화면에서 같은 넓은 미리보기를 쓴다. */
+#editorDialog{width:98vw;max-width:none;height:96dvh;max-height:96dvh;padding:16px;overflow:hidden}
+#editorDialog [hidden]{display:none!important}
+#editorDialog[open]{display:flex;flex-direction:column}
+#editorDialog .editor-heading{flex-shrink:0;margin-bottom:10px}
+#editorDialog .editor-grid{grid-template-columns:minmax(260px,320px) minmax(0,1fr);gap:16px;flex:1;min-height:0}
+#editorDialog .editor-fields{overflow:auto;padding-right:10px;min-height:0}
+#editorDialog .editor-display{position:static;align-self:stretch;overflow:auto;min-height:0}
+#editorDialog .editor-display>.slide-host{width:min(100%,calc((96dvh - 210px)*16/9));margin:10px auto 0}
+#editorDialog .editor-bottom{position:static;flex-shrink:0;padding-top:12px;margin-top:8px}
+#editorDialog .editor-media-tools{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:8px 0}
+#editorDialog .editor-media-tools button{font-size:12px;padding:6px 8px}
+#editorDialog .editor-media-tools label{display:flex;align-items:center;gap:6px;margin:0;font-size:12px}
+#editorDialog .editor-media-tools input[type=color]{width:38px;height:29px;padding:1px}
+#editorPreview:focus-visible{outline:2px solid #5de2ca;outline-offset:2px}
+@media(max-width:900px) and (min-width:761px){#editorDialog .editor-grid{grid-template-columns:260px minmax(0,1fr);gap:12px}}
+@media(max-width:760px){#editorDialog{padding:12px}#editorDialog .editor-grid{display:flex;flex-direction:column;overflow:auto}#editorDialog .editor-fields{overflow:visible;padding-right:0;flex-shrink:0}#editorDialog .editor-display{order:-1;overflow:visible;flex-shrink:0}#editorDialog .editor-display>.slide-host{width:100%}}
