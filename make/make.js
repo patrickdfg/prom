@@ -354,12 +354,17 @@ $('makeRun').onclick=async()=>{
     // Keep blank paragraph separators in plain pasted spirit manuscripts.
     // The generic importer intentionally drops empty lines, which otherwise merges paragraphs.
     if(R.mode(rec)==='spirit'){
-      const pasted=makeInputs.pastes().filter(t=>t.trim());
-      if(pasted.length){
-        const files=makeInputs.files();
-        const fileLines=files.length?rich.lines.slice(0,rich.lines.length-pasted.flatMap(t=>t.split(/\\r\\n?|\\n/).filter(s=>s.trim())).length):[];
+      // Preserve empty lines exactly: standard manuscript merging removes them.
+      // Imported file content is kept; pasted text follows in the original order.
+      const pastes=makeInputs.pastes().filter(t=>t.trim());
+      if(pastes.length){
+        const pastedNonEmpty=pastes.reduce((n,t)=>n+t.replace(/\r\n?/g,'\n').split('\n').filter(s=>s.trim()).length,0);
+        const fileLines=rich.lines.slice(0,Math.max(0,rich.lines.length-pastedNonEmpty));
         const normalized=[...fileLines];
-        for(const text of pasted){if(normalized.length)normalized.push('');normalized.push(...text.replace(/\\r\\n?/g,'\\n').split('\\n'));}
+        for(const pastedText of pastes){
+          if(normalized.length)normalized.push('');
+          normalized.push(...pastedText.replace(/\r\n?/g,'\n').split('\n'));
+        }
         rich.lines=normalized;
         rich.richLines=normalized.map((text,paragraph)=>({text,runs:[{text,hex:'000000'}],paragraph}));
       }
