@@ -45,28 +45,25 @@ window.MakePptEngine=(()=>{
     if(slides.length>1000)throw Error('생성된 자막이 너무 많습니다. 원고를 나누어 넣어 주세요.');
    }
   }
-  for(const lines of blocks){
-   let queue=[],rowCount=0;
-   for(const line of lines){
-    if(line===title||/^20\d{2}\s*년\s*성령\s*(?:말씀|사연)\s*\d+$/.test(line))continue;
-    for(const sentence of sentences(line)){
-     const wrapped=wrapSentence(sentence);
-     if(rowCount+wrapped.length>6){
-      await emitGroup(queue);queue=[];rowCount=0;
-     }
-     if(wrapped.length>6){
-      // A single long sentence requires multiple screens; each has a fixed final baseline.
-      for(let pos=0;pos<wrapped.length;pos+=6){
-       await emitGroup([wrapped.slice(pos,pos+6)]);
-      }
-      continue;
-     }
-     queue.push(wrapped);rowCount+=wrapped.length;
-    }
+  // Balance the completed lines of each paragraph BEFORE generating reveal slides.
+  // A paragraph of 7 lines becomes 4+3, never 6+1. Blank paragraphs remain separate.
+  for(const paragraph of blocks){
+   const rows=[];
+   for(const line of paragraph){
+    if(line===title||/^20\\d{2}\\s*년\\s*성령\\s*(?:말씀|사연)\\s*\\d+$/.test(line))continue;
+    for(const sentence of sentences(line))rows.push(...wrapSentence(sentence));
    }
-   await emitGroup(queue);
+   if(!rows.length)continue;
+   const pages=Math.ceil(rows.length/6);
+   const base=Math.floor(rows.length/pages),extra=rows.length%pages;
+   let offset=0;
+   for(let page=0;page<pages;page++){
+    const count=base+(page<extra?1:0);
+    await emitGroup(rows.slice(offset,offset+count).map(row=>[row]));
+    offset+=count;
+   }
   }
-  if(slides.length===1)throw Error('표지 이외의 본문이 없습니다. 원고 내용을 확인해 주세요.');
+    if(slides.length===1)throw Error('표지 이외의 본문이 없습니다. 원고 내용을 확인해 주세요.');
   slides.push(structuredClone(slides.at(-1)));links.push({...links.at(-1)});
   return {slides,links,record,summary:options.spiritReveal===false?'성령말씀을 완성 페이지 단위로 만들었습니다. (마지막 장 2회 표시)':'성령말씀을 문장별 누적 자막으로 만들었습니다. (마지막 장 2회 표시)',exportSize:{width:1920,height:1080}};
  }
