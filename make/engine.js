@@ -47,7 +47,7 @@ window.MakePptEngine=(()=>{
    let previousEnd=groupStart;
    if(groupStart>=0)sourceCursor=groupStart+needle.length;
    for(const count of steps){
-    const sc=await B.scene('word',fullLines.slice(0,count).join('\n'),{padToLines:finalLineCount});
+    const sc=await B.scene('word',fullLines.slice(0,count).join('\n'),{padToLines:finalLineCount,color:'#193B54',bold:true});
     sc.editor.group=gid;sc.editor.cumulative=reveal;sc.editor.step=reveal?count:1;
     slides.push(sc);
     const end=groupStart>=0?groupStart+normalize(fullLines.slice(0,count).join('')).length:-1;
