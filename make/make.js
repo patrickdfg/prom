@@ -271,7 +271,7 @@ for(const id of ['mGeom','mFill','mNoFill','mLineColor','mLineWidth'])$(id).addE
 $('mBg').addEventListener('input',()=>{if(!draft)return;mark('bg');scene().background=$('mBg').value;changed();});
 // Image galleries are read-only: templates and originals remain untouched.
 async function masterArtworkGallery(kind){
- try{await CaptionImageLibrary.ready();}catch(e){toast(e.message);return;}
+ try{await CaptionImageLibrary.ready();}catch(e){toast(e.message);}
  if(!draft)return;
  const bg=kind==='background',dialog=$(bg?'mBgLibraryDialog':'mArtLibraryDialog'),grid=$(bg?'mBgLibraryGrid':'mArtLibraryGrid');
  grid.replaceChildren();

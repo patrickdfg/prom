@@ -8,13 +8,15 @@ function ready(){
  return loading||(loading=(async()=>{
   const response=await fetch(catalogUrl);if(!response.ok)throw Error('기본 그림 목록을 불러오지 못했습니다.');
   const catalog=await response.json();
-  const items=await Promise.all(catalog.items.map(async item=>{
+  const items=await Promise.allSettled(catalog.items.map(async item=>{
    const asset=await fetch(new URL(item.file,catalogUrl));if(!asset.ok)throw Error(item.label+' 그림을 불러오지 못했습니다.');
    const blob=await asset.blob();
    const src=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('그림을 읽지 못했습니다.'));reader.readAsDataURL(blob);});
    return {id:item.id,kind:item.kind,label:item.label,src,shape:{type:'image',src,w:item.width,h:item.height}};
   }));
-  builtinItems=items;
+  builtinItems=items.filter(item=>item.status==='fulfilled').map(item=>item.value);
+  // Retry missing built-ins next time without hiding healthy or saved pictures.
+  if(builtinItems.length<catalog.items.length)loading=null;
  })().catch(e=>{loading=null;throw e;}));
 }
 function collect(records,kind){
@@ -33,7 +35,7 @@ function collect(records,kind){
  return items;
 }
 async function records(){
- await ready();
+ await ready().catch(()=>{});
  await root.PromBuiltinTemplates?.ready;
  const database=await new Promise((resolve,reject)=>{
   const request=indexedDB.open('prom-ppt-generation-templates',1);
