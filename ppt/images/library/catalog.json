@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "items": [
     {
       "id": "trinity-background-v1",
@@ -40,6 +40,54 @@
       "file": "v1/caption-three-lines.png",
       "width": 864,
       "height": 127
+    },
+    {
+      "id": "banner-gold-ribbon-transparent-v1",
+      "kind": "artwork",
+      "label": "미니멀 골드 리본 배너",
+      "file": "v1/banner-gold-ribbon-transparent.png",
+      "width": 2170,
+      "height": 725
+    },
+    {
+      "id": "banner-gold-ribbon-v1",
+      "kind": "artwork",
+      "label": "골드 리본 배너",
+      "file": "v1/banner-gold-ribbon.png",
+      "width": 2172,
+      "height": 724
+    },
+    {
+      "id": "banner-lavender-leaves-v1",
+      "kind": "artwork",
+      "label": "보라 잎사귀 배너",
+      "file": "v1/banner-lavender-leaves.png",
+      "width": 2172,
+      "height": 724
+    },
+    {
+      "id": "banner-blue-diamond-v1",
+      "kind": "artwork",
+      "label": "파랑 다이아 배너",
+      "file": "v1/banner-blue-diamond.png",
+      "width": 2172,
+      "height": 724
+    },
+    {
+      "id": "banner-pink-flowers-v1",
+      "kind": "artwork",
+      "label": "분홍 꽃 배너",
+      "file": "v1/banner-pink-flowers.png",
+      "width": 2172,
+      "height": 724
+    },
+    {
+      "id": "banner-blue-wave-v1",
+      "kind": "artwork",
+      "label": "파랑 물결 배너",
+      "file": "v1/banner-blue-wave.png",
+      "width": 2172,
+      "height": 724
     }
   ]
 }

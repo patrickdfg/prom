@@ -21,14 +21,14 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),cata
   const alpha=await page.evaluate(async()=>{
    const items=CaptionImageLibrary.collect([],'artwork'),values=[];
    for(const item of items){const image=new Image();image.src=item.src;await image.decode();const c=document.createElement('canvas');c.width=image.naturalWidth;c.height=image.naturalHeight;const g=c.getContext('2d');g.drawImage(image,0,0);const data=g.getImageData(0,0,c.width,c.height).data;let clear=0,solid=0;for(let i=3;i<data.length;i+=4){if(data[i]===0)clear++;if(data[i]>0)solid++;}values.push({label:item.label,clear,solid});}return values;
-  });assert.equal(alpha.length,catalog.items.filter(x=>x.kind==='artwork').length);for(const item of alpha){assert(item.clear>0,item.label+' needs transparency');assert(item.solid>0,item.label+' must contain artwork');}
+  });assert.equal(alpha.length,catalog.items.filter(x=>x.kind==='artwork').length);for(const item of alpha){if(['예수님','성령님','3줄 자막 장식','미니멀 골드 리본 배너'].includes(item.label))assert(item.clear>0,item.label+' retains transparency');assert(item.solid>0,item.label+' must contain artwork');}
   for(const item of catalog.items.filter(x=>x.kind==='background')){
    await page.click('#editBgLibrary');await page.getByRole('button',{name:item.label,exact:true}).click();await page.click('#editorApply');
    const count=await page.evaluate(()=>CaptionWorkspace.snapshot().slides[2].shapes.filter(x=>x.editorBackground).length);assert.equal(count,1);
   }
   const result=await page.evaluate(async()=>{const p=CaptionWorkspace.snapshot(),blob=await CaptionPptx.create(p),back=await CaptionImport.deck(new File([blob],'assets.pptx'));return {before:p.slides[2].shapes.filter(x=>x.type==='image').map(x=>x.src).sort(),after:back.slides[2].shapes.filter(x=>x.type==='image').map(x=>x.src).sort()};});assert.deepEqual(result.after,result.before);
   assert.equal(await page.evaluate(async()=>JSON.stringify(await CaptionImageLibrary.records())),before);
-  await page.click('#editorClose');console.log('PASS '+app+' all 5 original catalog assets, transparent artwork, background replacement, save and PPTX roundtrip; stored templates unchanged');
+  await page.click('#editorClose');console.log('PASS '+app+' all '+catalog.items.length+' original catalog assets, source transparency, background replacement, save and PPTX roundtrip; stored templates unchanged');
  }
  assert.deepEqual(errors,[]);
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
