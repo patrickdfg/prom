@@ -323,9 +323,9 @@ addEventListener('keydown',e=>{
 (()=>{const names=['마루 부리OTF 굵은','Malgun Gothic','맑은 고딕','바탕','궁서','돋움','굴림','HY견고딕','HY견명조','나눔고딕','나눔명조','나눔스퀘어','Noto Sans KR','Noto Serif KR','Pretendard','Arial'];for(const n of names){const o=document.createElement('option');o.value=n;$('mFonts').append(o);}})();
 
 /* ---------- ① 만들기 ---------- */
-function scopeHint(){const rec=byId($('makeTemplate').value),omit=R.worshipOmit(rec);if(R.mode(rec)==='spirit'){$('makeScopeHint').textContent='성령말씀: 텍스트 원고 전체를 문장별 누적 자막으로 만듭니다. 제목은 표지에 한 번만 표시합니다.';return;}$('makeScopeHint').textContent=R.mode(rec)==='worship'?'제목·성경본문만 교체합니다.'+(omit.length?' 대표기도·성가대/특송은 제외합니다.':'')+' 교독문·광고 등은 원본 PPT 내용이므로 확인해 주세요.':'등록한 같은 원고는 원본 PPT 모양과 순서로 재현합니다. 다른 주일·수요·새벽 원고는 자동 인식합니다. 여러 번호 항목이 있으면 항목별로, 없으면 파랑은 하단 2줄, 초록은 말씀·성구 화면으로 만듭니다. 둘 다 없으면 자막을 생성하지 않습니다.';}
+function scopeHint(){const rec=byId($('makeTemplate').value),omit=R.worshipOmit(rec);if(rec&&(rec.id==='builtin-spirit-word'||rec.copiedFrom==='builtin-spirit-word'||R.mode(rec)==='spirit')){$('makeScopeHint').textContent='성령말씀: 텍스트 원고 전체를 문장별 누적 자막으로 만듭니다. 제목은 표지에 한 번만 표시합니다.';return;}$('makeScopeHint').textContent=R.mode(rec)==='worship'?'제목·성경본문만 교체합니다.'+(omit.length?' 대표기도·성가대/특송은 제외합니다.':'')+' 교독문·광고 등은 원본 PPT 내용이므로 확인해 주세요.':'등록한 같은 원고는 원본 PPT 모양과 순서로 재현합니다. 다른 주일·수요·새벽 원고는 자동 인식합니다. 여러 번호 항목이 있으면 항목별로, 없으면 파랑은 하단 2줄, 초록은 말씀·성구 화면으로 만듭니다. 둘 다 없으면 자막을 생성하지 않습니다.';}
 function adaptMakeInputs(){
- const rec=byId($('makeTemplate').value),spirit=R.mode(rec)==='spirit';
+ const rec=byId($('makeTemplate').value),spirit=!!rec&&(rec.id==='builtin-spirit-word'||rec.copiedFrom==='builtin-spirit-word'||R.mode(rec)==='spirit');
  $('makePastePanel').open=spirit;
  $('makeAdsField').hidden=spirit;
  $('makeAdsHint').hidden=spirit;
