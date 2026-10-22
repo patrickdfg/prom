@@ -57,7 +57,9 @@ async function seed(){
         have.name='기본 성령말씀 템플릿';
         await req(d,'readwrite',s=>s.put(have));
       }
-      if(have&&(have.edited||have.builtinVersion>=t.version)){done[t.id]=t.version;continue;}
+      // Never replace an existing browser template, even after a built-in version bump.
+      // Custom artwork may have been saved without the edited flag.
+      if(have){done[t.id]=t.version;continue;}
       const res=await fetch(new URL(t.file+'?v='+t.version,base));if(!res.ok)continue;
       let rec=await res.json();if(rec?.version!==1||!rec.design?.layouts)continue;
       if(t.transform==='spirit')rec=spiritPreset(rec);
