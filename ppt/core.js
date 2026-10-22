@@ -41,11 +41,23 @@ function align(lines,slides){const ix=index(lines),links=[],needles=slides.map(s
  return links;
 }
 function active(links,pos){return links.findIndex(l=>['exact','manual'].includes(l.status)&&Number.isFinite(l.start)&&pos>=l.start&&pos<l.end);}
+// Frequent phrases are weak location anchors. Stop counting after five copies.
+function frequentAnchor(text,phrase){
+ if(!phrase||phrase.length>12)return false;
+ let count=0,at=0;
+ while((at=text.indexOf(phrase,at))!==-1){if(++count>=5)return true;at++;}
+ return false;
+}
 function locateSpeechBase(raw,text,cursor,optional=null,scripture=null){const passage=Scripture?.match(normalize(raw),scripture,cursor);if(passage)return passage;const skipped=Optional?.match(normalize(raw),optional,cursor);if(skipped!==null&&skipped!==undefined)return {pos:skipped,score:1,optional:true};const heard=normalize(raw).slice(-64);if(heard.length<5)return null;const begin=Math.max(0,cursor-100),end=Math.min(text.length,cursor+1400),hay=text.slice(begin,end);
  // Prefer the longest matching phrase across the manuscript before trying shorter local fragments.
  for(const size of [56,40,28,18,12]){
   if(heard.length<size)continue;const tail=heard.slice(-size),at=hay.indexOf(tail);
-  if(at>=0&&hay.indexOf(tail,at+1)<0){const pos=begin+at+size;if(pos>=cursor-3)return {pos:Math.max(cursor,pos),score:1};}
+  if(at>=0&&hay.indexOf(tail,at+1)<0){
+   const pos=begin+at+size,advance=pos-cursor;
+   // A 12~18-character phrase cannot jump far merely because it is unique in a local 1400-char window.
+   const limit=size<=12?160:size<=18?350:size<=28?750:1400;
+   if(pos>=cursor-3&&advance<=limit&&!frequentAnchor(text,tail))return {pos:Math.max(cursor,pos),score:1};
+  }
   if(size>=12){const globalAt=text.indexOf(tail);if(globalAt>=0&&text.indexOf(tail,globalAt+1)<0)return {pos:globalAt+size,score:1,reacquired:true};}
  }
  const resilient=Robust?.match(heard,hay,cursor,{offset:begin})||Robust?.optional(heard,optional,cursor);if(resilient)return {...resilient,resilient:true};
@@ -59,7 +71,15 @@ function locateSpeechBase(raw,text,cursor,optional=null,scripture=null){const pa
  if(first&&(!other||first.score-other.score>=.04))return first;
  // Short fragments may advance only near the current reading position, uniquely.
  const nearBegin=Math.max(0,cursor-40),nearEnd=Math.min(text.length,cursor+90),near=text.slice(nearBegin,nearEnd);
- for(const size of [8,7,6,5]){if(heard.length<size)continue;const tail=heard.slice(-size),at=near.indexOf(tail);if(at<0||near.indexOf(tail,at+1)>=0)continue;const pos=nearBegin+at+size;if(pos>cursor)return {pos,score:1};}
+ for(const size of [8,7,6,5]){
+  if(heard.length<size)continue;
+  const tail=heard.slice(-size);
+  // Very common expressions (5+ manuscript occurrences) require a longer phrase/context.
+  if(frequentAnchor(text,tail))continue;
+  const at=near.indexOf(tail);if(at<0||near.indexOf(tail,at+1)>=0)continue;
+  const pos=nearBegin+at+size;
+  if(pos>cursor&&pos-cursor<=45)return {pos,score:1};
+ }
  return null;
 }
 // 기존 방식으로 못 찾았을 때만: 숫자·기호를 원고 표기로 바꿔 보고(일곱 번↔7번, 3↔삼, +↔더하기), 그래도 없으면 지금 위치 근처에서 한두 글자 틀린 것을 허용해 찾는다.
