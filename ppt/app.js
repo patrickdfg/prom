@@ -20,7 +20,7 @@ function frame(){return CaptionStandbyCore.frame(project,live,forceGreen);}
 function publish(){channel?.postMessage(frame());}
 function showLive(at,green=false){clearTimeout(greenTimer);live=at;forceGreen=green;publish();const current=frame();CaptionRender.show($('livePreview'),current.slide);$('liveLabel').textContent=current.label;$('showStandby').setAttribute('aria-pressed',String(at<0&&!green&&!!project.standby));for(const [i,el] of [...$('slideList').children].entries()){el.classList.toggle('live',i===at);if(i===at)el.setAttribute('aria-current','true');else el.removeAttribute('aria-current');}if(at>=0){select(at);$('slideList').children[at]?.scrollIntoView({block:'nearest',behavior:'smooth'});}previews();}
 function syncAuto(){if(!auto)return;const at=C.active(project.links,cursor);if(at!==live)showLive(at);}
-function setAuto(value){auto=value;$('automatic').checked=value;$('mode').textContent=value?'자동 송출':'수동 유지';if(value)showLive(C.active(project.links,cursor));}
+function setAuto(value){if(value)pendingManualTarget=-1;auto=value;$('automatic').checked=value;$('mode').textContent=value?'자동 송출':'수동 유지';if(value)showLive(C.active(project.links,cursor));}
 function followRow(item){if(!item)return;const host=$('manuscript'),top=item.getBoundingClientRect().top-host.getBoundingClientRect().top+host.scrollTop-(host.clientHeight-item.offsetHeight)*.35;window.PromSmoothScroll.to(host,top);}
 function seek(pos,manual=false,speech=false){cursor=Math.max(0,Math.min(ix.text.length,pos));displayCursor=speech?Math.max(0,cursor-1):cursor;line=Math.max(0,rows.findIndex(r=>r.end>displayCursor));if(cursor===ix.text.length)line=Math.max(0,rows.length-1);const items=$('manuscript').querySelectorAll('.script-line');items.forEach((el,i)=>{el.classList.toggle('current',i===line);el.classList.toggle('past',i<line);});if(manual){carry='';lastHit=Date.now();if(listening){const keepAuto=auto;stopMic();startMic();setAuto(keepAuto);}}if($('follow').checked)followRow(items[line]);syncAuto();}
 function previews(){
@@ -71,13 +71,31 @@ function setZoom(value){cardZoom=Math.max(60,Math.min(180,Number(value)||100));$
 $('cardZoom').oninput=e=>setZoom(e.target.value);$('cardZoomNumber').onchange=e=>setZoom(e.target.value);$('fitThreeRows').onclick=()=>setZoom(100);
 try{setZoom(localStorage.getItem('prom-ppt-card-zoom'));}catch{setZoom(100);}new ResizeObserver(fitGrid).observe($('slideList'));
 $('mappingToggle').onclick=()=>{const open=$('mappingSettings').hidden;$('mappingSettings').hidden=!open;$('mappingToggle').setAttribute('aria-expanded',String(open));$('mappingToggle').textContent=open?'연결 설정 ▴':'연결 설정 ▾';};
-function manualSlide(at){if(at<0||at>=project.slides.length)return;setAuto(false);select(at);showLive(at);}
+// 수동 송출: 원고에 두 자막 사이 실제 글자가 있을 때만 한 번 녹색 화면을 거친다.
+// 광고, 미연결/검토 중인 자막은 원고상 위치를 확정할 수 없으므로 바로 전환한다.
+let pendingManualTarget=-1;
+const linkedRange=link=>link&&['exact','manual'].includes(link.status)&&Number.isFinite(link.start)&&Number.isFinite(link.end)&&link.end>=link.start;
+function needsManuscriptGap(from,to){
+ const a=project.links[from],b=project.links[to];
+ if(!linkedRange(a)||!linkedRange(b)||a.reason==='announcement'||b.reason==='announcement')return false;
+ const gap=to>from?ix.text.slice(a.end,b.start):ix.text.slice(b.end,a.start);
+ return gap.length>0;
+}
+function manualSlide(at){if(at<0||at>=project.slides.length)return;pendingManualTarget=-1;setAuto(false);select(at);showLive(at);}
 function manualNavigate(action){
  if(busy||!project.slides.length||document.querySelector('dialog[open]')||!['next','previous','first','last'].includes(action))return false;
+ if(pendingManualTarget>=0){
+  const target=pendingManualTarget;pendingManualTarget=-1;
+  manualSlide(target);status(`${target+1}/${project.slides.length}번 자막 수동 송출`);return true;
+ }
  const at=action==='first'?0:action==='last'?project.slides.length-1:live<0?Math.max(0,selected):Math.max(0,Math.min(project.slides.length-1,live+(action==='next'?1:-1)));
+ if(live>=0&&at!==live&&needsManuscriptGap(live,at)){
+  pendingManualTarget=at;setAuto(false);showLive(-1,true);
+  status('원고상 자막 사이에 글자가 있어 녹색 화면을 표시합니다. 한 번 더 누르면 '+(at+1)+'번 자막으로 이동합니다.');return true;
+ }
  manualSlide(at);status(`${at+1}/${project.slides.length}번 자막 수동 송출 · 자동 송출을 켜면 원고 추적으로 돌아갑니다.`);return true;
 }
-$('automatic').onchange=e=>setAuto(e.target.checked);$('green').onclick=()=>{setAuto(false);showLive(-1,true);status('녹색 화면 수동 유지 중 · 자동 송출을 켜면 추적 위치로 복귀합니다.');};$('showSelected').onclick=()=>manualSlide(selected);$('previous').onclick=()=>manualNavigate('previous');$('next').onclick=()=>manualNavigate('next');
+$('automatic').onchange=e=>setAuto(e.target.checked);$('green').onclick=()=>{pendingManualTarget=-1;setAuto(false);showLive(-1,true);status('녹색 화면 수동 유지 중 · 자동 송출을 켜면 추적 위치로 복귀합니다.');};$('showSelected').onclick=()=>manualSlide(selected);$('previous').onclick=()=>manualNavigate('previous');$('next').onclick=()=>manualNavigate('next');
 $('linkCurrent').onclick=()=>{$('rangeStart').value=$('rangeEnd').value=line+1;};
 $('saveLink').onclick=()=>{if(selected<0||!project.lines.length)return;const a=Number($('rangeStart').value)-1,b=Number($('rangeEnd').value)-1;if(!Number.isInteger(a)||!Number.isInteger(b)||a<0||b<a||b>=rows.length){status('시작·끝 줄 번호를 확인하세요.');return;}const start=rows[a].start,end=rows[b].end;if(project.links.some((l,i)=>i!==selected&&['exact','manual'].includes(l.status)&&l.start<end&&l.end>start)){status('다른 자막 구간과 겹칩니다. 시작·끝 줄을 조정하거나 기존 연결을 해제하세요.');return;}project.links[selected]={start,end,status:'manual',score:1};renderLines();renderSlides();select(selected);seek(cursor);save();status('자막 구간을 저장했습니다.');};
 $('unlink').onclick=()=>{if(selected<0)return;project.links[selected]={start:null,end:null,status:'unlinked',score:0};renderLines();renderSlides();select(selected);syncAuto();save();};
