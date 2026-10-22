@@ -88,3 +88,12 @@ details.more{margin:4px 0 10px}details.more summary{cursor:pointer;color:var(--a
 
 /* Template-selected panels must stay hidden even when .field defines display:flex. */
 #tab-make [hidden]{display:none!important}
+
+/* Master image galleries: read-only copies of artwork from stored templates. */
+#mBgLibraryDialog,#mArtLibraryDialog{width:min(920px,94vw);max-height:84vh;border:1px solid var(--line);border-radius:12px;background:#171c26;color:var(--text);padding:20px}
+.bg-library-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.bg-library-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:12px;max-height:60vh;overflow-y:auto;margin-top:12px}
+.bg-library-item{display:flex;flex-direction:column;gap:7px;align-items:stretch;text-align:left;min-width:0;background:#10151d;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:7px;cursor:pointer}
+.bg-library-item:hover,.bg-library-item:focus-visible{outline:2px solid #69a8ff}
+.bg-library-item img{width:100%;height:110px;object-fit:contain;background:#29313e;border-radius:5px}
+.bg-library-item span{font-size:12px;overflow-wrap:anywhere}
