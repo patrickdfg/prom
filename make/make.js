@@ -350,6 +350,19 @@ $('makeRun').onclick=async()=>{
   busy=true;$('makeRun').disabled=true;$('makeDownload').disabled=true;status('makeStatus','원고를 읽고 PPT를 만드는 중…');
   try{
     let rec=byId($('makeTemplate').value);const rich=await makeInputs.read(R.mode(rec)==='spirit'?spiritManuscriptImporter:CaptionImport.manuscriptRich);
+    // Keep blank paragraph separators in plain pasted spirit manuscripts.
+    // The generic importer intentionally drops empty lines, which otherwise merges paragraphs.
+    if(R.mode(rec)==='spirit'){
+      const pasted=makeInputs.pastes().filter(t=>t.trim());
+      if(pasted.length){
+        const files=makeInputs.files();
+        const fileLines=files.length?rich.lines.slice(0,rich.lines.length-pasted.flatMap(t=>t.split(/\\r\\n?|\\n/).filter(s=>s.trim())).length):[];
+        const normalized=[...fileLines];
+        for(const text of pasted){if(normalized.length)normalized.push('');normalized.push(...text.replace(/\\r\\n?/g,'\\n').split('\\n'));}
+        rich.lines=normalized;
+        rich.richLines=normalized.map((text,paragraph)=>({text,runs:[{text,hex:'000000'}],paragraph}));
+      }
+    }
     const project={lines:rich.lines,richLines:rich.richLines,scriptName:rich.name,slides:[],links:[]};
     const opts={title:$('makeTitle').value.trim(),date:$('makeDate').value.trim(),announcements:R.mode(rec)==='spirit'?'':$('makeAnnouncements').value};
     const woven=await MakePptEngine.generate(project,rec,opts);rec=woven.record;const summary=woven.summary||'원고를 자동 인식했습니다.';
