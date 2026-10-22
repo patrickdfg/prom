@@ -51,7 +51,7 @@ function familyButton(compact){
   return f;
 }
 // 세 사이트(프롬프터·PPT 만들기·방송용 PPT) 이동 목록. 이 스크립트가 있는 곳을 사이트 맨 위로 보고 주소를 만든다.
-const FAMILY=[['prom','프롬프터','./',''],['make','템플릿 만들기','./make/',''],['ppt','방송용 PPT','./ppt/','']];
+const FAMILY=[['prom','프롬프터','./',''],['make','PPT 만들기','./make/',''],['ppt','방송용 PPT','./ppt/','']];
 let panel=null,opener=null;
 function familyHere(base){const p=location.href;if(base&&p.startsWith(base+'make/'))return 'make';if(base&&p.startsWith(base+'ppt/'))return 'ppt';return 'prom';}
 function familyBuild(){

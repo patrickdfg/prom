@@ -1,0 +1,93 @@
+{
+  "version": 2,
+  "items": [
+    {
+      "id": "trinity-background-v1",
+      "kind": "background",
+      "label": "성삼위 배경",
+      "file": "v1/trinity-original.png",
+      "width": 960,
+      "height": 538
+    },
+    {
+      "id": "god-background-v1",
+      "kind": "background",
+      "label": "하나님 배경",
+      "file": "v1/god-original.jpg",
+      "width": 960,
+      "height": 539
+    },
+    {
+      "id": "jesus-v1",
+      "kind": "artwork",
+      "label": "예수님",
+      "file": "v1/jesus.png",
+      "width": 288,
+      "height": 510
+    },
+    {
+      "id": "holy-spirit-v1",
+      "kind": "artwork",
+      "label": "성령님",
+      "file": "v1/holy-spirit.png",
+      "width": 278,
+      "height": 457
+    },
+    {
+      "id": "caption-three-lines-v1",
+      "kind": "artwork",
+      "label": "3줄 자막 장식",
+      "file": "v1/caption-three-lines.png",
+      "width": 864,
+      "height": 127
+    },
+    {
+      "id": "banner-gold-ribbon-transparent-v1",
+      "kind": "artwork",
+      "label": "미니멀 골드 리본 배너",
+      "file": "v1/banner-gold-ribbon-transparent.png",
+      "width": 2170,
+      "height": 725
+    },
+    {
+      "id": "banner-gold-ribbon-v1",
+      "kind": "artwork",
+      "label": "골드 리본 배너",
+      "file": "v1/banner-gold-ribbon.png",
+      "width": 2172,
+      "height": 724
+    },
+    {
+      "id": "banner-lavender-leaves-v1",
+      "kind": "artwork",
+      "label": "보라 잎사귀 배너",
+      "file": "v1/banner-lavender-leaves.png",
+      "width": 2172,
+      "height": 724
+    },
+    {
+      "id": "banner-blue-diamond-v1",
+      "kind": "artwork",
+      "label": "파랑 다이아 배너",
+      "file": "v1/banner-blue-diamond.png",
+      "width": 2172,
+      "height": 724
+    },
+    {
+      "id": "banner-pink-flowers-v1",
+      "kind": "artwork",
+      "label": "분홍 꽃 배너",
+      "file": "v1/banner-pink-flowers.png",
+      "width": 2172,
+      "height": 724
+    },
+    {
+      "id": "banner-blue-wave-v1",
+      "kind": "artwork",
+      "label": "파랑 물결 배너",
+      "file": "v1/banner-blue-wave.png",
+      "width": 2172,
+      "height": 724
+    }
+  ]
+}
