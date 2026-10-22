@@ -36,10 +36,13 @@ window.MakePptEngine=(()=>{
    const finalLineCount=sentencesInGroup.reduce((n,rows)=>n+rows.length,0);
    const gid='spirit-cumulative-'+(++groupCount);
    const visible=[];
+   const reveal=options.spiritReveal!==false;
    for(let i=0;i<sentencesInGroup.length;i++){
+    if(!reveal&&i<sentencesInGroup.length-1)continue;
+    if(!reveal)visible.push(...sentencesInGroup.slice(0,i).flat());
     visible.push(...sentencesInGroup[i]);
     const sc=await B.scene('word',visible.join('\n'),{padToLines:finalLineCount});
-    sc.editor.group=gid;sc.editor.cumulative=true;sc.editor.step=i+1;
+    sc.editor.group=gid;sc.editor.cumulative=reveal;sc.editor.step=reveal?i+1:1;
     slides.push(sc);links.push({status:'unlinked',start:null,end:null,score:0,reason:'spirit-text'});
     if(slides.length>1000)throw Error('생성된 자막이 너무 많습니다. 원고를 나누어 넣어 주세요.');
    }
@@ -67,7 +70,7 @@ window.MakePptEngine=(()=>{
   }
   if(slides.length===1)throw Error('표지 이외의 본문이 없습니다. 원고 내용을 확인해 주세요.');
   slides.push(structuredClone(slides.at(-1)));links.push({...links.at(-1)});
-  return {slides,links,record,summary:'성령말씀 텍스트 전체를 문장별 누적 자막으로 변환했습니다. (마지막 장 2회 표시)',exportSize:{width:1920,height:1080}};
+  return {slides,links,record,summary:options.spiritReveal===false?'성령말씀을 완성 페이지 단위로 만들었습니다. (마지막 장 2회 표시)':'성령말씀을 문장별 누적 자막으로 만들었습니다. (마지막 장 2회 표시)',exportSize:{width:1920,height:1080}};
  }
  async function generate(project,template,options={}){
   let record=template?L.prepare(window.MakeAnnouncements?MakeAnnouncements.upgrade(structuredClone(template)):structuredClone(template),B.layouts):null;
