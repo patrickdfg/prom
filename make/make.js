@@ -48,9 +48,30 @@ async function combinedSource(rich,files){if(files.length===1&&rich.names.length
 let dbp;
 function db(){return dbp||(dbp=new Promise((ok,no)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('templates',{keyPath:'id'});r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error);}));}
 async function store(mode,fn){const d=await db();return new Promise((ok,no)=>{const tx=d.transaction('templates',mode),req=fn(tx.objectStore('templates'));tx.oncomplete=()=>ok(req?.result);tx.onerror=()=>no(tx.error);});}
-async function load(){await window.PromBuiltinTemplates?.ready;records=(await store('readonly',s=>s.getAll())||[]).map(r=>L.prepare({...MakeAnnouncements.upgrade(r),options:{...r.options,allText:false,sourceMode:R.mode(r),...(R.mode(r)==='worship'?{worshipOmit:R.worshipOmit(r)}:{})},instructions:R.instructions(r.instructions,R.mode(r))},B.layouts)).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));fillSelects();renderList();}
+async function load(){await window.PromBuiltinTemplates?.ready;records=(await store('readonly',s=>s.getAll())||[]).filter(r=>!String(r.id||'').startsWith('__prom-template-backup__:')).map(r=>L.prepare({...MakeAnnouncements.upgrade(r),options:{...r.options,allText:false,sourceMode:R.mode(r),...(R.mode(r)==='worship'?{worshipOmit:R.worshipOmit(r)}:{})},instructions:R.instructions(r.instructions,R.mode(r))},B.layouts)).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));fillSelects();renderList();}
 // 저장할 때마다 수정 시각을 남긴다(드라이브에 올릴 때 어느 쪽이 더 새로운지 비교하는 데 쓴다). 드라이브 업로드는 사용자가 버튼을 눌렀을 때만 한다.
-async function put(rec){rec=L.prepare(MakeAnnouncements.collapse(MakeAnnouncements.upgrade({...rec,updatedAt:Date.now()})),B.layouts);await store('readwrite',s=>s.put(rec));await load();}
+// Preserve prior artwork and all embedded images before overwriting a template.
+// History records have unique IDs and are hidden from template selectors.
+const HISTORY_PREFIX='__prom-template-backup__:';
+async function put(rec){
+ rec=L.prepare(MakeAnnouncements.collapse(MakeAnnouncements.upgrade({...rec,updatedAt:Date.now()})),B.layouts);
+ await store('readwrite',s=>{
+   const previous=s.get(rec.id);
+   previous.onsuccess=()=>{
+     const old=previous.result;
+     if(old&&JSON.stringify(old.design)!==JSON.stringify(rec.design)){
+       const backup=structuredClone(old);
+       backup.id=HISTORY_PREFIX+rec.id+':'+Date.now()+':'+crypto.randomUUID();
+       backup.backupOf=rec.id;
+       backup.backupAt=Date.now();
+       s.put(backup);
+     }
+     s.put(rec);
+   };
+   return previous;
+ });
+ await load();
+}
 // 드라이브에서 가져온 템플릿은 원래 id·수정 시각 그대로 넣는다(알림 없이).
 async function putSynced(rec){rec=L.prepare(MakeAnnouncements.collapse(MakeAnnouncements.upgrade(rec)),B.layouts);await store('readwrite',s=>s.put(rec));await load();}
 const byId=id=>records.find(r=>r.id===id)||null;
