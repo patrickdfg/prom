@@ -5,7 +5,7 @@ window.PromBuiltinTemplates=(()=>{
 const LIST=[
   {id:'builtin-sunday',file:'sunday.json',version:1},
   {id:'builtin-dawn',file:'dawn.json',version:2},
-  {id:'builtin-spirit-word',file:'sunday.json',version:6,transform:'spirit'},
+  {id:'builtin-spirit-word',file:'spirit-word.json',version:7},
 ];
 const KEY='promBuiltinTemplates',DB='prom-ppt-generation-templates';
 const base=new URL('templates/',document.currentScript.src);
@@ -59,12 +59,31 @@ async function seed(){
       }
       // Never replace an existing browser template, even after a built-in version bump.
       // Custom artwork may have been saved without the edited flag.
-      if(have){done[t.id]=t.version;continue;}
+      // Spirit v7 is an explicitly published master: all users receive it.
+      // Preserve every prior customized copy before switching the shared default.
+      if(have&&t.id!=='builtin-spirit-word'){done[t.id]=t.version;continue;}
+      if(have&&Number(have.builtinVersion||0)>=t.version){done[t.id]=t.version;continue;}
       const res=await fetch(new URL(t.file+'?v='+t.version,base));if(!res.ok)continue;
       let rec=await res.json();if(rec?.version!==1||!rec.design?.layouts)continue;
       if(t.transform==='spirit')rec=spiritPreset(rec);
       Object.assign(rec,{id:t.id,builtin:true,builtinVersion:t.version,edited:false});
-      await req(d,'readwrite',s=>s.put(rec));done[t.id]=t.version;added++;
+      if(have&&t.id==='builtin-spirit-word'){
+        // Keep user-modified artwork as a separately selectable personal template.
+        // Atomic transaction: never lose an edited original if saving the backup fails.
+        await new Promise((ok,no)=>{
+          const tx=d.transaction('templates','readwrite'),s=tx.objectStore('templates');
+          if(have.edited||have.builtinVersion==null){
+            const backup=structuredClone(have);
+            backup.id='personal-spirit-before-v7-'+crypto.randomUUID();
+            backup.name='이전 성령말씀 개인 템플릿 (보관)';
+            backup.builtin=false;backup.edited=true;backup.copiedFrom='builtin-spirit-word';
+            s.put(backup);
+          }
+          s.put(rec);
+          tx.oncomplete=ok;tx.onerror=()=>no(tx.error);tx.onabort=()=>no(tx.error);
+        });
+      }else await req(d,'readwrite',s=>s.put(rec));
+      done[t.id]=t.version;added++;
     }catch(_){/* 인터넷이 없으면 다음에 다시 */}
   }
   try{localStorage.setItem(KEY,JSON.stringify(done))}catch(_){}
