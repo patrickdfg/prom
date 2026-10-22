@@ -328,6 +328,7 @@ function adaptMakeInputs(){
  const rec=byId($('makeTemplate').value),spirit=!!rec&&(rec.id==='builtin-spirit-word'||rec.copiedFrom==='builtin-spirit-word'||R.mode(rec)==='spirit');
  $('makePastePanel').open=spirit;
  $('makeAdsField').hidden=spirit;
+ $('makeSpiritRevealField').hidden=!spirit;
  $('makeAdsHint').hidden=spirit;
  $('makeAnnouncements').disabled=spirit;
  $('makeFileField').querySelector('input').accept=spirit?'.hwp,.hwpx,.docx,.txt,.pdf':'.hwp,.hwpx,.docx,.txt';
@@ -364,7 +365,7 @@ $('makeRun').onclick=async()=>{
       }
     }
     const project={lines:rich.lines,richLines:rich.richLines,scriptName:rich.name,slides:[],links:[]};
-    const opts={title:$('makeTitle').value.trim(),date:$('makeDate').value.trim(),announcements:R.mode(rec)==='spirit'?'':$('makeAnnouncements').value};
+    const opts={title:$('makeTitle').value.trim(),date:$('makeDate').value.trim(),announcements:R.mode(rec)==='spirit'?'':$('makeAnnouncements').value,spiritReveal:$('makeSpiritReveal').checked};
     const woven=await MakePptEngine.generate(project,rec,opts);rec=woven.record;const summary=woven.summary||'원고를 자동 인식했습니다.';
     if(rec?.worship&&!byId(rec.id)?.worship){await put(rec);$('mTemplate').value=rec.id;draft=null;dirty=false;}
     // 편집 중 장면 좌표는 유지하고, 다운로드 크기는 공통 엔진의 결과를 따른다.
