@@ -18,6 +18,7 @@ const base=process.env.PROM_BASE||'http://localhost:8765/';
    CaptionWorkspace.apply(slides,slides.map(()=>({status:'unlinked',start:null,end:null,score:0})),{selected:2});
    await CaptionEditor.open(2);
   });
+  assert(await page.locator('#editorDialog').isVisible(),JSON.stringify(await page.evaluate(()=>({status:document.querySelector('#status')?.textContent,toast:document.querySelector('#toast')?.textContent,title:document.querySelector('#editorTitle')?.textContent}))));
   const before=await page.evaluate(()=>CaptionWorkspace.snapshot());
   await page.click('#editArtLibrary');await page.waitForSelector('#editLibraryGrid button');
   if(process.env.SHOT&&app==='ppt/')await page.screenshot({path:process.env.SHOT+'-library.png'});

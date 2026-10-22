@@ -107,7 +107,7 @@
         <button id="mAddRect" title="사각형 추가">＋ 사각형</button>
         <button id="mAddRound" title="둥근 사각형 추가">＋ 둥근 사각형</button>
         <button id="mAddEllipse" title="원 추가">＋ 원</button>
-        <button id="mArtLibrary" type="button" title="기본 템플릿의 작은 그림과 2·3줄 자막용 장식 가져오기">그림 가져오기</button>
+        <button id="mArtLibrary" type="button" title="등록된 인물·자막 장식과 템플릿 그림 가져오기">그림 가져오기</button>
         <label class="btnlike" title="그림 추가">＋ 그림<input id="mAddImage" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden></label>
         <span class="sep"></span>
         <button id="mDup" title="복제 (Ctrl+D)">복제</button>
@@ -126,12 +126,12 @@
       </div>
       <dialog id="mBgLibraryDialog" aria-label="배경그림 보관함">
         <div class="bg-library-head"><strong>배경그림 보관함</strong><button id="mBgLibraryClose" type="button">닫기</button></div>
-        <p class="hint">기본 템플릿과 내 템플릿의 전체 화면 배경을 모았습니다. 선택하면 현재 레이아웃에만 복사해 적용됩니다. 최종 저장은 아래 마스터 저장 버튼에서 진행하세요.</p>
+        <p class="hint">등록된 전체 사진과 기본·내 템플릿의 전체 화면 배경을 모았습니다. 선택하면 현재 레이아웃에만 복사해 적용됩니다. 최종 저장은 아래 마스터 저장 버튼에서 진행하세요.</p>
         <div id="mBgLibraryGrid" class="bg-library-grid"></div>
       </dialog>
       <dialog id="mArtLibraryDialog" aria-label="작은 그림 보관함">
-        <div class="bg-library-head"><strong>그림 가져오기 · 2줄·3줄 장식</strong><button id="mArtLibraryClose" type="button">닫기</button></div>
-        <p class="hint">기본 템플릿과 저장된 템플릿의 전체 배경을 제외한 그림을 모았습니다. 선택한 그림은 현재 마스터에 복사되어 크기와 위치를 편집할 수 있습니다.</p>
+        <div class="bg-library-head"><strong>그림 가져오기 · 인물·자막 장식</strong><button id="mArtLibraryClose" type="button">닫기</button></div>
+        <p class="hint">등록된 인물·자막 장식과 기본·저장된 템플릿의 그림을 모았습니다. 선택한 그림은 현재 마스터에 복사되어 크기와 위치를 편집할 수 있습니다.</p>
         <div id="mArtLibraryGrid" class="bg-library-grid"></div>
       </dialog>
       <div id="mPreview" class="preview" tabindex="0" title="눌러서 고르고, 끌어서 옮기고, 모서리로 크기 조절"></div>
@@ -204,9 +204,9 @@
 <script src="../ppt/content-rules.js?v=20261022-ordered-proverbs2"></script><script src="../ppt/builder.js?v=20261022-common-pagebreak1"></script>
 <script src="../ppt/pptx-export.js?v=20261021-ads2"></script>
 <script src="../ppt/pair-template.js?v=20261021-reproduce1"></script>
-<script src="../ppt/image-library.js?v=20261023-library1"></script><script src="manuscripts.js?v=20261021-scope1"></script><script src="template-layouts.js?v=20261022-spirit-visible2"></script><script src="announcements.js?v=20261021-adtemplate2"></script><script src="engine.js?v=20261022-spirit-text-layer2"></script><script src="make.js?v=20261023-library1"></script>
+<script src="../ppt/image-library.js?v=20261023-assets1"></script><script src="manuscripts.js?v=20261021-scope1"></script><script src="template-layouts.js?v=20261022-spirit-visible2"></script><script src="announcements.js?v=20261021-adtemplate2"></script><script src="engine.js?v=20261022-spirit-text-layer2"></script><script src="make.js?v=20261023-assets1"></script>
 <script src="../ppt/font-picker.js?v=20261017-font1"></script>
-<script src="../ppt/editor-media.js?v=20261021-fidelity3"></script><script src="../ppt/editor.js?v=20261023-library1"></script>
+<script src="../ppt/editor-media.js?v=20261021-fidelity3"></script><script src="../ppt/editor.js?v=20261023-assets1"></script>
 <script src="../ppt/drive-config.js?v=20261020-sync1"></script><script src="../google-session.js?v=20261021-session1"></script>
 <script src="login.js?v=20261021-session1"></script>
 <script src="drive.js?v=20261021-session1"></script>

@@ -270,7 +270,9 @@ for(const id of ['mText','mFont','mSize','mLine','mColor','mAlign','mAnchor','mB
 for(const id of ['mGeom','mFill','mNoFill','mLineColor','mLineWidth'])$(id).addEventListener('input',applyShape);
 $('mBg').addEventListener('input',()=>{if(!draft)return;mark('bg');scene().background=$('mBg').value;changed();});
 // Image galleries are read-only: templates and originals remain untouched.
-function masterArtworkGallery(kind){
+async function masterArtworkGallery(kind){
+ try{await CaptionImageLibrary.ready();}catch(e){toast(e.message);return;}
+ if(!draft)return;
  const bg=kind==='background',dialog=$(bg?'mBgLibraryDialog':'mArtLibraryDialog'),grid=$(bg?'mBgLibraryGrid':'mArtLibraryGrid');
  grid.replaceChildren();
  const found=CaptionImageLibrary.collect(records,kind);

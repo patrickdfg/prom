@@ -52,7 +52,7 @@ async function imageLibrary(kind){
   const records=await CaptionImageLibrary.records();
   if(ticket!==mediaSequence||!dialog.open||!$('editorDialog').open||draft.uid!==uid)return;
   const items=CaptionImageLibrary.collect(records,kind);
-  status.textContent=items.length?'기본·저장된 템플릿에서 골라 현재 자막에 복사합니다. 적용 · 저장을 눌러 보관하세요.':'등록된 그림이 없습니다. 기존 그림 추가 또는 배경그림 넣기로 파일을 선택하세요.';
+  status.textContent=items.length?'등록된 그림과 기본·저장된 템플릿에서 골라 현재 자막에 복사합니다. 적용 · 저장을 눌러 보관하세요.':'등록된 그림이 없습니다. 기존 그림 추가 또는 배경그림 넣기로 파일을 선택하세요.';
   for(const item of items){
    const button=document.createElement('button'),img=document.createElement('img'),label=document.createElement('span');button.type='button';img.src=item.src;img.alt='';label.textContent=item.label;button.append(img,label);
    button.onclick=()=>{if(ticket!==mediaSequence||!$('editorDialog').open||draft.uid!==uid)return;dialog.close();return addImage(item,bg);};grid.append(button);
