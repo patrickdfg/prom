@@ -39,7 +39,7 @@ window.MakePptEngine=(()=>{
    const fullLines=sentencesInGroup.flat();
    const steps=reveal?fullLines.map((_,i)=>i+1):[fullLines.length];
    for(const count of steps){
-    const sc=await B.scene('word',fullLines.slice(0,count).join('\\n'),{padToLines:finalLineCount});
+    const sc=await B.scene('word',fullLines.slice(0,count).join('\n'),{padToLines:finalLineCount});
     sc.editor.group=gid;sc.editor.cumulative=reveal;sc.editor.step=reveal?count:1;
     slides.push(sc);links.push({status:'unlinked',start:null,end:null,score:0,reason:'spirit-text'});
     if(slides.length>1000)throw Error('생성된 자막이 너무 많습니다. 원고를 나누어 넣어 주세요.');
