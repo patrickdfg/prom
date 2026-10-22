@@ -29,6 +29,9 @@ window.MakePptEngine=(()=>{
   const sentences=text=>String(text).match(/[^.!?。]+(?:[.!?。]+[”’"'）)]*|$)/g)?.map(s=>s.trim()).filter(Boolean)||[text.trim()];
   const wrapSentence=s=>B.wrapForLayout(s,'word');
   let groupCount=0;
+  const source=CaptionCore.index(project.lines||[]).text;
+  const normalize=CaptionCore.normalize;
+  let sourceCursor=0;
   // 완성 그룹의 줄 수를 먼저 정한 뒤, 모든 단계에 같은 빈 줄을 패딩합니다.
   // 가운데 정렬을 유지하되 실제 첫 줄의 세로 좌표는 전 단계에서 고정됩니다.
   async function emitGroup(sentencesInGroup){
@@ -38,10 +41,19 @@ window.MakePptEngine=(()=>{
    const reveal=options.spiritReveal!==false;
    const fullLines=sentencesInGroup.flat();
    const steps=reveal?fullLines.map((_,i)=>i+1):[fullLines.length];
+   // Bind each generated slide to the exact original manuscript range.
+   const needle=normalize(fullLines.join(''));
+   const groupStart=needle?source.indexOf(needle,sourceCursor):-1;
+   let previousEnd=groupStart;
+   if(groupStart>=0)sourceCursor=groupStart+needle.length;
    for(const count of steps){
     const sc=await B.scene('word',fullLines.slice(0,count).join('\n'),{padToLines:finalLineCount});
     sc.editor.group=gid;sc.editor.cumulative=reveal;sc.editor.step=reveal?count:1;
-    slides.push(sc);links.push({status:'unlinked',start:null,end:null,score:0,reason:'spirit-text'});
+    slides.push(sc);
+    const end=groupStart>=0?groupStart+normalize(fullLines.slice(0,count).join('')).length:-1;
+    const linked=groupStart>=0&&end>previousEnd;
+    links.push(linked?{status:'exact',start:previousEnd,end,score:1,reason:reveal?'cumulative':'spirit-text'}:{status:'unlinked',start:null,end:null,score:0,reason:'spirit-text'});
+    if(linked)previousEnd=end;
     if(slides.length>1000)throw Error('생성된 자막이 너무 많습니다. 원고를 나누어 넣어 주세요.');
    }
   }
@@ -64,7 +76,7 @@ window.MakePptEngine=(()=>{
    }
   }
     if(slides.length===1)throw Error('표지 이외의 본문이 없습니다. 원고 내용을 확인해 주세요.');
-  slides.push(structuredClone(slides.at(-1)));links.push({...links.at(-1)});
+  slides.push(structuredClone(slides.at(-1)));links.push({status:'unlinked',start:null,end:null,score:0,reason:'spirit-final-repeat'});
   return {slides,links,record,summary:options.spiritReveal===false?'성령말씀을 완성 페이지 단위로 만들었습니다. (마지막 장 2회 표시)':'성령말씀을 문장별 누적 자막으로 만들었습니다. (마지막 장 2회 표시)',exportSize:{width:1920,height:1080}};
  }
  async function generate(project,template,options={}){
