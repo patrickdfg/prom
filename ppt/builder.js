@@ -102,11 +102,47 @@ function sentences(chars){
 // 잠언 한 항목을 한 장으로 만든다. 줄이 넘치면 앞 장은 3줄과 ">>"로 끝내고 남은 글을 다음 장에 이어 넣는다.
 // "1." 처럼 번호만 떨어져 나온 첫 문장을 다음 문장에 붙인다.
 function glueNumber(chunks){if(chunks.length>1&&/^\d+\s*[.)]$/.test(chunks[0].map(c=>c.ch).join('').trim()))return [[...chunks[0],{ch:' ',red:false,start:chunks[0].at(-1).end,end:chunks[0].at(-1).end},...chunks[1]],...chunks.slice(2)];return chunks;}
+// Shared semantic page splitting for generated caption paragraphs (not fixed-layout slides).
+// Entries may be strings, character arrays, or {text}. Keep original items unchanged.
+function meaningfulPageSplit(lines,capacity=6){
+ const n=lines.length;if(!n)return [];
+ const cap=Math.max(1,Math.floor(capacity)||6),pages=Math.ceil(n/cap),ideal=n/pages;
+ const word=row=>typeof row==='string'?row:Array.isArray(row)?row.map(c=>c.ch||'').join(''):String(row?.text||'');
+ const scoreBoundary=at=>{
+  if(at>=n)return 0;
+  const a=word(lines[at-1]).trim(),b=word(lines[at]).trim();
+  if(/[.!?。][”’"'）)]*$/.test(a))return 0;
+  if(/[,，;；:：][”’"'）)]*$/.test(a))return 12;
+  if(/(?:고|며|면서|지만|는데|므로|니까|도록|어서|아서|해서)$/.test(a))return 22;
+  if(/^(?:그리고|그러나|그런데|또한|그러므로|따라서|하지만)(?:\s|$)/.test(b))return 25;
+  return 60;
+ };
+ const dp=Array.from({length:pages+1},()=>Array(n+1).fill(Infinity)),prev=Array.from({length:pages+1},()=>Array(n+1).fill(-1));
+ dp[0][0]=0;
+ for(let p=1;p<=pages;p++)for(let end=p;end<=n;end++)
+  for(let size=1;size<=cap;size++){
+   const start=end-size;
+   if(start<p-1||!Number.isFinite(dp[p-1][start]))continue;
+   const uneven=9*(size-ideal)**2+(size===1&&n>2?90:0);
+   const cost=dp[p-1][start]+uneven+(p<pages?scoreBoundary(end):0);
+   if(cost<dp[p][end]){dp[p][end]=cost;prev[p][end]=start;}
+  }
+ if(!Number.isFinite(dp[pages][n]))return [lines];
+ const chunks=[];let end=n;
+ for(let p=pages;p>0;p--){const start=prev[p][end];chunks.unshift(lines.slice(start,end));end=start;}
+ return chunks;
+}
 function proverbSpecs(block,options){
  let layout=block.layout||'proverb';if(layout==='word'){const text=block.chars.map(c=>c.ch).join('');layout=/[（(]?[가-힣]{1,8}\s*\d+\s*[:장]\s*\d+/.test(text)?'verse':speakerLayout(text,options.greenLayout||'word');}const m=metrics(layout,options.bank),cap=m.maxLines,items=glueNumber(sentences(block.chars)).map(ch=>wrap(ch,m)),pages=[];let rest=items.flat(),queue=items.map(x=>[...x]);
  const take=n=>{const page=[];while(queue.length&&page.length<n){const head=queue[0];if(page.length&&page.length+head.length>n)break;const k=Math.min(n-page.length,head.length);page.push(...head.splice(0,k));if(!head.length)queue.shift();}return page;};
  const total=()=>queue.reduce((a,x)=>a+x.length,0);
- while(total()>cap)pages.push(take(layout==='caption'?cap:Math.max(1,cap-1)));if(total())pages.push(take(cap));
+ // Use balanced, punctuation-aware boundaries for full-screen generated content.
+ // Caption strips remain short two-line units. Exact PPT reproduction bypasses this path.
+ if(layout==='caption'){while(total()>cap)pages.push(take(cap));if(total())pages.push(take(cap));}
+ else {
+  const allRows=items.flat(),parts=meaningfulPageSplit(allRows,cap);
+  pages.push(...parts);
+ }
  const group=crypto.randomUUID();
  return pages.map((lines,i)=>{const chars=lines.flat(),start=chars.find(c=>c.end>c.start)?.start,end=[...chars].reverse().find(c=>c.end>c.start)?.end;return {layout,text:lines.map(markup).join('\n')+(layout!=='caption'&&i<pages.length-1?'\n>>':''),start,end,padToLines:0,group:crypto.randomUUID(),cumulative:false,step:1};}).filter(x=>Number.isInteger(x.start)&&x.end>x.start);
 }
@@ -118,5 +154,5 @@ async function prepare(){const bank=await templates();await Promise.all(Object.v
 async function generate(project,options={}){const bank=await prepare(),specs=analyze(project,{...options,bank});if(!specs.length)throw Error('자막으로 만들 색상 표시나 여러 번호 항목이 없습니다. 자막을 생성하지 않습니다.');const slides=[],links=[];if(options.title){slides.push(await scene('cover',options.title,{date:options.date}));links.push({status:'unlinked',start:null,end:null,score:0,reason:'cover'});}for(const spec of specs){const slide=await scene(spec.layout,spec.text,{padToLines:spec.padToLines});slide.editor.group=spec.group;slide.editor.cumulative=spec.cumulative;slide.editor.step=spec.step;slides.push(slide);links.push({status:'exact',start:spec.start,end:spec.end,score:1,reason:'source'});}return {slides,links,summary:`${CaptionContentRules.automatic(project).label}을 자동 인식해 자막 ${specs.length}장 (하단 ${specs.filter(s=>s.layout==='caption').length}장 · 전체 화면 ${specs.filter(s=>s.layout!=='caption').length}장)을 만들었습니다.`};}
 async function restyle(slides){await prepare();const groups=new Map();for(const s of slides)if(s.editor?.group)groups.set(s.editor.group,s);const out=[];for(const s of slides){if(!s.editor){out.push(s);continue;}const e=s.editor,final=groups.get(e.group)||s,layout=e.layout.startsWith('word')?speakerLayout(final.editor.text,e.layout):e.layout,rebuilt=await scene(layout,e.text,{uid:s.uid,ref:e.ref,date:e.date,padToLines:e.padToLines});for(const key of ['group','cumulative','step'])if(e[key]!==undefined)rebuilt.editor[key]=e[key];if(window.CaptionMedia)CaptionMedia.keep(rebuilt,s);else rebuilt.shapes.push(...s.shapes.filter(sh=>sh.extraText).map(clone));out.push(rebuilt);}return out;}
 function wrapForLayout(value,layout='word'){const m=metrics(layout),chars=Array.from(String(value||''),ch=>({ch,red:false,start:0,end:0}));return wrap(chars,m).map(row=>row.map(c=>c.ch).join(''));}
-return {templates,snapshotTemplate,useTemplate,theme:async()=>{await templates();return themeXml;},scene,generate,analyze,restyle,speakerLayout,metrics,wrapForLayout,plain,styledRuns,colorType,layouts};
+return {templates,snapshotTemplate,useTemplate,theme:async()=>{await templates();return themeXml;},scene,generate,analyze,restyle,speakerLayout,metrics,wrapForLayout,meaningfulPageSplit,plain,styledRuns,colorType,layouts};
 })();
