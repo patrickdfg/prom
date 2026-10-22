@@ -269,6 +269,52 @@ for(const id of ['mX','mY','mW','mH'])$(id).addEventListener('input',applyGeomet
 for(const id of ['mText','mFont','mSize','mLine','mColor','mAlign','mAnchor','mBold','mItalic','mUnder'])$(id).addEventListener('input',applyText);
 for(const id of ['mGeom','mFill','mNoFill','mLineColor','mLineWidth'])$(id).addEventListener('input',applyShape);
 $('mBg').addEventListener('input',()=>{if(!draft)return;mark('bg');scene().background=$('mBg').value;changed();});
+// Image galleries are read-only: templates and originals remain untouched.
+function masterArtworkGallery(kind){
+ const bg=kind==='background',dialog=$(bg?'mBgLibraryDialog':'mArtLibraryDialog'),grid=$(bg?'mBgLibraryGrid':'mArtLibraryGrid');
+ grid.replaceChildren();
+ const sources=records.filter(r=>r.design?.layouts);
+ const seen=new Set(),found=[];
+ for(const rec of sources)for(const [key,layout] of Object.entries(rec.design.layouts)){
+  for(const sh of layout.shapes||[]){
+   if(sh.type!=='image'||!/^data:image\//.test(sh.src||''))continue;
+   const full=sh.background||(sh.w>=(layout.width||960)*.85&&sh.h>=(layout.height||540)*.85);
+   if(bg!==!!full||seen.has(sh.src))continue;
+   seen.add(sh.src);
+   found.push({src:sh.src,shape:sh,layout,label:rec.name+' · '+(rec.layoutCatalog?.find(x=>x.key===key)?.name||key)});
+  }
+ }
+ if(!found.length){const p=document.createElement('p');p.className='hint';p.textContent='저장된 템플릿에 해당 그림이 없습니다. 기존 「그림」 파일 선택으로 추가할 수 있습니다.';grid.append(p);}
+ for(const item of found){
+  const button=document.createElement('button');button.type='button';button.className='bg-library-item';
+  const img=document.createElement('img');img.src=item.src;img.alt='';
+  const label=document.createElement('span');label.textContent=item.label;
+  button.append(img,label);
+  button.onclick=()=>{
+   if(!draft)return;
+   const s=scene();mark();
+   if(bg){
+    const old=s.shapes.findIndex(sh=>isBg(sh,s));
+    const image={type:'image',src:item.src,x:0,y:0,w:s.width,h:s.height,background:true};
+    if(old>=0)s.shapes[old]={...s.shapes[old],...image};
+    else{const body=s.shapes[s.bodyIndex];s.shapes.unshift(image);s.bodyIndex=s.shapes.indexOf(body);shapeIx++;}
+   }else{
+    const scale=Math.min(s.width*.78/Math.max(1,item.shape.w),s.height*.55/Math.max(1,item.shape.h),1);
+    const w=Math.round(item.shape.w*scale),h=Math.round(item.shape.h*scale);
+    s.shapes.push({...structuredClone(item.shape),background:false,src:item.src,x:Math.round((s.width-w)/2),y:Math.round((s.height-h)/2),w,h,masterSlot:'added:'+crypto.randomUUID()});
+    shapeIx=s.shapes.length-1;
+   }
+   fillShapes();changed();dialog.close();
+   toast('그림을 현재 마스터에 복사했습니다. 「마스터 저장」을 누르면 저장됩니다.');
+  };
+  grid.append(button);
+ }
+ dialog.showModal();
+}
+$('mBgLibrary').onclick=()=>{if(draft)masterArtworkGallery('background');};
+$('mArtLibrary').onclick=()=>{if(draft)masterArtworkGallery('artwork');};
+$('mBgLibraryClose').onclick=()=>$('mBgLibraryDialog').close();
+$('mArtLibraryClose').onclick=()=>$('mArtLibraryDialog').close();
 $('mBgImage').onchange=async()=>{const f=$('mBgImage').files[0];$('mBgImage').value='';if(!f||!draft)return;if(f.size>10*1024*1024){toast('배경 그림은 10MB 이하로 고르세요.');return;}const src=(await readData(f)).data,s=scene();mark();const i=s.shapes.findIndex(sh=>isBg(sh,s));
   if(i>=0)Object.assign(s.shapes[i],{src,x:0,y:0,w:s.width,h:s.height,background:true});else{const body=s.shapes[s.bodyIndex];s.shapes.unshift({type:'image',src,x:0,y:0,w:s.width,h:s.height,background:true});s.bodyIndex=s.shapes.indexOf(body);if(shapeIx>=0)shapeIx++;}
   fillShapes();changed();toast('이 레이아웃의 배경 그림을 바꿨습니다.');};
