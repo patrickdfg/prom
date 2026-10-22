@@ -120,8 +120,14 @@
         <label class="inline" title="슬라이드 배경색">배경색 <input id="mBg" type="color" value="#00ff00"></label>
         <button id="mBgGreen" title="방송 크로마키용 초록 배경">초록(크로마키)</button>
         <label class="btnlike" title="레이아웃 배경 그림 넣기·바꾸기">배경 그림<input id="mBgImage" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden></label>
+        <button id="mBgLibrary" type="button" title="기본 및 저장된 템플릿의 전체 화면 배경을 선택">배경그림 가져오기</button>
         <button id="mBgClear" title="배경 그림 빼기">배경 그림 빼기</button>
       </div>
+      <dialog id="mBgLibraryDialog" aria-label="배경그림 보관함">
+        <div class="bg-library-head"><strong>배경그림 보관함</strong><button id="mBgLibraryClose" type="button">닫기</button></div>
+        <p class="hint">기본 템플릿과 내 템플릿의 전체 화면 배경을 모았습니다. 선택하면 현재 레이아웃에만 복사해 적용됩니다. 최종 저장은 아래 마스터 저장 버튼에서 진행하세요.</p>
+        <div id="mBgLibraryGrid" class="bg-library-grid"></div>
+      </dialog>
       <div id="mPreview" class="preview" tabindex="0" title="눌러서 고르고, 끌어서 옮기고, 모서리로 크기 조절"></div>
       <p id="mFit" class="hint"></p>
       <label class="field">미리보기 문구 (본문 글상자에 들어갈 원고 예시)<textarea id="mSample" rows="2">미리보기 문구입니다. 실제 원고 글자로 바뀌어 들어갑니다.</textarea></label>
@@ -192,7 +198,7 @@
 <script src="../ppt/content-rules.js?v=20261022-common-pagebreak1"></script><script src="../ppt/builder.js?v=20261022-common-pagebreak1"></script>
 <script src="../ppt/pptx-export.js?v=20261021-ads2"></script>
 <script src="../ppt/pair-template.js?v=20261021-reproduce1"></script>
-<script src="manuscripts.js?v=20261021-scope1"></script><script src="template-layouts.js?v=20261022-spirit-visible2"></script><script src="announcements.js?v=20261021-adtemplate2"></script><script src="engine.js?v=20261022-spirit-text-layer2"></script><script src="make.js?v=20261022-template-image-backups1"></script>
+<script src="manuscripts.js?v=20261021-scope1"></script><script src="template-layouts.js?v=20261022-spirit-visible2"></script><script src="announcements.js?v=20261021-adtemplate2"></script><script src="engine.js?v=20261022-spirit-text-layer2"></script><script src="make.js?v=20261022-background-library1"></script>
 <script src="../ppt/font-picker.js?v=20261017-font1"></script>
 <script src="../ppt/editor-media.js?v=20261021-fidelity3"></script><script src="../ppt/editor.js?v=20261021-ads1"></script>
 <script src="../ppt/drive-config.js?v=20261020-sync1"></script><script src="../google-session.js?v=20261021-session1"></script>
