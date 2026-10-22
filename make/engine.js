@@ -34,6 +34,22 @@ window.MakePptEngine=(()=>{
   let sourceCursor=0;
   // 완성 그룹의 줄 수를 먼저 정한 뒤, 모든 단계에 같은 빈 줄을 패딩합니다.
   // 가운데 정렬을 유지하되 실제 첫 줄의 세로 좌표는 전 단계에서 고정됩니다.
+  // Keep the user's background untouched. Generated body text must sit above
+  // any image/overlay shapes and contrast with the light botanical paper.
+  function readableSpiritText(slide){
+   const index=slide.bodyIndex;
+   const body=slide.shapes?.[index];
+   if(!body||body.type!=='text')return slide;
+   for(const paragraph of body.paragraphs||[])for(const run of paragraph.runs||[]){
+    if(String(run.text||'').trim())run.color='#193B54';
+   }
+   if(index<slide.shapes.length-1){
+    slide.shapes.splice(index,1);
+    slide.shapes.push(body);
+    slide.bodyIndex=slide.shapes.length-1;
+   }
+   return slide;
+  }
   async function emitGroup(sentencesInGroup){
    if(!sentencesInGroup.length)return;
    const finalLineCount=sentencesInGroup.reduce((n,rows)=>n+rows.length,0);
@@ -47,7 +63,7 @@ window.MakePptEngine=(()=>{
    let previousEnd=groupStart;
    if(groupStart>=0)sourceCursor=groupStart+needle.length;
    for(const count of steps){
-    const sc=await B.scene('word',fullLines.slice(0,count).join('\n'),{padToLines:finalLineCount});
+    const sc=readableSpiritText(await B.scene('word',fullLines.slice(0,count).join('\n'),{padToLines:finalLineCount}));
     sc.editor.group=gid;sc.editor.cumulative=reveal;sc.editor.step=reveal?count:1;
     slides.push(sc);
     const end=groupStart>=0?groupStart+normalize(fullLines.slice(0,count).join('')).length:-1;
