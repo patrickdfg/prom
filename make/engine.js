@@ -45,22 +45,50 @@ window.MakePptEngine=(()=>{
     if(slides.length>1000)throw Error('생성된 자막이 너무 많습니다. 원고를 나누어 넣어 주세요.');
    }
   }
-  // Balance the completed lines of each paragraph BEFORE generating reveal slides.
-  // A paragraph of 7 lines becomes 4+3, never 6+1. Blank paragraphs remain separate.
+  // Page breaks: prefer completed sentences, then commas/connective endings,
+  // while penalizing unbalanced page lengths. Existing B.wrapForLayout already
+  // balances visual line widths and Korean phrase boundaries within sentences.
+  function splitBalancedPages(rows){
+   const n=rows.length,pages=Math.ceil(n/6),ideal=n/pages;
+   const dp=Array.from({length:pages+1},()=>Array(n+1).fill(Infinity));
+   const prev=Array.from({length:pages+1},()=>Array(n+1).fill(-1));
+   dp[0][0]=0;
+   const boundaryPenalty=index=>{
+    if(index===n)return 0;
+    const before=rows[index-1]?.text.trim()||'',after=rows[index]?.text.trim()||'';
+    if(/[.!?。][”’"'）)]*$/.test(before))return 0;
+    if(/[,，;；:：][”’"'）)]*$/.test(before))return 12;
+    if(/(?:고|며|면서|지만|는데|므로|니까|도록|어서|아서|해서)$/.test(before))return 22;
+    // Prefer completing an original sentence even when a line visually fits.
+    if(rows[index-1]?.sentence!==rows[index]?.sentence)return 3;
+    if(/^(?:그리고|그러나|그런데|또한|그러므로|따라서|하지만)\b/.test(after))return 25;
+    return 60;
+   };
+   for(let p=1;p<=pages;p++)for(let end=p;end<=n;end++)
+    for(let count=1;count<=6;count++){
+     const start=end-count;if(start<p-1||!Number.isFinite(dp[p-1][start]))continue;
+     const imbalance=9*Math.pow(count-ideal,2)+(count===1&&n>2?90:0);
+     const penalty=p<pages?boundaryPenalty(end):0;
+     const score=dp[p-1][start]+imbalance+penalty;
+     if(score<dp[p][end]){dp[p][end]=score;prev[p][end]=start;}
+    }
+   if(!Number.isFinite(dp[pages][n]))return [rows];
+   const chunks=[];let end=n;
+   for(let p=pages;p>0;p--){const start=prev[p][end];chunks.unshift(rows.slice(start,end));end=start;}
+   return chunks;
+  }
   for(const paragraph of blocks){
-   const rows=[];
+   const rows=[];let sentenceId=0;
    for(const line of paragraph){
-    if(line===title||/^20\\d{2}\\s*년\\s*성령\\s*(?:말씀|사연)\\s*\\d+$/.test(line))continue;
-    for(const sentence of sentences(line))rows.push(...wrapSentence(sentence));
+    if(line===title||/^20\d{2}\s*년\s*성령\s*(?:말씀|사연)\s*\d+$/.test(line))continue;
+    for(const sentence of sentences(line)){
+     const wrapped=wrapSentence(sentence);
+     for(const text of wrapped)rows.push({text,sentence:sentenceId});
+     sentenceId++;
+    }
    }
-   if(!rows.length)continue;
-   const pages=Math.ceil(rows.length/6);
-   const base=Math.floor(rows.length/pages),extra=rows.length%pages;
-   let offset=0;
-   for(let page=0;page<pages;page++){
-    const count=base+(page<extra?1:0);
-    await emitGroup(rows.slice(offset,offset+count).map(row=>[row]));
-    offset+=count;
+   for(const chunk of splitBalancedPages(rows)){
+    await emitGroup(chunk.map(row=>[row.text]));
    }
   }
     if(slides.length===1)throw Error('표지 이외의 본문이 없습니다. 원고 내용을 확인해 주세요.');
