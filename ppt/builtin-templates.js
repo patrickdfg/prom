@@ -5,7 +5,7 @@ window.PromBuiltinTemplates=(()=>{
 const LIST=[
   {id:'builtin-sunday',file:'sunday.json',version:1},
   {id:'builtin-dawn',file:'dawn.json',version:2},
-  {id:'builtin-spirit-word',file:'sunday.json',version:5,transform:'spirit'},
+  {id:'builtin-spirit-word',file:'sunday.json',version:6,transform:'spirit'},
 ];
 const KEY='promBuiltinTemplates',DB='prom-ppt-generation-templates';
 const base=new URL('templates/',document.currentScript.src);
@@ -22,7 +22,7 @@ function spiritPreset(rec){
 - 표지는 한 장만 만들며 '20XX년 성령 사연 N' 제목만 파란 굵은 글씨로 표시한다. 서두 인용문은 본문 첫 문장으로 보낸다.
 - 빈 줄 및 주제 전환을 기준으로 블록을 나눈다. 블록이 바뀌면 누적 화면을 새로 시작한다.
 - 본문은 문장별 누적 공개: 1 → 1+2 → 1+2+3 순으로 구성한다.
-- 누적된 실제 표시 줄 수가 6줄을 초과하면 새로운 그룹에서 다시 한 문장부터 쌓는다.
+- 누적된 실제 표시 줄 수가 6줄을 초과하면 새 그룹으로 분리한다. 마침표·물음표·느낌표 등 문장 끝을 최우선으로 하고 쉼표·연결어미와 페이지별 줄 수 균형을 함께 평가해 자연스럽게 나눈다. 가능한 한 6+1처럼 한 줄만 남는 분할은 피한다.
 - 한 문장이 여러 줄인 경우 원문 줄바꿈을 보존하고, 긴 줄은 단어 단위로 균형 있게 분리한다.
 - 전체 기본 글자 32pt, 줄간격 1.3배, 흰색 굵은 글자, 가운데 정렬, 배경 그림을 유지한다.
 - 누적 그룹의 최종 상태가 화면 가운데 오도록 동일 그룹 전체 슬라이드의 세로 기준선을 고정한다.
