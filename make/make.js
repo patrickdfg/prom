@@ -273,17 +273,7 @@ $('mBg').addEventListener('input',()=>{if(!draft)return;mark('bg');scene().backg
 function masterArtworkGallery(kind){
  const bg=kind==='background',dialog=$(bg?'mBgLibraryDialog':'mArtLibraryDialog'),grid=$(bg?'mBgLibraryGrid':'mArtLibraryGrid');
  grid.replaceChildren();
- const sources=records.filter(r=>r.design?.layouts);
- const seen=new Set(),found=[];
- for(const rec of sources)for(const [key,layout] of Object.entries(rec.design.layouts)){
-  for(const sh of layout.shapes||[]){
-   if(sh.type!=='image'||!/^data:image\//.test(sh.src||''))continue;
-   const full=sh.background||(sh.w>=(layout.width||960)*.85&&sh.h>=(layout.height||540)*.85);
-   if(bg!==!!full||seen.has(sh.src))continue;
-   seen.add(sh.src);
-   found.push({src:sh.src,shape:sh,layout,label:rec.name+' · '+(rec.layoutCatalog?.find(x=>x.key===key)?.name||key)});
-  }
- }
+ const found=CaptionImageLibrary.collect(records,kind);
  if(!found.length){const p=document.createElement('p');p.className='hint';p.textContent='저장된 템플릿에 해당 그림이 없습니다. 기존 「그림」 파일 선택으로 추가할 수 있습니다.';grid.append(p);}
  for(const item of found){
   const button=document.createElement('button');button.type='button';button.className='bg-library-item';
