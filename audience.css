@@ -31,3 +31,8 @@
 
 /* 한 장 보기에는 왼쪽 읽기 위치 세로선을 표시하지 않는다. */
 #display .ln.current{border-left:0}
+
+/* Unobtrusive projection controls: the corner remains a hover/touch target. */
+#displayToolsToggle{opacity:1;transition:opacity .3s ease}
+.controls-idle #displayToolsToggle{opacity:0;pointer-events:none}
+@media(prefers-reduced-motion:reduce){#displayToolsToggle{transition:none}}
