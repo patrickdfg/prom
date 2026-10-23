@@ -18,3 +18,13 @@
 
 #manuscriptPageNumber{position:fixed;top:58px;left:22px;z-index:6;pointer-events:none;color:#ff2a2a;font:800 clamp(32px,5vw,72px)/1 'Malgun Gothic',sans-serif;text-shadow:0 0 6px #000,0 2px 10px #000b;-webkit-text-stroke:1.5px rgba(0,0,0,.55);paint-order:stroke fill}
 #manuscriptPageNumber[hidden]{display:none!important}
+
+/* A click on the presentation reveals the controls in either output mode. */
+#displayToolsToggle{position:fixed;top:12px;right:16px;bottom:auto;z-index:31;padding:10px 14px;background:#213954ed}
+.scroll-zoom{top:58px;bottom:auto;left:auto;right:12px;transform:none;max-width:min(94vw,740px);opacity:1;pointer-events:auto;z-index:30;box-shadow:0 4px 24px #0008}
+.scroll-zoom[hidden]{display:none!important}
+.scroll-zoom>span{flex-wrap:wrap}
+#manuscriptPageNumber{top:75px}
+@media(max-width:650px){.scroll-zoom{left:8px;right:8px;max-width:none}.scroll-zoom label{font-size:12px}}
+
+#display .ln{line-height:var(--manual-line-height,1.2)}
