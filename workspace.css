@@ -125,20 +125,20 @@ button:hover{filter:brightness(1.12)}
 #overviewCount{font-size:13px;color:#aebbcf}
 #overviewToolbar button{background:#29384b;color:#e4ebf5;border:1px solid #465c77;border-radius:8px;padding:8px 12px;font:inherit;font-size:13px}
 #overviewToolbar label{font-size:13px}#overviewZoom{width:120px;accent-color:#a9caff}#overviewZoomValue{min-width:4ch}
-#overview{position:absolute;top:120px;left:0;right:0;bottom:150px;overflow:auto;background:#111923;padding:22px;overscroll-behavior:contain}
-#slideGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--card-width,330px)),1fr));gap:22px 24px;align-items:start;position:relative}
-.slide-card{display:block;padding:5px;border:2px solid transparent;border-radius:10px;background:transparent;color:#c6d0dd;text-align:left;min-width:0;cursor:pointer}
+#overview{position:absolute;top:120px;left:0;right:0;bottom:150px;overflow:auto;background:#111923;padding:4px 8px 8px;overscroll-behavior:contain}
+#slideGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--card-width,330px)),1fr));gap:6px;align-items:start;position:relative}
+.slide-card{display:block;padding:2px;border:2px solid transparent;border-radius:10px;background:transparent;color:#c6d0dd;text-align:left;min-width:0;cursor:pointer}
 .slide-card:hover{background:#223043;filter:none}.slide-card.active{border-color:#8dbaff;background:#243a55;box-shadow:0 0 0 1px #8dbaff55}
 .mini-paper{container-type:inline-size;position:relative;aspect-ratio:210/118;overflow:hidden;background:#fff center/cover no-repeat;color:#000;font-family:'PFont','Malgun Gothic',sans-serif;font-weight:700;border-radius:3px;box-shadow:0 3px 12px #0005}
 .mini-paper.dark{background:#000;color:#fff}.mini-paper.dark .b{color:var(--focus)}.mini-paper.mobile{font-family:'Malgun Gothic',sans-serif;font-weight:400}
 .mini-lines{position:absolute;inset:4.24% 2.38%;display:flex;flex-direction:column;text-align:center}
 .mini-line{flex:1;display:flex;justify-content:center;align-items:center;white-space:pre;min-height:0}.mini-line.read{opacity:.4}
-.slide-label{display:flex;align-items:center;justify-content:space-between;padding:10px 4px 2px;font-size:13px}.slide-live{visibility:hidden;color:#c3dcff;font-size:12px}.slide-card.active .slide-live{visibility:visible}
+.slide-label{display:flex;align-items:center;justify-content:space-between;padding:4px 2px 2px;font-size:13px}.slide-live{visibility:hidden;color:#c3dcff;font-size:12px}.slide-card.active .slide-live{visibility:visible}
 .view-switch button[aria-pressed=true]{background:#bad3ff!important;color:#13243c!important;border-color:#bad3ff!important}
 #view.overview-mode #stage{visibility:hidden;pointer-events:none}
 #view.overview-mode #bar,#view.overview-mode #statusbar{display:flex!important;opacity:1!important;pointer-events:auto!important}
 #view.overview-mode #speedLayer{display:none}
-@media(max-width:700px){#overviewToolbar{top:52px;padding:10px 12px;align-items:flex-start;flex-direction:column;gap:8px}#overviewToolbar .overview-actions{flex-wrap:wrap;gap:8px}#overviewToolbar button{font-size:12px;padding:7px}#overviewZoom{width:90px}#overview{padding:12px}#slideGrid{gap:12px}}
+@media(max-width:700px){#overviewToolbar{top:52px;padding:10px 12px;align-items:flex-start;flex-direction:column;gap:8px}#overviewToolbar .overview-actions{flex-wrap:wrap;gap:8px}#overviewToolbar button{font-size:12px;padding:7px}#overviewZoom{width:90px}#overview{padding:4px 6px 6px}#slideGrid{gap:6px}}
 
 /* 슬라이드쇼 창이 있으면 음성 추적 중에도 조작 화면을 유지한다. */
 #view.operator-mode #bar,#view.operator-mode #statusbar{display:flex!important;opacity:1!important;pointer-events:auto!important}

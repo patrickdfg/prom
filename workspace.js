@@ -304,27 +304,31 @@
     if(!channel && !audience)return; const data=payload(), json=JSON.stringify(data);
     if(force || json!==lastSent) { channel?.postMessage(data); if(audience && !audience.closed)audience.postMessage(data,location.origin); lastSent=json; }
   }
-  let pendingScrollMode=false;
-  const audienceScreens=window.PromAudienceScreens=PromDisplayScreens.create({onLaunch:()=>openSlideshow(pendingScrollMode),onMessage:message=>toast(message,6000)});$('audience').before(audienceScreens.button);
-  function openSlideshow(scrollMode){
-    pendingScrollMode=scrollMode;if(!audienceScreens.ready()){audienceScreens.show();return;}
+  let openingAudience=false;
+  const audienceScreens=window.PromAudienceScreens=PromDisplayScreens.create({automatic:true,onMessage:message=>toast(message,6000)});
+  async function openSlideshow(scrollMode){
+    if(openingAudience)return;
     continuous=scrollMode;
     if(!channel) {
       if(!('BroadcastChannel' in window)){toast('이 브라우저는 슬라이드쇼을 지원하지 않습니다.');return;}
       channelId=crypto.randomUUID(); channel=new BroadcastChannel('prom-display-'+channelId);
-      channel.onmessage=e=>{if(e.data?.type==='fullscreen-state'){const active=!!e.data.active;$('audience').title=$('scrollAudience').title=active?'송출창 전체화면 중':'송출창의 전체화면 시작 버튼을 클릭하세요';if(!active)toast('송출창에서 큰 전체화면 시작 버튼을 한 번 클릭해 주세요.',7000);}if(e.data?.type==='ready')publish(true);};
+      channel.onmessage=e=>{if(e.data?.type==='fullscreen-state'){const active=!!e.data.active;$('audience').title=$('scrollAudience').title=active?'송출창 전체화면 중':'송출창의 전체화면 시작 버튼을 클릭하세요';if(!active)toast('송출창에서 큰 전체화면 시작 버튼을 한 번 클릭해 주세요.',7000);}if(e.data?.type==='ready'){publish(true);audienceScreens.place(audience,'startSlideshowFullscreen');}};
     }
-    if(audience&&!audience.closed){
-      audienceScreens.place(audience,'startSlideshowFullscreen');
-      publish(true);return;
-    }
-    audience=window.open('audience.html?fullscreen=1#'+channelId,'promAudience',audienceScreens.features());
-    if(!audience){toast('별도 화면이 차단되었습니다. 이 사이트의 팝업을 허용한 뒤 다시 눌러 주세요.',6000);return;}
-    toast('슬라이드쇼를 열었습니다. 자동 전체화면이 제한되면 슬라이드 화면을 한 번 클릭하세요.',6000);
+    openingAudience=true;
+    try{
+      const preparation=audienceScreens.prepare(),fresh=!audience||audience.closed;
+      if(fresh){audience=window.open('about:blank','promAudience',audienceScreens.features());if(!audience){toast('별도 화면이 차단되었습니다. 이 사이트의 팝업을 허용한 뒤 다시 눌러 주세요.',6000);return;}}
+      const popup=audience;await preparation;if(popup.closed)return;
+      await audienceScreens.place(popup,'startSlideshowFullscreen');
+      if(fresh)popup.location.replace('audience.html?fullscreen=1#'+channelId);
+      else publish(true);
+      toast(audienceScreens.message()||'슬라이드쇼를 자동 배치했습니다. 전체화면이 제한되면 송출 화면을 한 번 클릭하세요.',6000);
+    }catch{toast('슬라이드쇼를 열지 못했습니다. 다시 눌러 주세요.',6000);}
+    finally{openingAudience=false;}
   };
   $('audience').onclick=()=>openSlideshow(false);
   $('scrollAudience').onclick=()=>openSlideshow(true);
-  addEventListener('message',e=>{if(e.origin===location.origin && e.source===audience && e.data?.type==='ready')publish(true);});
+  addEventListener('message',e=>{if(e.origin===location.origin && e.source===audience && e.data?.type==='ready'){publish(true);audienceScreens.place(audience,'startSlideshowFullscreen');}});
   function metadata() { if(noteEditing)storeNote();return {noteLayers:notes,focus:$('focusColor').value}; }
   function applyMetadata(data={}) {
     notes=Object.create(null);
