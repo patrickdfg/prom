@@ -3,25 +3,28 @@
   if(!/^[a-f0-9-]{36}$/.test(id) || !('BroadcastChannel' in window)){display.textContent='조작 화면 상단의 슬라이드쇼 버튼으로 열어 주세요.';return;}
   const scrollRenderer=new PromScrollView(display);
   const channel=new BroadcastChannel('prom-display-'+id); let current=null,lastSeen=Date.now();
+  let manualScale=100,manualSpacing=100;
   function fit(){
     if(!current)return;
     if(current.extra?.continuous){scrollRenderer.position='';scrollRenderer.layout='';scrollRenderer.update(current);return;}
     const rows=Math.max(1,current.lines,current.pages.length);
     const metrics=PromSlideLayout.measure(innerWidth,innerHeight,rows);
     display.style.width=metrics.width+'px';display.style.height=metrics.height+'px';
-    display.style.fontSize=metrics.font+'px';
+    display.style.fontSize=(metrics.font*manualScale/100)+'px';
+    display.style.setProperty('--manual-line-height',String(1.2*manualSpacing/100));
     display.querySelectorAll('.ln>span').forEach(s=>{s.style.transform='';const w=s.scrollWidth,max=s.parentElement.clientWidth;if(w>max)s.style.transform=`scale(${max/w})`;});
   }
-  const zoomTools=document.getElementById('scrollTextTools');let zoomTimer;
+  const zoomTools=document.getElementById('scrollTextTools'),toolsToggle=document.getElementById('displayToolsToggle');
+  function toggleTools(force){const open=typeof force==='boolean'?force:zoomTools.hidden;zoomTools.hidden=!open;toolsToggle.setAttribute('aria-expanded',String(open));zoomLabels();}
+  toolsToggle.onclick=()=>toggleTools();
   const readingTools=document.createElement('span');readingTools.innerHTML='<label>읽는 위치 <select id="scrollAnchor" aria-label="읽는 줄 위치"><option value="0.2">위쪽</option><option value="0.35">중간 위</option><option value="0.5">가운데</option></select></label><label>줄간격 <select id="scrollSpacing" aria-label="스크롤 줄간격"><option value="80">좁게</option><option value="100">보통</option><option value="120">넓게</option><option value="140">더 넓게</option></select></label>';zoomTools.appendChild(readingTools);
   document.getElementById('scrollAnchor').onchange=()=>{PromScrollView.setAnchor(document.getElementById('scrollAnchor').value);if(current)current.readingAnchor=PromScrollView.getAnchor();fit();};
-  document.getElementById('scrollSpacing').onchange=()=>{PromScrollView.setSpacing(document.getElementById('scrollSpacing').value);fit();};
-  function zoomLabels(){document.getElementById('scrollAnchor').value=String(PromScrollView.getAnchor());document.getElementById('scrollSpacing').value=String(PromScrollView.getSpacing());const value=PromScrollView.getScale();document.getElementById('scrollTextReset').textContent=value+'%';document.getElementById('scrollTextSmaller').disabled=value<=60;document.getElementById('scrollTextLarger').disabled=value>=180;}
-  for(const [id,delta]of [['scrollTextSmaller',-10],['scrollTextReset',0],['scrollTextLarger',10]])document.getElementById(id).onclick=()=>{PromScrollView.setScale(delta?PromScrollView.getScale()+delta:100);zoomLabels();fit();};
+  document.getElementById('scrollSpacing').onchange=()=>{const value=Number(document.getElementById('scrollSpacing').value);if(current?.extra?.continuous)PromScrollView.setSpacing(value);else manualSpacing=value;fit();};
+  function zoomLabels(){const continuous=!!current?.extra?.continuous;document.getElementById('scrollAnchor').parentElement.hidden=!continuous;document.getElementById('scrollAnchor').value=String(PromScrollView.getAnchor());document.getElementById('scrollSpacing').value=String(continuous?PromScrollView.getSpacing():manualSpacing);const value=continuous?PromScrollView.getScale():manualScale;document.getElementById('scrollTextReset').textContent=value+'%';document.getElementById('scrollTextSmaller').disabled=value<=60;document.getElementById('scrollTextLarger').disabled=value>=180;}
+  for(const [id,delta]of [['scrollTextSmaller',-10],['scrollTextReset',0],['scrollTextLarger',10]])document.getElementById(id).onclick=()=>{if(current?.extra?.continuous)PromScrollView.setScale(delta?PromScrollView.getScale()+delta:100);else manualScale=Math.max(60,Math.min(180,delta?manualScale+delta:100));zoomLabels();fit();};
   addEventListener('storage',e=>{if(['promScrollTextScale','promScrollAnchor','promScrollSpacing'].includes(e.key)){if(current)current.readingAnchor=PromScrollView.getAnchor();zoomLabels();fit();}});
-  addEventListener('mousemove',e=>{if(zoomTools.hidden)return;clearTimeout(zoomTimer);if(e.clientY>=innerHeight-60||zoomTools.contains(e.target))document.body.classList.add('zoom-open');else zoomTimer=setTimeout(()=>document.body.classList.remove('zoom-open'),900);});
-  addEventListener('pointerdown',e=>{if(!zoomTools.hidden&&e.clientY>=innerHeight-60)document.body.classList.add('zoom-open');});
-  zoomTools.addEventListener('focusin',()=>document.body.classList.add('zoom-open'));
+  document.getElementById('paper').addEventListener('click',e=>{if(e.target.closest('button,select,label'))return;toggleTools();});
+  addEventListener('keydown',e=>{if(e.key==='Escape'&&!zoomTools.hidden)toggleTools(false);});
   const receive=d=>{
     if(d?.type==='heartbeat'){lastSeen=Date.now();if(current)document.body.classList.add('connected');return;}
     if(d?.type!=='frame' || !Array.isArray(d.pages))return;
@@ -30,9 +33,9 @@
     document.body.classList.add('connected');
     const extra=d.extra||{};
     const pageNumber=document.getElementById('manuscriptPageNumber');
-    pageNumber.hidden=!!extra.continuous||!Number.isInteger(d.pageNumber)||d.pageNumber<1||d.pageNumber>999;
+    pageNumber.hidden=!Number.isInteger(d.pageNumber)||d.pageNumber<1||d.pageNumber>999;
     pageNumber.textContent=pageNumber.hidden?'':String(d.pageNumber);
-    zoomTools.hidden=!extra.continuous;zoomLabels();
+    zoomLabels();
     document.getElementById('paper').style.transform=`scale(${extra.mirrorX?-1:1},${extra.mirrorY?-1:1})`;
     const notice=document.getElementById('stageNotice');notice.textContent=typeof extra.message==='string'?extra.message.slice(0,140):'';notice.hidden=!notice.textContent;
     display.classList.toggle('scroll-host',!!extra.continuous);
@@ -74,7 +77,6 @@
   }
   window.startSlideshowFullscreen=enterFullscreen;
   fullButton.onclick=enterFullscreen;
-  document.getElementById('paper').addEventListener('click',()=>{if(!document.fullscreenElement)enterFullscreen();});
   document.addEventListener('fullscreenchange',syncFullscreen);
   syncFullscreen();
   if(new URLSearchParams(location.search).get('fullscreen')==='1')enterFullscreen();
