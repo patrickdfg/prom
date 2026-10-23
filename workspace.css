@@ -226,3 +226,39 @@ button:hover{filter:brightness(1.12)}
 @media(max-width:700px){#statusbar{background:#10151d}}
 /* 읽어주기 중 스크롤 보기: 지금 읽는 줄 글자색을 강조색(검정 배경은 노랑, 흰 배경은 파랑)으로 */
 #view.tts-reading #localScroll .scroll-current{color:var(--focus)}
+
+
+/* 2026-10-23: 초보 사용자용 조작줄 가독성 개선 (기능/DOM/저장 데이터 변경 없음).
+   방송 핵심 조작을 시각적으로 우선 배치하고 부가 도구는 구분한다. */
+#bar #mic{
+  font-weight:800;
+  background:#305a86;
+  border-color:#75a9de;
+  color:#fff;
+}
+#bar #mic.on{
+  background:#a0e6bf;
+  border-color:#a0e6bf;
+  color:#112c1d;
+}
+#bar #prev,#bar #next{
+  font-weight:700;
+  border-color:#64788f;
+  background:#28384a;
+}
+#bar #pg{
+  font-weight:700;
+  color:#e8f1ff;
+}
+#moreTools{
+  margin-left:8px;
+  padding-left:12px;
+  border-left:2px solid #52647c;
+}
+#bar button:focus-visible,#moreTools button:focus-visible{
+  outline:2px solid #a9caff;
+  outline-offset:2px;
+}
+@media(max-width:600px){
+  #moreTools{margin-left:4px;padding-left:8px;}
+}
