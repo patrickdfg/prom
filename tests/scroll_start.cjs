@@ -2,7 +2,7 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
 const html=fs.readFileSync('index.html','utf8'),source=fs.readFileSync('workspace.js','utf8');
 const node=()=>({hidden:false,classList:{toggle(){}},setAttribute(){}}),nodes={view:node(),viewScroll:node(),viewMultiple:node(),viewSingle:{setAttribute(){},click(){c.cursor=120;}}};
 const c={cursor:149,page:4,editing:false,norm:'가'.repeat(500),pStart:[0,30,60,90,120],lineRange:Array.from({length:5},()=>[[120,140],[140,160],[160,180]]),caretLine:()=>2,pageOf:pos=>Math.floor(pos/30),localScroll:false,localRenderer:{position:'4:0',layout:'old'},scrollHost:node(),window:{PromSmoothScroll:{cancel(){}}},$:id=>nodes[id],syncScrollText(){},finishNote(){},render(){},showBar(){},endEdit(){c.editing=false;c.cursor=120;}};
-vm.createContext(c);vm.runInContext(source.slice(source.indexOf('  function captureReadingPosition()'),source.indexOf('  function updateLocalScroll()')),c);
+vm.createContext(c);vm.runInContext(source.slice(source.indexOf('  function captureReadingPosition()'),source.indexOf('  // ---- 원고 쪽 번호 레이어')),c);
 vm.runInContext(source.slice(source.indexOf("  $('viewScroll').onclick="),source.indexOf("  for(const id of ['viewSingle'")),c);
 nodes.viewScroll.onclick();assert.equal(c.cursor,149,'scroll entry preserves consumed character');assert.equal(c.localRenderer.position,'');assert.equal(c.localRenderer.layout,'','entry forces alignment even after manual scrolling');
 c.editing=true;c.cursor=120;nodes.viewScroll.onclick();assert.equal(c.cursor,160,'body edit caret line restored after commit');
