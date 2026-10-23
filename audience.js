@@ -15,15 +15,47 @@
     display.querySelectorAll('.ln>span').forEach(s=>{s.style.transform='';const w=s.scrollWidth,max=s.parentElement.clientWidth;if(w>max)s.style.transform=`scale(${max/w})`;});
   }
   const zoomTools=document.getElementById('scrollTextTools'),toolsToggle=document.getElementById('displayToolsToggle');
-  function toggleTools(force){const open=typeof force==='boolean'?force:zoomTools.hidden;zoomTools.hidden=!open;toolsToggle.setAttribute('aria-expanded',String(open));zoomLabels();}
+  let hideToolsTimer=null;
+  function showToolsButton(){
+    document.body.classList.remove('controls-idle');
+    clearTimeout(hideToolsTimer);
+  }
+  function scheduleToolsHide(){
+    clearTimeout(hideToolsTimer);
+    if(!zoomTools.hidden)return;
+    hideToolsTimer=setTimeout(()=>{
+      if(zoomTools.hidden&&!toolsToggle.matches(':hover')&&!toolsToggle.matches(':focus-visible'))
+        document.body.classList.add('controls-idle');
+    },3000);
+  }
+  function toggleTools(force){
+    const open=typeof force==='boolean'?force:zoomTools.hidden;
+    zoomTools.hidden=!open;
+    toolsToggle.setAttribute('aria-expanded',String(open));
+    showToolsButton();
+    if(!open)scheduleToolsHide();
+    zoomLabels();
+  }
   toolsToggle.onclick=()=>toggleTools();
+  // Keep the control visible while actively adjusting. Otherwise hide after 3 seconds.
+  const nearTools=e=>e.clientY<=120&&e.clientX>=innerWidth-240;
+  addEventListener('pointermove',e=>{
+    if(!zoomTools.hidden)return;
+    if(nearTools(e)){showToolsButton();}
+    else if(!document.body.classList.contains('controls-idle'))scheduleToolsHide();
+  },{passive:true});
+  toolsToggle.addEventListener('pointerenter',showToolsButton);
+  toolsToggle.addEventListener('pointerleave',scheduleToolsHide);
+  toolsToggle.addEventListener('focus',showToolsButton);
+  zoomTools.addEventListener('focusin',showToolsButton);
+  scheduleToolsHide();
   const readingTools=document.createElement('span');readingTools.innerHTML='<label>읽는 위치 <select id="scrollAnchor" aria-label="읽는 줄 위치"><option value="0.2">위쪽</option><option value="0.35">중간 위</option><option value="0.5">가운데</option></select></label><label>줄간격 <select id="scrollSpacing" aria-label="스크롤 줄간격"><option value="80">좁게</option><option value="100">보통</option><option value="120">넓게</option><option value="140">더 넓게</option></select></label>';zoomTools.appendChild(readingTools);
   document.getElementById('scrollAnchor').onchange=()=>{PromScrollView.setAnchor(document.getElementById('scrollAnchor').value);if(current)current.readingAnchor=PromScrollView.getAnchor();fit();};
   document.getElementById('scrollSpacing').onchange=()=>{const value=Number(document.getElementById('scrollSpacing').value);if(current?.extra?.continuous)PromScrollView.setSpacing(value);else manualSpacing=value;fit();};
   function zoomLabels(){const continuous=!!current?.extra?.continuous;document.getElementById('scrollAnchor').parentElement.hidden=!continuous;document.getElementById('scrollAnchor').value=String(PromScrollView.getAnchor());document.getElementById('scrollSpacing').value=String(continuous?PromScrollView.getSpacing():manualSpacing);const value=continuous?PromScrollView.getScale():manualScale;document.getElementById('scrollTextReset').textContent=value+'%';document.getElementById('scrollTextSmaller').disabled=value<=60;document.getElementById('scrollTextLarger').disabled=value>=180;}
   for(const [id,delta]of [['scrollTextSmaller',-10],['scrollTextReset',0],['scrollTextLarger',10]])document.getElementById(id).onclick=()=>{if(current?.extra?.continuous)PromScrollView.setScale(delta?PromScrollView.getScale()+delta:100);else manualScale=Math.max(60,Math.min(180,delta?manualScale+delta:100));zoomLabels();fit();};
   addEventListener('storage',e=>{if(['promScrollTextScale','promScrollAnchor','promScrollSpacing'].includes(e.key)){if(current)current.readingAnchor=PromScrollView.getAnchor();zoomLabels();fit();}});
-  document.getElementById('paper').addEventListener('click',e=>{if(e.target.closest('button,select,label'))return;toggleTools();});
+  document.getElementById('paper').addEventListener('click',e=>{if(e.target.closest('button,select,label'))return;if(!zoomTools.hidden)toggleTools(false);else{showToolsButton();scheduleToolsHide();}});
   addEventListener('keydown',e=>{if(e.key==='Escape'&&!zoomTools.hidden)toggleTools(false);});
   const receive=d=>{
     if(d?.type==='heartbeat'){lastSeen=Date.now();if(current)document.body.classList.add('connected');return;}
