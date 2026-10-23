@@ -75,7 +75,6 @@
   $('viewMultiple').onclick=()=>setMode(true);
   $('overviewZoom').oninput=()=>{zoom=Number($('overviewZoom').value);size();try{localStorage.setItem('promOverviewZoom',String(zoom));}catch(_){}};
   $('overviewCurrent').onclick=()=>{cards[page]?.scrollIntoView({block:'center',behavior:'smooth'});};
-  $('overviewAudience').onclick=()=>$('audience').click();
   // 메모와 본문 편집은 실제 한 장 화면에서 수행한다.
   $('note').addEventListener('click',()=>{if(enabled)setMode(false);},true);
   const ui=window.PromUI;
