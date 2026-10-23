@@ -11,7 +11,7 @@
   function bounds(){
     if(!enabled)return;
     panel.style.bottom=($('bar').getBoundingClientRect().height+8)+'px';
-    panel.style.top=(toolbar.offsetTop+toolbar.offsetHeight+8)+'px';
+    panel.style.top=($('statusbar').getBoundingClientRect().bottom-view.getBoundingClientRect().top+4)+'px';
   }
   function setMode(value){
     if(value){if(editing)endEdit();window.PromUI?.finishNote();}
@@ -81,7 +81,7 @@
   const oldRender=ui.render;ui.render=function(...args){oldRender.apply(this,args);update();};
   const oldEdit=ui.beforeBodyEdit;ui.beforeBodyEdit=function(...args){if(enabled)setMode(false);return oldEdit.apply(this,args);};
   const oldHold=ui.holdControls;ui.holdControls=function(){return (enabled&&!view.classList.contains('solo-presentation'))||oldHold.call(this);};
-  if(window.ResizeObserver)new ResizeObserver(bounds).observe($('bar'));
+  if(window.ResizeObserver){const observer=new ResizeObserver(bounds);observer.observe($('bar'));observer.observe($('statusbar'));}
   addEventListener('resize',bounds);
   size();
 })();

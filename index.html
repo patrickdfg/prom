@@ -121,7 +121,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
-<link rel="stylesheet" href="workspace.css?v=20261023-compact-overview">
+<link rel="stylesheet" href="workspace.css?v=20261023-one-top-row">
 <link rel="stylesheet" href="extras.css?v=20261017-follow3">
 <style>.app-switch{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;flex-shrink:0;padding:8px 12px;border:1px solid #506a88;border-radius:8px;background:#20344c;color:#d6f5ec!important;font:600 12px/1.4 sans-serif;text-decoration:none;pointer-events:auto}.app-switch:hover{background:#2b4963}.app-switch:focus-visible{outline:3px solid #5de2ca;outline-offset:2px}</style>
 <link rel="stylesheet" href="display-screens.css?v=20261017-screen1">
@@ -165,13 +165,12 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 </div>
 
 <div id="view">
-  <div id="statusbar"><div class="status-left"><button id="back" class="status-home" type="button" title="처음 화면으로 돌아가기">⌂ 홈</button><div class="mic-state"><span id="dot"></span><span id="micStatus" role="status">마이크 꺼짐</span></div></div><span id="sessionTitle"></span><div class="theme-choices" role="group" aria-label="화면 도구"><button id="audience" type="button">슬라이드쇼 ↗</button><button id="theme-dark" type="button" aria-pressed="true">검정 배경</button><button id="theme-cloud" type="button" aria-pressed="false">하늘·구름 배경</button><button id="theme-white" type="button" aria-pressed="false">흰색 배경</button><select id="theme" aria-label="배경" hidden><option value="dark" selected>검정화면</option><option value="cloud">구름 배경</option><option value="white">흰색 배경</option></select></div></div>
-  <div id="voiceFeedback" hidden></div>
-  <div id="stage"><div id="page"><div id="lines"></div><div id="nextCue" hidden aria-label="다음 장 첫 줄"></div></div></div>
-  <div id="overviewToolbar" hidden>
+  <div id="statusbar"><div class="status-left"><button id="back" class="status-home" type="button" title="처음 화면으로 돌아가기">⌂ 홈</button><div class="mic-state"><span id="dot"></span><span id="micStatus" role="status">마이크 꺼짐</span></div></div><span id="sessionTitle"></span><div id="topViewControls"><div id="overviewToolbar" hidden>
     <div><b>여러 장 보기</b><span id="overviewCount"></span></div>
     <div class="overview-actions"><button id="overviewCurrent">현재 장 찾기</button><label>크기 <input id="overviewZoom" type="range" min="60" max="180" step="10" value="100"><output id="overviewZoomValue">100%</output></label></div>
-  </div>
+  </div><button id="fs" type="button" title="전체화면 켜기·끄기 (F)">전체화면 (F)</button></div><div class="theme-choices" role="group" aria-label="화면 도구"><button id="audience" type="button">슬라이드쇼 ↗</button><button id="theme-dark" type="button" aria-pressed="true">검정 배경</button><button id="theme-cloud" type="button" aria-pressed="false">하늘·구름 배경</button><button id="theme-white" type="button" aria-pressed="false">흰색 배경</button><select id="theme" aria-label="배경" hidden><option value="dark" selected>검정화면</option><option value="cloud">구름 배경</option><option value="white">흰색 배경</option></select></div></div>
+  <div id="voiceFeedback" hidden></div>
+  <div id="stage"><div id="page"><div id="lines"></div><div id="nextCue" hidden aria-label="다음 장 첫 줄"></div></div></div>
   <section id="overview" hidden aria-label="전체 원고 여러 장 보기"><div id="slideGrid"></div></section>
   <div id="toast"></div>
   <div id="speedLayer" hidden tabindex="0" role="group" aria-label="말하기 속도 레이어" title="말하는 속도 · 현수 목소리 보통 속도 = 100 · 끌어서 이동"><small>속도</small><b id="speedVal">—</b></div>
@@ -213,7 +212,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
       <span id="heard"></span>
     </div>
   </div>
-  <button id="fs" type="button" title="전체화면 켜기·끄기 (F)">전체화면 (F)</button>
+
   <dialog id="obsFullscreenDialog" class="tool-dialog" aria-labelledby="obsFullscreenTitle">
     <div class="dialog-head"><h2 id="obsFullscreenTitle">OBS 풀스크린 전환 안내</h2><button type="button" data-close="obsFullscreenDialog" aria-label="OBS 안내 닫기">닫기</button></div>
     <p><strong>어떤 용도인가요?</strong><br>같은 모니터에 띄운 OBS 전체화면 프로젝터와 슬라이드쇼를 번갈아 보여 주는 Windows용 보조 프로그램입니다. OBS 전체화면을 앞으로 가져오거나 뒤로 보내며, 조작창은 그대로 유지합니다.</p>
@@ -2144,7 +2143,7 @@ if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 <script src="smooth-scroll.js?v=20261017-line1"></script>
 <script src="scroll-view.js?v=20261020-phone2"></script>
 <script src="display-screens.js?v=20261017-screen1"></script><script src="workspace.js?v=20261023-unified-output"></script>
-<script src="overview.js?v=20261023-single-menu"></script>
+<script src="overview.js?v=20261023-one-top-row"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
 <script src="extras.js?v=20261019-nolab1"></script>
 <script src="ppt/drive-config.js?v=20261020-sync1"></script><script src="google-session.js?v=20261021-session1"></script><script src="prompter-pptx.js?v=20261020-pptx2"></script><script src="drive-sync.js?v=20261021-session1"></script>
