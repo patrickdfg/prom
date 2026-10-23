@@ -19,7 +19,7 @@ function createAutomatic({onMessage}){
   try{if(placed.get(popup)!==stamp){if(popup.document.fullscreenElement)await popup.document.exitFullscreen();const b=bounds(screen||{});popup.moveTo(b.left,b.top);popup.resizeTo(b.width,b.height);placed.set(popup,stamp);}if(typeof popup[method]==='function')await popup[method](chosen);}
   catch{onMessage('송출창의 전체화면 버튼을 한 번 눌러 주세요.');}
  }
- return {prepare,target,place,features:()=>features(target()||window.screen),message:()=>notice,ready:()=>true};
+ return {prepare,target,place,single:()=>details?details.screens.length<=1:window.screen?.isExtended===false,features:()=>features(target()||window.screen),message:()=>notice,ready:()=>true};
 }
 function create({onLaunch,onMessage=()=>{},automatic=false}){
  if(automatic)return createAutomatic({onMessage});

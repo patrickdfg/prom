@@ -1,0 +1,15 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');const s=fs.readFileSync('workspace.js','utf8');
+(async()=>{for(const listening of [false,true]){
+ let opens=0,single=0,scroll=0,full=0,closed=0,placed=0,overview=0;
+ const nodes={viewSingle:{click(){single++}},viewScroll:{click(){scroll++}},fs:{click(){full++}},viewMultiple:{click(){overview++}}};
+ const api={prepare:async()=>{},single:()=>false,features:()=>'',place:async()=>{placed++},message:()=>''};
+ const c={window:{screen:{isExtended:false},BroadcastChannel:true,open(){opens++;return {closed:false,location:{replace(){}},close(){closed++}}}},document:{fullscreenElement:null},PromDisplayScreens:{create:()=>api},$:id=>nodes[id],listening,audience:null,channel:null,channelId:'test',crypto:{randomUUID:()=> 'test'},BroadcastChannel:class{},toast(){},publish(){}};vm.createContext(c);
+ vm.runInContext(s.slice(s.indexOf('  let localVoiceMode=false;'),s.indexOf("  $('audience').onclick=openSlideshow;")),c);await c.openSlideshow();assert.equal(opens,0);assert.equal(full,1);assert.equal(listening?scroll:single,1);
+ c.document.fullscreenElement={};await c.openSlideshow();assert.equal(full,1,'already fullscreen stays fullscreen');
+ c.document.fullscreenElement=null;c.window.screen.isExtended=true;vm.runInContext("localVoiceMode=true",c);await c.openSlideshow();assert.equal(vm.runInContext("localVoiceMode",c),false,"external output clears local voice mode");assert.equal(opens,1);assert.equal(overview,1);assert.equal(placed,1);assert(c.audience);
+ c.window.screen.isExtended=false;await c.openSlideshow();assert.equal(closed,1);assert.equal(c.audience,null);
+}
+const html=fs.readFileSync('index.html','utf8');assert.equal((html.match(/id="mic"/g)||[]).length,1);const top=html.slice(html.indexOf('id="statusbar"'),html.indexOf('id="voiceFeedback"'));assert(top.includes('id="mic"'));assert(top.includes('음성인식으로 시작'));const bar=html.slice(html.indexOf('<div id="bar"'),html.indexOf('id="moreTools"'));assert(!bar.includes('id="mic"'));assert(html.includes("textContent='음성인식 종료'"));assert(html.includes("textContent='음성인식으로 시작'"));
+let scroll=0,single=0;const c={audience:null,listening:true,localVoiceMode:false,$:id=>id==='micStatus'?{}:{click(){id==='viewScroll'?scroll++:single++}},hideControls(){},showNote(){}};vm.createContext(c);const presentation=s.match(/presentation\(\)\{[^\n]+\}/)[0];const mic=s.match(/mic\(cls\) \{[^\n]+\}/)[0];vm.runInContext('var api={'+presentation+','+mic+'};',c);c.api.presentation();assert.equal(scroll,1);c.listening=false;c.api.mic('');assert.equal(single,1);c.api.mic('');assert.equal(single,1,'stop transition occurs once');c.audience={closed:false};c.api.presentation();assert.equal(scroll,1,'external output preserves operator view');
+console.log('PASS one screen local display, no extra popup, voice/manual local views, fullscreen reuse, dual external output, output closes on single screen, unique top voice button, start/stop labels, voice-to-manual local transition, external operator preserved');
+})().catch(e=>{console.error(e);process.exitCode=1});

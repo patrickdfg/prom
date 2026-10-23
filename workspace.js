@@ -317,10 +317,16 @@
     }else go(action==='home'?0:page+(action==='next'?1:-1),true);
     showBar();return true;
   }
+  let localVoiceMode=false;
+  function openLocalSlideshow(){
+    if(listening)$('viewScroll').click();else $('viewSingle').click();
+    if(!document.fullscreenElement)$('fs').click();
+  }
   let openingAudience=false;
   const audienceScreens=window.PromAudienceScreens=PromDisplayScreens.create({automatic:true,onMessage:message=>toast(message,6000)});
   async function openSlideshow(){
     if(openingAudience)return;
+    if(window.screen?.isExtended===false){if(audience&&!audience.closed)audience.close();audience=null;openLocalSlideshow();return;}
     if(!channel) {
       if(!('BroadcastChannel' in window)){toast('이 브라우저는 슬라이드쇼을 지원하지 않습니다.');return;}
       channelId=crypto.randomUUID(); channel=new BroadcastChannel('prom-display-'+channelId);
@@ -331,8 +337,10 @@
       const preparation=audienceScreens.prepare(),fresh=!audience||audience.closed;
       if(fresh){audience=window.open('about:blank','promAudience',audienceScreens.features());if(!audience){toast('별도 화면이 차단되었습니다. 이 사이트의 팝업을 허용한 뒤 다시 눌러 주세요.',6000);return;}}
       const popup=audience;await preparation;if(popup.closed)return;
+      if(fresh&&audienceScreens.single()){popup.close();audience=null;openLocalSlideshow();return;}
       await audienceScreens.place(popup,'startSlideshowFullscreen');
       if(fresh)popup.location.replace('audience.html?fullscreen=1#'+channelId);
+      localVoiceMode=false;
       $('viewMultiple').click();
       publish(true);
       toast(audienceScreens.message()||'슬라이드쇼를 자동 배치했습니다. 전체화면이 제한되면 송출 화면을 한 번 클릭하세요.',6000);
@@ -400,7 +408,7 @@
     hasSlideshow(){return !!audience&&!audience.closed;},
     readingStart(){return (localScroll||(audience&&!audience.closed))?cursor:undefined;},
     speedLayer:placeSpeed,
-    presentation(){hideControls();showNote();},
+    presentation(){if(!audience||audience.closed){localVoiceMode=true;$('viewScroll').click();}hideControls();showNote();},
     beforeBodyEdit(){if(localScroll){setLocalScroll(false);$('viewSingle').click();}finishNote();bodyNoteAnchor=noteKey(P[page]);},
     afterBodyEdit(){const key=noteKey(P[page]);if(bodyNoteAnchor&&bodyNoteAnchor!==key&&notes[bodyNoteAnchor]){notes[key]=notes[bodyNoteAnchor];delete notes[bodyNoteAnchor];}bodyNoteAnchor=null;showNote();},
     reading(){finishNote();showNote();if(ttsOn){revealControls();showBar();}else if($('view').classList.contains('solo-presentation'))hideControls();},
@@ -446,7 +454,7 @@
         }else window.__promObsDesired=null;
       }
     },
-    mic(cls) { $('micStatus').textContent=cls==='live'?'듣는 중':cls==='err'?'마이크 연결 확인':listening?'다시 연결 중':'마이크 꺼짐'; },
+    mic(cls) { if(!listening&&localVoiceMode){localVoiceMode=false;$('viewSingle').click();} $('micStatus').textContent=cls==='live'?'듣는 중':cls==='err'?'마이크 연결 확인':listening?'다시 연결 중':'마이크 꺼짐'; },
     holdControls() { return ttsOn || !menu.hidden || !!document.querySelector('dialog[open]') || ($('bar').contains(document.activeElement) && document.activeElement.matches(':focus-visible')) || editing || noteEditing; },
     noteKey
   };
