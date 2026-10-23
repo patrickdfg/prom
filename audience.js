@@ -46,7 +46,7 @@
     if(extra.continuous&&Array.isArray(d.document)){scrollRenderer.update(d);document.title=`${d.page+1} / ${d.total} · 슬라이드쇼`;return;}
     for(let i=0;i<Math.max(d.lines,d.pages.length);i++){
       const row=document.createElement('div'),wrap=document.createElement('span'),r=d.range?.[i];row.className='ln';
-      if(r && r[1]>r[0]){if(d.dim && d.cursor>=r[1])row.classList.add('read');else if(d.cursor>=r[0] && d.cursor<r[1])row.classList.add('current');}
+      if(r && r[1]>r[0]){if(d.dim && d.cursor>=r[1])row.classList.add('read');/* 한 장 송출 화면에서는 현재 줄 세로바를 표시하지 않는다. */}
       for(const run of d.pages[i]||[]){const s=document.createElement('span');s.textContent=run.t;s.className=['b','r','n'].includes(run.c)?run.c:'';wrap.appendChild(s);}
       row.appendChild(wrap);display.appendChild(row);
     }
