@@ -9,7 +9,7 @@
   const STORAGE = 'promWorkspaceV1';
   let inputTab = 'file', restoring = false, saveTimer, cached = null, background = null;
   let notes = {}, noteEditing = false, noteAnchor = null, bodyNoteAnchor = null;
-  let audience = null, channel = null, channelId = null, lastSent = '', continuous = false;
+  let audience = null, channel = null, channelId = null, lastSent = '';
   const textOf = pg => (pg || []).map(l => l.filter(r => r.c !== 'r' && r.c !== 'n').map(r => r.t).join('')).join('\n').trim();
   // 본문을 키로 삼아 편집·쪽 재배치 후 다른 쪽에 메모가 붙는 것을 막는다.
   const noteKey = pg => textOf(pg);
@@ -297,7 +297,7 @@
   for(const value of ['dark','cloud','white'])$('theme-'+value).onclick=()=>{$('theme').value=value;$('theme').dispatchEvent(new Event('change'));};
   $('theme').addEventListener('change',()=>{syncTheme();publish();saveNow();});syncTheme();
   function payload() {
-    const extra={...(window.PromExtras?.settings()||{}),continuous,manualScrollPage:continuous&&!listening};
+    const extra={...(window.PromExtras?.settings()||{}),continuous:!!listening};
     return {type:'frame',extra,...(extra.continuous?{document:P,ranges:lineRange}:{}),nextCue:nextCueLine()?.text||'',pages:P[page],page,total:P.length,lines:LINES,cursor,readingAnchor:PromScrollView.getAnchor(),range:lineRange[page],dim:$('dim').checked,focus:$('focusColor').value,dark:$('theme').value==='dark',bg:$('theme').value==='dark'?null:background||BG_DEFAULT};
   }
   function publish(force=false) {
@@ -306,7 +306,7 @@
   }
   function navigateAudience(action){
     if(!audience||audience.closed||!['next','prev','home'].includes(action))return false;
-    if(continuous&&listening&&action!=='home'){
+    if(listening&&action!=='home'){
       const rows=[];
       lineRange.forEach((pg,pi)=>pg.forEach((r,li)=>{if(r[1]>r[0])rows.push({pi,li,start:r[0],end:r[1]});}));
       if(!rows.length)return true;
@@ -319,13 +319,12 @@
   }
   let openingAudience=false;
   const audienceScreens=window.PromAudienceScreens=PromDisplayScreens.create({automatic:true,onMessage:message=>toast(message,6000)});
-  async function openSlideshow(scrollMode){
+  async function openSlideshow(){
     if(openingAudience)return;
-    continuous=scrollMode;
     if(!channel) {
       if(!('BroadcastChannel' in window)){toast('이 브라우저는 슬라이드쇼을 지원하지 않습니다.');return;}
       channelId=crypto.randomUUID(); channel=new BroadcastChannel('prom-display-'+channelId);
-      channel.onmessage=e=>{if(e.data?.type==='navigate')navigateAudience(e.data.action);if(e.data?.type==='fullscreen-state'){const active=!!e.data.active;$('audience').title=$('scrollAudience').title=active?'송출창 전체화면 중':'송출창의 전체화면 시작 버튼을 클릭하세요';if(!active)toast('송출창에서 큰 전체화면 시작 버튼을 한 번 클릭해 주세요.',7000);}if(e.data?.type==='ready'){publish(true);audienceScreens.place(audience,'startSlideshowFullscreen');}};
+      channel.onmessage=e=>{if(e.data?.type==='navigate')navigateAudience(e.data.action);if(e.data?.type==='fullscreen-state'){const active=!!e.data.active;$('audience').title=active?'송출창 전체화면 중':'송출창의 전체화면 시작 버튼을 클릭하세요';if(!active)toast('송출창에서 큰 전체화면 시작 버튼을 한 번 클릭해 주세요.',7000);}if(e.data?.type==='ready'){publish(true);audienceScreens.place(audience,'startSlideshowFullscreen');}};
     }
     openingAudience=true;
     try{
@@ -340,8 +339,7 @@
     }catch{toast('슬라이드쇼를 열지 못했습니다. 다시 눌러 주세요.',6000);}
     finally{openingAudience=false;}
   };
-  $('audience').onclick=()=>openSlideshow(false);
-  $('scrollAudience').onclick=()=>openSlideshow(true);
+  $('audience').onclick=openSlideshow;
   addEventListener('message',e=>{if(e.origin===location.origin && e.source===audience && e.data?.type==='ready'){publish(true);audienceScreens.place(audience,'startSlideshowFullscreen');}});
   function metadata() { if(noteEditing)storeNote();return {noteLayers:notes,focus:$('focusColor').value}; }
   function applyMetadata(data={}) {
@@ -400,7 +398,7 @@
     visibleRange(){return localRenderer.visibleRange(lineRange);},
     metadata, applyMetadata, finishNote, syncPresentationMode,
     hasSlideshow(){return !!audience&&!audience.closed;},
-    readingStart(){return (localScroll||(continuous&&audience&&!audience.closed))?cursor:undefined;},
+    readingStart(){return (localScroll||(audience&&!audience.closed))?cursor:undefined;},
     speedLayer:placeSpeed,
     presentation(){hideControls();showNote();},
     beforeBodyEdit(){if(localScroll){setLocalScroll(false);$('viewSingle').click();}finishNote();bodyNoteAnchor=noteKey(P[page]);},

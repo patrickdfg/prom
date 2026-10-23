@@ -1,0 +1,10 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');const s=fs.readFileSync('workspace.js','utf8'),html=fs.readFileSync('index.html','utf8');
+const document=[[[{t:'첫째 줄',c:'k'}],[{t:'둘째 줄',c:'b'}]],[[{t:'다음 쪽',c:'k'}]]],ranges=[[[0,5],[5,10]],[[10,15]]];
+const before=JSON.stringify(document),c={window:{PromExtras:{settings:()=>({mirrorX:true,message:'안내'})}},listening:false,P:document,lineRange:ranges,page:0,LINES:2,cursor:5,PromScrollView:{getAnchor:()=>.2},nextCueLine:()=>null,$:id=>({checked:true,value:id==='theme'?'dark':'#ffff00'}),background:'unchanged',BG_DEFAULT:'default'};
+vm.createContext(c);vm.runInContext(s.slice(s.indexOf('  function payload()'),s.indexOf('  function publish(',s.indexOf('  function payload()'))),c);
+const manual=c.payload();assert.equal(manual.extra.continuous,false);assert(!('document'in manual));assert.equal(manual.pages,document[0]);
+c.listening=true;const voice=c.payload();assert.equal(voice.extra.continuous,true);assert.equal(voice.document,document);assert.equal(voice.ranges,ranges);assert.equal(voice.cursor,5);assert.equal(voice.extra.mirrorX,true);assert.equal(voice.extra.message,'안내');
+c.listening=false;c.page=1;c.cursor=10;const stopped=c.payload();assert.equal(stopped.extra.continuous,false);assert.equal(stopped.pages,document[1]);assert(!('document'in stopped));assert.equal(JSON.stringify(document),before);
+assert.equal((html.match(/id="audience"/g)||[]).length,1);assert(!html.includes('id="scrollAudience"'));assert(!s.includes("$('scrollAudience')"));assert(s.includes("$('viewMultiple').click();"));
+assert(s.includes("readingStart(){return (localScroll||(audience&&!audience.closed))?cursor:undefined;}"));
+console.log('PASS single output button, microphone-off slides, microphone-on continuous scroll, stop returns to pages, preserved cursor/mirror/message/manuscript, overview launch, single-monitor start behavior');
