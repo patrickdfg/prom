@@ -275,3 +275,12 @@ button:hover{filter:brightness(1.12)}
 #statusbar #mic{pointer-events:auto;min-height:30px;padding:5px 8px;border:1px solid #75a9de;border-radius:7px;background:#305a86;color:#fff;font:700 11px 'Malgun Gothic',sans-serif;white-space:nowrap}
 #statusbar #mic.on{background:#a0e6bf;border-color:#a0e6bf;color:#112c1d}
 #statusbar .status-left{gap:6px}
+
+/* Primary actions follow the reading workflow and stay orange in either UI theme. */
+#statusbar .status-left>#back,#statusbar .status-left>#audience,#statusbar .status-left>#mic{pointer-events:auto;flex-shrink:0;min-height:32px;padding:6px 10px;border:1px solid #ffab45;border-radius:8px;color:#3b2108;font:800 11px 'Malgun Gothic',sans-serif;white-space:nowrap;box-shadow:0 1px 4px #0003}
+#statusbar .status-left>#back{background:#ffe0ad}
+#statusbar .status-left>#audience{background:#ffc16a}
+#statusbar .status-left>#mic{background:#ff9f43}
+#statusbar .status-left>#mic.on{background:#ffd08a;border-color:#ff7300;box-shadow:0 0 0 2px #ff9b3d66,inset 0 0 0 1px #ff7300;color:#3b2108}
+html[data-ui="light"] #statusbar .status-left>button{filter:invert(1) hue-rotate(180deg)}
+html[data-ui="light"] #statusbar .status-left>button:hover{filter:invert(1) hue-rotate(180deg) brightness(1.08)}
