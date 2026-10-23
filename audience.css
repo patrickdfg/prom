@@ -28,3 +28,6 @@
 @media(max-width:650px){.scroll-zoom{left:8px;right:8px;max-width:none}.scroll-zoom label{font-size:12px}}
 
 #display .ln{line-height:var(--manual-line-height,1.2)}
+
+/* 한 장 보기에는 왼쪽 읽기 위치 세로선을 표시하지 않는다. */
+#display .ln.current{border-left:0}
