@@ -28,7 +28,11 @@
     if(d.extra?.continuous&&d.extra.manualScrollPage&&Array.isArray(d.document))d={...d,readingAnchor:0,cursor:d.ranges?.[d.page]?.find(r=>r[1]>r[0])?.[0]??d.cursor,document:d.document.map((pg,pi)=>pi===d.page?pg:[])};
     current=d;lastSeen=Date.now();
     document.body.classList.add('connected');
-    const extra=d.extra||{};zoomTools.hidden=!extra.continuous;zoomLabels();
+    const extra=d.extra||{};
+    const pageNumber=document.getElementById('manuscriptPageNumber');
+    pageNumber.hidden=!!extra.continuous||!Number.isInteger(d.pageNumber)||d.pageNumber<1||d.pageNumber>999;
+    pageNumber.textContent=pageNumber.hidden?'':String(d.pageNumber);
+    zoomTools.hidden=!extra.continuous;zoomLabels();
     document.getElementById('paper').style.transform=`scale(${extra.mirrorX?-1:1},${extra.mirrorY?-1:1})`;
     const notice=document.getElementById('stageNotice');notice.textContent=typeof extra.message==='string'?extra.message.slice(0,140):'';notice.hidden=!notice.textContent;
     display.classList.toggle('scroll-host',!!extra.continuous);

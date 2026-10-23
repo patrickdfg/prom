@@ -1,6 +1,6 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');const s=fs.readFileSync('workspace.js','utf8'),html=fs.readFileSync('index.html','utf8');
 const document=[[[{t:'첫째 줄',c:'k'}],[{t:'둘째 줄',c:'b'}]],[[{t:'다음 쪽',c:'k'}]]],ranges=[[[0,5],[5,10]],[[10,15]]];
-const before=JSON.stringify(document),c={window:{PromExtras:{settings:()=>({mirrorX:true,message:'안내'})}},listening:false,P:document,lineRange:ranges,page:0,LINES:2,cursor:5,PromScrollView:{getAnchor:()=>.2},nextCueLine:()=>null,$:id=>({checked:true,value:id==='theme'?'dark':'#ffff00'}),background:'unchanged',BG_DEFAULT:'default'};
+const before=JSON.stringify(document),c={window:{PromExtras:{settings:()=>({mirrorX:true,message:'안내'})}},listening:false,manualPageNumber:()=>2,P:document,lineRange:ranges,page:0,LINES:2,cursor:5,PromScrollView:{getAnchor:()=>.2},nextCueLine:()=>null,$:id=>({checked:true,value:id==='theme'?'dark':'#ffff00'}),background:'unchanged',BG_DEFAULT:'default'};
 vm.createContext(c);vm.runInContext(s.slice(s.indexOf('  function payload()'),s.indexOf('  function publish(',s.indexOf('  function payload()'))),c);
 const manual=c.payload();assert.equal(manual.extra.continuous,false);assert(!('document'in manual));assert.equal(manual.pages,document[0]);
 c.listening=true;const voice=c.payload();assert.equal(voice.extra.continuous,true);assert.equal(voice.document,document);assert.equal(voice.ranges,ranges);assert.equal(voice.cursor,5);assert.equal(voice.extra.mirrorX,true);assert.equal(voice.extra.message,'안내');

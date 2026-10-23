@@ -82,7 +82,7 @@
   const pageNumLayer=document.createElement('div');pageNumLayer.id='pageNumLayer';pageNumLayer.setAttribute('aria-hidden','true');$('view').append(pageNumLayer);
   let showPageNum=true;try{showPageNum=localStorage.getItem('promShowPageNum')!=='0'}catch(_){}
   $('pageNumOpt').checked=showPageNum;
-  $('pageNumOpt').onchange=()=>{showPageNum=$('pageNumOpt').checked;try{localStorage.setItem('promShowPageNum',showPageNum?'1':'0')}catch(_){}updatePageNums();};
+  $('pageNumOpt').onchange=()=>{showPageNum=$('pageNumOpt').checked;try{localStorage.setItem('promShowPageNum',showPageNum?'1':'0')}catch(_){}updatePageNums();publish(true);};
   const PN_TOP=58,PN_H=78;   // 고정 위치(위 툴바 아래)와 번호 한 칸 높이
   // 글 속 원고 쪽 번호 찾기: 빨간색 숫자만 있는 덩어리가 2, 3, 4…처럼 이어질 때만 쪽 번호로 본다(그냥 빨간 숫자는 거른다)
   function manuscriptMarks(){
@@ -93,6 +93,12 @@
       if(out.length?(n>last&&n-last<=3):(n>=2&&n<=40)){out.push({n,pi,li});last=n;}
     }
     return out;
+  }
+  function manualPageNumber(){
+    if(!showPageNum||MOBILE)return null;
+    const marks=manuscriptMarks();if(!marks.length)return null;
+    let number=Math.max(1,marks[0].n-1);for(const mark of marks)if(mark.pi<page)number=mark.n;else break;
+    return number;
   }
   function pnLabel(i){let el=pageNumLayer.children[i];if(!el){el=document.createElement('div');el.className='pn';pageNumLayer.append(el);}return el;}
   function pnShow(list){const n=Math.max(list.length,pageNumLayer.children.length);for(let i=0;i<n;i++){const el=pnLabel(i);if(list[i]){el.hidden=false;if(el.textContent!==String(list[i][0]))el.textContent=String(list[i][0]);el.style.top=Math.round(list[i][1])+'px';}else el.hidden=true;}}
@@ -298,7 +304,7 @@
   $('theme').addEventListener('change',()=>{syncTheme();publish();saveNow();});syncTheme();
   function payload() {
     const extra={...(window.PromExtras?.settings()||{}),continuous:!!listening};
-    return {type:'frame',extra,...(extra.continuous?{document:P,ranges:lineRange}:{}),nextCue:nextCueLine()?.text||'',pages:P[page],page,total:P.length,lines:LINES,cursor,readingAnchor:PromScrollView.getAnchor(),range:lineRange[page],dim:$('dim').checked,focus:$('focusColor').value,dark:$('theme').value==='dark',bg:$('theme').value==='dark'?null:background||BG_DEFAULT};
+    return {type:'frame',extra,pageNumber:listening?null:manualPageNumber(),...(extra.continuous?{document:P,ranges:lineRange}:{}),nextCue:nextCueLine()?.text||'',pages:P[page],page,total:P.length,lines:LINES,cursor,readingAnchor:PromScrollView.getAnchor(),range:lineRange[page],dim:$('dim').checked,focus:$('focusColor').value,dark:$('theme').value==='dark',bg:$('theme').value==='dark'?null:background||BG_DEFAULT};
   }
   function publish(force=false) {
     if(!channel && !audience)return; const data=payload(), json=JSON.stringify(data);
