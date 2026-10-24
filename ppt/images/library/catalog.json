@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "items": [
     {
       "id": "trinity-background-v1",
@@ -136,7 +136,62 @@
       "file": "v2/06_gold_ribbon.png",
       "width": 1861,
       "height": 259
+    },
+    {
+      "id": "vintage-beige-large-box-background-v3",
+      "kind": "background",
+      "label": "빈티지 베이지 · 큰 박스",
+      "file": "v3/vintage-beige-large-box.png",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "id": "watercolor-blue-leaves-background-v3",
+      "kind": "background",
+      "label": "수채화 파랑 잎사귀",
+      "file": "v3/watercolor-blue-leaves.png",
+      "width": 1672,
+      "height": 941
+    },
+    {
+      "id": "watercolor-beige-leaves-background-v3",
+      "kind": "background",
+      "label": "수채화 베이지 잎사귀",
+      "file": "v3/watercolor-beige-leaves.png",
+      "width": 1672,
+      "height": 941
+    },
+    {
+      "id": "watercolor-mint-leaves-background-v3",
+      "kind": "background",
+      "label": "수채화 민트 잎사귀",
+      "file": "v3/watercolor-mint-leaves.png",
+      "width": 1672,
+      "height": 941
+    },
+    {
+      "id": "watercolor-pink-leaves-background-v3",
+      "kind": "background",
+      "label": "수채화 분홍 잎사귀",
+      "file": "v3/watercolor-pink-leaves.png",
+      "width": 1672,
+      "height": 941
+    },
+    {
+      "id": "sunset-pink-large-box-background-v3",
+      "kind": "background",
+      "label": "노을빛 핑크 · 큰 박스",
+      "file": "v3/sunset-pink-large-box.png",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "id": "blue-purple-large-box-background-v3",
+      "kind": "background",
+      "label": "블루퍼플 · 큰 박스",
+      "file": "v3/blue-purple-large-box.png",
+      "width": 1920,
+      "height": 1080
     }
   ]
 }
-

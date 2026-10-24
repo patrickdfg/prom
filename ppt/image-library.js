@@ -1,7 +1,7 @@
 /* Both editors read the same template artwork without changing stored templates. */
 (function(root){
 'use strict';
-const catalogUrl=typeof document==='object'?new URL('images/library/catalog.json',document.currentScript.src):null;
+const catalogUrl=typeof document==='object'?new URL('images/library/catalog.json?v=4',document.currentScript.src):null;
 let builtinItems=[],loading;
 function ready(){
  if(!catalogUrl)return Promise.resolve();
