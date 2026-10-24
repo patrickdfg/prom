@@ -180,12 +180,12 @@ window.PromPptxOriginal = (() => {
       let bg='',bgImage='';
       for(const [part,partRels] of [...layers].reverse()){
         if(!part)continue;
-        if(!bg)bg=slideBackground(part.documentElement);
-        if(!bgImage){
-          const bgNode=direct(direct(part.documentElement,P,'cSld'),P,'bg');
-          const bgBlip=by(bgNode,A,'blip');
-          bgImage=await image(partRels[bgBlip?.getAttributeNS(R,'embed')]||'');
-        }
+        const bgNode=direct(direct(part.documentElement,P,'cSld'),P,'bg');
+        if(!bgNode)continue;
+        bg=slideBackground(part.documentElement);
+        const bgBlip=by(bgNode,A,'blip');
+        bgImage=await image(partRels[bgBlip?.getAttributeNS(R,'embed')]||'');
+        break; // A slide background takes precedence over its layout/master.
       }
       const lines=[];
       const textObjects=objects.filter(x=>x.kind==='shape'&&x.paragraphs.some(par=>par.rowIndex!==-1))
