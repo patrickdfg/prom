@@ -4,8 +4,19 @@
   const scrollRenderer=new PromScrollView(display);
   const channel=new BroadcastChannel('prom-display-'+id); let current=null,lastSeen=Date.now();
   let manualScale=100,manualSpacing=100;
+  const originalSceneCache=new Map();let displayedOriginalKey='',displayedTextKey='';
   function fit(){
     if(!current)return;
+    if(current.originalKey){
+      const ratio=current.originalAspect||16/9;
+      let width=innerWidth,height=width/ratio;
+      if(height>innerHeight){height=innerHeight;width=height*ratio;}
+      display.style.width=width+'px';display.style.height=height+'px';
+      display.style.transform='scale('+(manualScale/100)+')';
+      display.style.position='relative';display.style.overflow='hidden';
+      return;
+    }
+    display.style.transform='';display.style.position='';display.style.overflow='';
     if(current.extra?.continuous){scrollRenderer.position='';scrollRenderer.layout='';scrollRenderer.update(current);return;}
     const rows=Math.max(1,current.lines,current.pages.length);
     const metrics=PromSlideLayout.measure(innerWidth,innerHeight,rows);
@@ -65,17 +76,46 @@
     document.body.classList.add('connected');
     const extra=d.extra||{};
     const pageNumber=document.getElementById('manuscriptPageNumber');
-    pageNumber.hidden=!Number.isInteger(d.pageNumber)||d.pageNumber<1||d.pageNumber>999;
-    pageNumber.textContent=pageNumber.hidden?'':String(d.pageNumber);
+    const shownPage=d.originalKey?d.page+1:d.pageNumber;
+    pageNumber.hidden=!Number.isInteger(shownPage)||shownPage<1||shownPage>999;
+    pageNumber.textContent=pageNumber.hidden?'':String(shownPage);
     zoomLabels();
     document.getElementById('paper').style.transform=`scale(${extra.mirrorX?-1:1},${extra.mirrorY?-1:1})`;
     const notice=document.getElementById('stageNotice');notice.textContent=typeof extra.message==='string'?extra.message.slice(0,140):'';notice.hidden=!notice.textContent;
     display.classList.toggle('scroll-host',!!extra.continuous);
-    if(!extra.continuous){display.replaceChildren();scrollRenderer.key='';}else {display.style.fontSize='';display.style.width=display.style.height='';}
+    if(!extra.continuous){if(!d.originalKey)display.replaceChildren();scrollRenderer.key='';}else {display.style.fontSize='';display.style.width=display.style.height='';}
     document.body.style.setProperty('--focus',d.dark?(d.focus==='#b6f36a'?'#b6f36a':'#ffff00'):'#0000ff');
     document.getElementById('paper').style.backgroundColor=d.dark?'#000':'#fff';display.style.color=d.dark?'#fff':'#000';
     document.getElementById('paper').style.backgroundImage=!d.dark && typeof d.bg==='string' && /^(data:image\/|blob:)/.test(d.bg)?`url("${d.bg.replace(/["\\\n\r]/g,'')}")`:'';
     if(extra.continuous&&Array.isArray(d.document)){scrollRenderer.update(d);document.title=`${d.page+1} / ${d.total} · 슬라이드쇼`;return;}
+    if(d.originalKey){
+      if(d.originalSlide){
+        originalSceneCache.set(d.originalKey,d.originalSlide);
+        if(originalSceneCache.size>20)originalSceneCache.delete(originalSceneCache.keys().next().value);
+      }
+      const scene=originalSceneCache.get(d.originalKey);
+      if(!scene){
+        display.textContent='PPT 원본 슬라이드를 받는 중입니다…';
+        channel.postMessage({type:'ready'});
+        return;
+      }
+      const textKey=JSON.stringify(d.pages);
+      if(displayedOriginalKey!==d.originalKey||displayedTextKey!==textKey){
+        display.replaceChildren();
+        const layer=document.createElement('div');
+        display.appendChild(layer);
+        window.PromPptxOriginal.renderSlide(layer,scene,d.pages,d.range,d.cursor,d.dim);
+        displayedOriginalKey=d.originalKey;displayedTextKey=textKey;
+      }else{
+        display.querySelectorAll('[data-ppt-row]').forEach(row=>{
+          const range=d.range?.[Number(row.dataset.pptRow)];
+          row.classList.toggle('read',!!d.dim&&!!range&&range[1]>range[0]&&d.cursor>=range[1]);
+        });
+      }
+      document.title=`${d.page+1} / ${d.total} · 슬라이드쇼`;
+      fit();return;
+    }
+    displayedOriginalKey='';displayedTextKey='';
     for(let i=0;i<Math.max(d.lines,d.pages.length);i++){
       const row=document.createElement('div'),wrap=document.createElement('span'),r=d.range?.[i];row.className='ln';
       if(r && r[1]>r[0]){if(d.dim && d.cursor>=r[1])row.classList.add('read');/* 한 장 송출 화면에서는 현재 줄 세로바를 표시하지 않는다. */}

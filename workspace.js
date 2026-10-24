@@ -9,7 +9,7 @@
   const STORAGE = 'promWorkspaceV1';
   let inputTab = 'file', restoring = false, saveTimer, cached = null, background = null;
   let notes = {}, noteEditing = false, noteAnchor = null, bodyNoteAnchor = null;
-  let audience = null, channel = null, channelId = null, lastSent = '';
+  let audience = null, channel = null, channelId = null, lastSent = '', lastPptxSceneKey = '';
   const textOf = pg => (pg || []).map(l => l.filter(r => r.c !== 'r' && r.c !== 'n').map(r => r.t).join('')).join('\n').trim();
   // 본문을 키로 삼아 편집·쪽 재배치 후 다른 쪽에 메모가 붙는 것을 막는다.
   const noteKey = pg => textOf(pg);
@@ -26,7 +26,7 @@
   $('paste').addEventListener('input', () => { if(inputTab === 'paste') $('start').disabled = !$('paste').value.trim(); });
   $('paste').addEventListener('paste', () => queueMicrotask(() => { if(inputTab === 'paste') $('start').disabled = !$('paste').value.trim(); }));
   $('start').onclick = () => {
-    if(inputTab === 'file') { if(pending) startWith(pending.pages,pending.bg); }
+    if(inputTab === 'file') { if(pending) startWith(pending.pages,pending.bg,pending.original); }
     else { baseName = '붙여 넣은 원고'; $('usePaste').click(); }
   };
   $('layoutMode').onchange = () => {
@@ -309,11 +309,19 @@
   for(const value of ['dark','cloud','white'])$('theme-'+value).onclick=()=>{$('theme').value=value;$('theme').dispatchEvent(new Event('change'));};
   $('theme').addEventListener('change',()=>{syncTheme();publish();saveNow();});syncTheme();
   function payload() {
-    const extra={...(window.PromExtras?.settings()||{}),continuous:!!listening};
-    return {type:'frame',extra,pageNumber:manualPageNumber(),...(extra.continuous?{document:P,ranges:lineRange}:{}),nextCue:nextCueLine()?.text||'',pages:P[page],page,total:P.length,lines:LINES,cursor,readingAnchor:PromScrollView.getAnchor(),range:lineRange[page],dim:$('dim').checked,focus:$('focusColor').value,dark:$('theme').value==='dark',bg:$('theme').value==='dark'?null:background||BG_DEFAULT};
+    const original=window.PromPptxOriginal?.isActive();
+    const extra={...(window.PromExtras?.settings()||{}),continuous:!!listening&&!original};
+    const originalKey=original?window.PromPptxOriginal.key(page):null;
+    return {type:'frame',extra,originalKey,originalAspect:original?window.PromPptxOriginal.aspect():null,originalSlide:original?window.PromPptxOriginal.slide(page):null,pageNumber:manualPageNumber(),...(extra.continuous?{document:P,ranges:lineRange}:{}),nextCue:nextCueLine()?.text||'',pages:P[page],page,total:P.length,lines:LINES,cursor,readingAnchor:PromScrollView.getAnchor(),range:lineRange[page],dim:$('dim').checked,focus:$('focusColor').value,dark:$('theme').value==='dark',bg:$('theme').value==='dark'?null:background||BG_DEFAULT};
   }
   function publish(force=false) {
-    if(!channel && !audience)return; const data=payload(), json=JSON.stringify(data);
+    if(!channel && !audience)return;
+    const data=payload();
+    if(data.originalKey){
+      if(!force&&data.originalKey===lastPptxSceneKey)delete data.originalSlide;
+      else lastPptxSceneKey=data.originalKey;
+    }else lastPptxSceneKey='';
+    const json=JSON.stringify(data);
     if(force || json!==lastSent) { channel?.postMessage(data); if(audience && !audience.closed)audience.postMessage(data,location.origin); lastSent=json; }
   }
   function navigateAudience(action){
@@ -429,7 +437,8 @@
       applyMetadata();noteEditing=false;noteAnchor=null;noteBox=null;activeNote=null;$('note').textContent='발표 메모';syncTheme();
       menu.hidden=true; $('more').setAttribute('aria-expanded','false');
       dirty=false; render(); scheduleSave();
-      if(!MOBILE&&!localScroll)$('viewScroll').click();   // 새로 만들 때는 스크롤 보기가 기본(저장본 복원은 그대로)
+      if(window.PromPptxOriginal?.isActive())$('viewSingle').click();
+      else if(!MOBILE&&!localScroll)$('viewScroll').click();   // 원본 PPT에서는 쪽 단위 화면을 유지한다
     },
     render() {
       syncPresentationMode();
