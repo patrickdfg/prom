@@ -1246,7 +1246,7 @@ function endEdit(){
   if(!editing)return;
   commitEdit(); editing=false;
   $('lines').classList.remove('edit'); $('lines').contentEditable='false'; $('lines').blur();
-  $('edit').textContent='편집 (E)';
+  $('edit').textContent='연속 편집 (E)';
   index(); page=Math.min(page,P.length-1); cursor=pStart[page]||0; notifyUI('afterBodyEdit');render();
 }
 /* ---------- 원고 연속 편집 (쪽 경계 보존) ---------- */
@@ -1444,7 +1444,7 @@ ceDialog.addEventListener('keydown',e=>{
 ceDialog.addEventListener('cancel',e=>{e.preventDefault();ceCancel();});
 $('ceDone').onclick=ceApply;$('ceCancel').onclick=ceCancel;
 $('ceLegacy').onclick=()=>{ceCancel();beginEdit();};
-$('edit').onclick=ceOpen;
+$('edit').onclick=()=>editing?endEdit():ceOpen();
 
 $('lines').addEventListener('input',()=>{if(editing)dirty=true});
 /* ---------- 저장·열기 ---------- */
