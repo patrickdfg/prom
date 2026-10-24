@@ -198,7 +198,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <div class="control-group"><button id="prev" aria-label="이전 쪽">◀</button><span id="pg">1 / 1</span><button id="find">검색</button><button id="next" aria-label="다음 쪽">▶</button></div>
     <div class="control-group view-switch" role="group" aria-label="원고 보기"><button id="viewSingle" aria-pressed="true">한 장</button><button id="viewMultiple" aria-pressed="false">여러 장</button><button id="viewScroll" aria-pressed="false" title="현재 창에서 원고를 부드럽게 스크롤합니다">스크롤 보기</button></div>
     <div class="control-group"><label id="pageNumOptWrap" title="원고에 적힌 쪽 번호를 왼쪽 위에 크게 빨간색으로 띄웁니다(원고에 쪽 번호가 있을 때)"><input type="checkbox" id="pageNumOpt" checked>쪽</label><label id="speedOptWrap" title="마이크를 켰을 때 오른쪽 위에 말하는 속도(현수 목소리=100)를 띄웁니다"><input type="checkbox" id="speedOpt" checked>속도<span class="wide"> 표시</span></label><label id="dimOptWrap"><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label></div>
-    <div class="control-group"><button id="note">발표 메모</button><button id="edit">편집 (E)</button><button id="save">저장</button><button id="savePptx" title="쪽마다 슬라이드 한 장인 PPT(PPTX) 파일로 저장합니다">PPT 저장</button><button id="openf">열기</button></div>
+    <div class="control-group"><button id="note">발표 메모</button><button id="edit">연속 편집 (E)</button><button id="save">저장</button><button id="savePptx" title="쪽마다 슬라이드 한 장인 PPT(PPTX) 파일로 저장합니다">PPT 저장</button><button id="openf">열기</button></div>
     <label hidden id="labOptWrap" title="줄 간격을 좁히고 다음 장 첫 줄을 하단에 표시합니다"><input type="checkbox" id="labNextLine"> 실험실 · 다음 장 첫 줄</label>
     <button id="more" aria-expanded="false" aria-controls="moreTools">더보기</button>
     <span id="autosaveState" role="status">기기에 저장됨</span>
@@ -1249,7 +1249,178 @@ function endEdit(){
   $('edit').textContent='편집 (E)';
   index(); page=Math.min(page,P.length-1); cursor=pStart[page]||0; notifyUI('afterBodyEdit');render();
 }
-$('edit').onclick=()=>editing?endEdit():beginEdit();
+/* ---------- 원고 연속 편집 (쪽 경계 보존) ---------- */
+const ceDialog=document.createElement('dialog');
+ceDialog.id='continuousEditor';
+ceDialog.setAttribute('aria-label','원고 연속 편집');
+ceDialog.innerHTML='<div class="ce-head"><div><strong>원고 연속 편집</strong><span id="ceCount"></span></div><div class="ce-actions"><button type="button" id="ceLegacy">기존 1쪽 편집</button><button type="button" id="ceCancel">취소</button><button type="button" id="ceDone">편집 완료 · 적용</button></div></div><p class="ce-help">전체 쪽을 아래로 스크롤하며 수정하세요. 쪽 경계는 유지합니다. 내용이 한 장의 줄 수를 넘으면 다음 장으로 이어집니다. 경계의 ↑·↓ 버튼으로 한 줄씩 이동할 수 있습니다.</p><div id="cePages" class="ce-pages"></div><div id="ceState" role="status">편집 내용은 「편집 완료 · 적용」을 누를 때 원고와 음성인식에 반영됩니다.</div>';
+document.body.appendChild(ceDialog);
+const ceStyle=document.createElement('style');
+ceStyle.textContent=[
+'#continuousEditor{width:min(1050px,calc(100vw - 24px));max-width:none;max-height:94dvh;padding:0;border:1px solid #526b8a;border-radius:15px;background:#101a29;color:#f4f7fc;box-shadow:0 20px 80px #000b}',
+'#continuousEditor::backdrop{background:#050911c9}',
+'#continuousEditor .ce-head{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;background:#1e3049;border-bottom:1px solid #526b8a}',
+'#continuousEditor .ce-head>div{display:flex;align-items:center;gap:12px;flex-wrap:wrap}',
+'#continuousEditor .ce-head strong{font-size:21px}',
+'#continuousEditor button{position:static;cursor:pointer;border:1px solid #6d83a3;border-radius:8px;background:#2b4666;color:white;padding:9px 14px;font:inherit}',
+'#continuousEditor #ceDone{background:#f08b24;border-color:#f08b24;color:#161a21;font-weight:800}',
+'#continuousEditor .ce-help{margin:14px 22px;color:#d1deee;font-size:14px;line-height:1.7}',
+'#continuousEditor .ce-pages{padding:0 22px 24px}',
+'#continuousEditor .ce-card{border:2px solid #415a7c;border-radius:12px;background:#070d17;padding:15px 18px 18px;min-height:150px}',
+'#continuousEditor .ce-card-head{display:flex;justify-content:space-between;color:#b6cde9;font-weight:700;margin-bottom:10px}',
+'#continuousEditor .ce-lines{min-height:3em;outline:0;font:700 clamp(19px,2.2vw,27px)/1.75 PFont,"Malgun Gothic",sans-serif;color:white;white-space:pre-wrap;overflow-wrap:anywhere;caret-color:#ffeb68}',
+'#continuousEditor .ce-lines:focus{outline:2px dashed #8fbfff;outline-offset:5px;border-radius:3px}',
+'#continuousEditor .ce-lines>.ln{display:block;min-height:1.75em;white-space:pre-wrap}',
+'#continuousEditor .ce-lines .b{color:#f8e736}#continuousEditor .ce-lines .r{color:#fa6666}#continuousEditor .ce-lines .n{color:#87c7ff}',
+'#continuousEditor .ce-break{display:flex;justify-content:center;align-items:center;gap:12px;padding:13px 0;color:#a8bdd9;font-size:13px}',
+'#continuousEditor .ce-break:before,#continuousEditor .ce-break:after{content:"";flex:1;height:2px;background:#486789}',
+'#continuousEditor .ce-break button{padding:6px 9px;font-size:12px;white-space:nowrap}',
+'#continuousEditor .ce-break button:disabled{opacity:.35;cursor:not-allowed}',
+'#continuousEditor #ceState{position:sticky;bottom:0;z-index:3;padding:10px 20px;background:#1e3049;color:#b9d8ff;font-size:13px}',
+'@media(max-width:620px){#continuousEditor .ce-head{align-items:stretch;flex-direction:column}#continuousEditor .ce-pages{padding:0 10px 20px}#continuousEditor .ce-break{gap:4px;flex-wrap:wrap}#continuousEditor .ce-break button{font-size:11px}}'
+].join('\n');
+document.head.appendChild(ceStyle);
+const cePages=$('cePages'),ceState=$('ceState');
+let ceCards=[],ceChanged=false,ceComposing=false,cePriorDirty=false;
+function ceLine(runs){
+  const row=document.createElement('div');row.className='ln';
+  if(runs?.some(r=>r.paragraphStart))row.dataset.paragraphStart='1';
+  for(const run of runs||[]){
+    if(run.c==='k'){row.appendChild(document.createTextNode(run.t));continue;}
+    const span=document.createElement('span');span.className=['b','r','n'].includes(run.c)?run.c:'';
+    span.textContent=run.t;row.appendChild(span);
+  }
+  return row;
+}
+function ceAddCard(runs=[]){
+  const pi=ceCards.length;
+  if(pi){
+    const separator=document.createElement('div');separator.className='ce-break';separator.dataset.boundary=String(pi);
+    separator.innerHTML='<span>쪽 경계</span><button type="button" data-move="down" title="앞 장 마지막 줄을 다음 장으로">↓ 다음 장</button><button type="button" data-move="up" title="다음 장 첫 줄을 앞 장으로">↑ 앞 장</button>';
+    cePages.appendChild(separator);
+  }
+  const card=document.createElement('section');card.className='ce-card';
+  card.innerHTML='<div class="ce-card-head"><span class="ce-label"></span><span class="ce-amount"></span></div><div class="ce-lines" contenteditable="true" spellcheck="false" role="textbox" aria-multiline="true"></div>';
+  const body=card.querySelector('.ce-lines');
+  for(const line of runs)body.appendChild(ceLine(line));
+  if(!body.children.length)body.appendChild(ceLine([]));
+  cePages.appendChild(card);ceCards.push({card,body,dirty:false,original:runs});
+  return ceCards[pi];
+}
+function ceReadRuns(row){
+  const runs=[];
+  function walk(node,color){
+    if(node.nodeType===3){
+      const t=(node.nodeValue||'').replace(/\u00a0/g,' ').replace(/[\r\n]/g,'');
+      if(t){const last=runs[runs.length-1];if(last&&last.c===color)last.t+=t;else runs.push({t,c:color});}
+    }else if(node.nodeType===1&&node.tagName!=='BR'){
+      const cls=node.classList;
+      const c=cls?.contains('b')?'b':cls?.contains('r')?'r':cls?.contains('n')?'n':color;
+      node.childNodes.forEach(child=>walk(child,c));
+    }
+  }
+  row.childNodes.forEach(node=>walk(node,'k'));
+  if(row.dataset.paragraphStart==='1'&&runs.length)runs[0].paragraphStart=true;
+  return runs;
+}
+function ceNormalize(card){
+  const body=card.body;
+  for(const node of [...body.childNodes]){
+    if(node.nodeType===3){const row=document.createElement('div');row.className='ln';row.textContent=node.nodeValue;body.replaceChild(row,node);}
+    else if(node.nodeType===1&&node.tagName==='BR'){const row=ceLine([]);body.replaceChild(row,node);}
+    else if(node.nodeType===1)node.classList.add('ln');
+  }
+}
+function ceReadPage(card){
+  ceNormalize(card);
+  const rows=[...card.body.children].filter(el=>el.tagName!=='BR');
+  return rows.map(ceReadRuns);
+}
+function ceMark(card){card.dirty=true;ceChanged=true;dirty=true;}
+function ceRefresh(){
+  ceCards.forEach((entry,i)=>{
+    entry.card.querySelector('.ce-label').textContent=(i+1)+'쪽';
+    entry.card.querySelector('.ce-amount').textContent=entry.body.children.length+' / '+LINES+'줄';
+    entry.body.setAttribute('aria-label',(i+1)+'쪽 원고');
+  });
+  $('ceCount').textContent=ceCards.length+'쪽 · 장당 '+LINES+'줄';
+  cePages.querySelectorAll('.ce-break').forEach(sep=>{
+    const i=+sep.dataset.boundary,prev=ceCards[i-1],next=ceCards[i];
+    sep.querySelector('[data-move="down"]').disabled=!prev||!next||!ceReadPage(prev).some(line=>line.some(run=>run.t.trim()));
+    sep.querySelector('[data-move="up"]').disabled=!prev||!next||prev.body.children.length>=LINES||!ceReadPage(next).some(line=>line.some(run=>run.t.trim()));
+  });
+}
+function ceFlow(){
+  for(let i=0;i<ceCards.length;i++){
+    const entry=ceCards[i];ceNormalize(entry);
+    while(entry.body.children.length>LINES){
+      const next=ceCards[i+1]||ceAddCard();
+      if(next.body.children.length===1&&!ceReadRuns(next.body.firstElementChild).length)next.body.firstElementChild.remove();
+      next.body.insertBefore(entry.body.lastElementChild,next.body.firstChild);
+      ceMark(entry);ceMark(next);
+    }
+  }
+  ceRefresh();
+}
+function ceOpen(){
+  if(!P.length)return;
+  if(listening)stopMic();
+  if(editing)endEdit();
+  notifyUI('beforeBodyEdit');
+  cePages.replaceChildren();ceCards=[];ceChanged=false;cePriorDirty=dirty;
+  P.forEach(pageRuns=>ceAddCard(pageRuns));
+  ceRefresh();ceState.textContent='편집 완료 전까지 실제 슬라이드쇼·음성인식 원고는 변경되지 않습니다.';
+  ceDialog.showModal();
+  (ceCards[page]||ceCards[0])?.card.scrollIntoView({block:'center'});
+  (ceCards[page]||ceCards[0])?.body.focus({preventScroll:true});
+}
+function ceApply(){
+  if(!ceDialog.open)return;
+  if(ceComposing){ceState.textContent='한글 입력이 끝난 뒤 완료해 주세요.';return;}
+  ceFlow();
+  const pages=ceCards.map(entry=>entry.dirty?ceReadPage(entry):entry.original.map(line=>line.map(run=>({...run}))));
+  if(pages.some(lines=>lines.length>LINES)){ceState.textContent='쪽당 줄 수가 초과했습니다. 다시 확인해 주세요.';return;}
+  while(pages.length>1&&!pages[pages.length-1].some(line=>line.some(run=>run.t.trim())))pages.pop();
+  if(!pages.some(lines=>lines.some(run=>run.some(r=>r.t.trim())))){ceState.textContent='본문 전체를 비울 수 없습니다.';return;}
+  if(ceChanged){
+    P=pages;page=Math.min(page,P.length-1);index();cursor=pStart[page]||0;
+    pend=null;heardCarry='';sessionText='';lastTail='';window.PromExtras?.resetVoice?.();
+    dirty=true;notifyUI('afterBodyEdit');render();
+  }
+  ceDialog.close();toast(ceChanged?'전체 원고 편집을 적용했습니다. 음성 추적 위치를 다시 계산했습니다.':'변경 없이 편집을 종료했습니다.',4500);
+}
+function ceCancel(){dirty=cePriorDirty;ceDialog.close();notifyUI('afterBodyEdit');toast('연속 편집을 취소했습니다. 원고는 그대로입니다.',3500);}
+cePages.addEventListener('input',e=>{
+  const card=ceCards.find(c=>c.body===e.target||c.body.contains(e.target));if(!card)return;
+  ceMark(card);ceState.textContent='수정 중 · 「편집 완료 · 적용」을 누르면 저장됩니다.';
+  if(!ceComposing)ceFlow();
+});
+cePages.addEventListener('compositionstart',()=>{ceComposing=true;});
+cePages.addEventListener('compositionend',()=>{ceComposing=false;ceFlow();});
+cePages.addEventListener('click',e=>{
+  const button=e.target.closest('button[data-move]');if(!button)return;
+  const sep=button.closest('.ce-break'),i=+sep.dataset.boundary,prev=ceCards[i-1],next=ceCards[i];
+  if(!prev||!next)return;
+  if(button.dataset.move==='down'){
+    const row=prev.body.lastElementChild;if(!row)return;
+    if(next.body.children.length===1&&!ceReadRuns(next.body.firstElementChild).length)next.body.firstElementChild.remove();
+    next.body.insertBefore(row,next.body.firstElementChild);
+  }else{
+    if(prev.body.children.length>=LINES){ceState.textContent='앞 장이 가득 찼습니다. 먼저 다음 장으로 줄을 보내세요.';return;}
+    const row=next.body.firstElementChild;if(!row)return;prev.body.appendChild(row);
+  }
+  ceMark(prev);ceMark(next);ceFlow();ceState.textContent='쪽 사이의 줄 위치를 조정했습니다.';
+});
+ceDialog.addEventListener('keydown',e=>{
+  e.stopPropagation();
+  if(e.key==='Escape'){e.preventDefault();ceApply();}
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();ceApply();}
+});
+ceDialog.addEventListener('cancel',e=>{e.preventDefault();ceApply();});
+$('ceDone').onclick=ceApply;$('ceCancel').onclick=ceCancel;
+$('ceLegacy').onclick=()=>{ceCancel();beginEdit();};
+$('edit').onclick=ceOpen;
+
 $('lines').addEventListener('input',()=>{if(editing)dirty=true});
 /* ---------- 저장·열기 ---------- */
 // 저장 파일(.json)은 쪽·줄·빈 줄·>>·색 종류(k 일반, b 강조, r 쪽번호, n 번호)를 그대로 담는다. 열면 다시 변환하지 않고 그대로 보여 준다
@@ -2110,7 +2281,7 @@ addEventListener('keydown',e=>{
   else if(k==='Home')go(0,true);
   else if(k==='m'||k==='M'||k==='ㅡ')$('mic').click();
   else if(k==='f'||k==='F'||k==='ㄹ')$('fs').click();
-  else if(k==='e'||k==='E'||k==='ㄷ'){e.preventDefault();beginEdit()}
+  else if(k==='e'||k==='E'||k==='ㄷ'){e.preventDefault();ceOpen()}
   else if(k==='d'||k==='D'||k==='ㅇ'){      // 진단: 이 쪽에 있는 한글·영문·숫자 밖의 글자 코드를 보여 준다
     const set={}; for(const ln of P[page]||[])for(const r of ln)for(const ch of r.t){const c=ch.codePointAt(0); if(!(c>=0xAC00&&c<=0xD7A3)&&!(c>=0x20&&c<=0x7E))set[c]=ch}
     toast('이 쪽 특수 글자 '+(Object.keys(set).map(c=>set[c]+' U+'+(+c).toString(16).toUpperCase()).join(', ')||'없음'),8000);
