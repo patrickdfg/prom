@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "items": [
     {
       "id": "trinity-background-v1",
@@ -88,6 +88,55 @@
       "file": "v1/banner-blue-wave.png",
       "width": 2172,
       "height": 724
+    },
+    {
+      "id": "banner-green-leaves-two-lines-v2",
+      "kind": "artwork",
+      "label": "초록 잎사귀 배너 · 2줄",
+      "file": "v2/01_green_leaves.png",
+      "width": 1876,
+      "height": 261
+    },
+    {
+      "id": "banner-blue-waves-two-lines-v2",
+      "kind": "artwork",
+      "label": "파랑 물결 배너 · 2줄",
+      "file": "v2/02_blue_waves.png",
+      "width": 1824,
+      "height": 254
+    },
+    {
+      "id": "banner-peach-flowers-two-lines-v2",
+      "kind": "artwork",
+      "label": "분홍 꽃 배너 · 2줄",
+      "file": "v2/03_peach_flowers.png",
+      "width": 1758,
+      "height": 245
+    },
+    {
+      "id": "banner-blue-geometric-two-lines-v2",
+      "kind": "artwork",
+      "label": "파랑 기하학 배너 · 높은형",
+      "file": "v2/04_blue_geometric.png",
+      "width": 1325,
+      "height": 217
+    },
+    {
+      "id": "banner-purple-leaves-two-lines-v2",
+      "kind": "artwork",
+      "label": "보라 잎사귀 배너 · 2줄",
+      "file": "v2/05_purple_leaves.png",
+      "width": 1832,
+      "height": 255
+    },
+    {
+      "id": "banner-gold-ribbon-two-lines-v2",
+      "kind": "artwork",
+      "label": "골드 리본 배너 · 2줄",
+      "file": "v2/06_gold_ribbon.png",
+      "width": 1861,
+      "height": 259
     }
   ]
 }
+
