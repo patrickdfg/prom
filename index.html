@@ -1352,11 +1352,18 @@ function ceRefresh(){
 }
 function ceHasText(row){return !!row&&ceReadRuns(row).some(run=>run.t.trim());}
 function ceMakeRoom(card){
-  // A trailing empty display row is available capacity, not a reason to create another page.
+  // Use only exterior empty spacer rows to make room; preserve interior paragraph gaps.
   while(card.body.children.length>=LINES&&card.body.lastElementChild&&!ceHasText(card.body.lastElementChild))
     card.body.lastElementChild.remove();
+  while(card.body.children.length>=LINES&&card.body.firstElementChild&&!ceHasText(card.body.firstElementChild))
+    card.body.firstElementChild.remove();
 }
 function ceFlow(){
+  // Preserve the caret when Enter moves the newly created row to the next page.
+  const sel=window.getSelection(),node=sel?.anchorNode;
+  const element=node?.nodeType===1?node:node?.parentElement;
+  const activeRow=element?.closest?.('.ce-lines>.ln');
+  const caret=activeRow&&cePages.contains(activeRow)?{row:activeRow,node,offset:sel.anchorOffset}:null;
   for(let i=0;i<ceCards.length;i++){
     const entry=ceCards[i];ceNormalize(entry);
     while(entry.body.children.length>LINES){
@@ -1364,6 +1371,15 @@ function ceFlow(){
       if(next.body.children.length===1&&!ceHasText(next.body.firstElementChild))next.body.firstElementChild.remove();
       next.body.insertBefore(entry.body.lastElementChild,next.body.firstChild);
       ceMark(entry);ceMark(next);
+    }
+  }
+  if(caret?.row.isConnected&&caret.node?.isConnected){
+    const target=caret.row.closest('.ce-lines');
+    if(target){
+      if(document.activeElement!==target)target.focus({preventScroll:true});
+      const limit=caret.node.nodeType===3?caret.node.textContent.length:caret.node.childNodes.length;
+      const range=document.createRange();range.setStart(caret.node,Math.min(caret.offset,limit));range.collapse(true);
+      sel.removeAllRanges();sel.addRange(range);
     }
   }
   ceRefresh();
@@ -1422,10 +1438,10 @@ cePages.addEventListener('click',e=>{
 });
 ceDialog.addEventListener('keydown',e=>{
   e.stopPropagation();
-  if(e.key==='Escape'){e.preventDefault();ceApply();}
+  if(e.key==='Escape'){e.preventDefault();ceCancel();}
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();ceApply();}
 });
-ceDialog.addEventListener('cancel',e=>{e.preventDefault();ceApply();});
+ceDialog.addEventListener('cancel',e=>{e.preventDefault();ceCancel();});
 $('ceDone').onclick=ceApply;$('ceCancel').onclick=ceCancel;
 $('ceLegacy').onclick=()=>{ceCancel();beginEdit();};
 $('edit').onclick=ceOpen;
