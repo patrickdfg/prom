@@ -198,7 +198,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <div class="control-group"><button id="prev" aria-label="이전 쪽">◀</button><span id="pg">1 / 1</span><button id="find">검색</button><button id="next" aria-label="다음 쪽">▶</button></div>
     <div class="control-group view-switch" role="group" aria-label="원고 보기"><button id="viewSingle" aria-pressed="true">한 장</button><button id="viewMultiple" aria-pressed="false">여러 장</button><button id="viewScroll" aria-pressed="false" title="현재 창에서 원고를 부드럽게 스크롤합니다">스크롤 보기</button></div>
     <div class="control-group"><label id="pageNumOptWrap" title="원고에 적힌 쪽 번호를 왼쪽 위에 크게 빨간색으로 띄웁니다(원고에 쪽 번호가 있을 때)"><input type="checkbox" id="pageNumOpt" checked>쪽</label><label id="speedOptWrap" title="마이크를 켰을 때 오른쪽 위에 말하는 속도(현수 목소리=100)를 띄웁니다"><input type="checkbox" id="speedOpt" checked>속도<span class="wide"> 표시</span></label><label id="dimOptWrap"><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label></div>
-    <div class="control-group"><button id="note">발표 메모</button><button id="edit">연속 편집 (E)</button><button id="save">저장</button><button id="savePptx" title="쪽마다 슬라이드 한 장인 PPT(PPTX) 파일로 저장합니다">PPT 저장</button><button id="openf">열기</button></div>
+    <div class="control-group"><button id="note">발표 메모</button><button id="edit">연속 편집 (E)</button><button id="save">저장</button><button id="savePptx" title="쪽마다 슬라이드 한 장인 PPT(PPTX) 파일로 저장합니다">PPT 저장</button><button id="saveHwpx" title="원고의 줄과 쪽 구분을 유지하여 편집 가능한 한글(HWPX) 파일로 저장합니다">한글 저장</button><button id="saveDrive" type="button" title="현재 원고를 구글 드라이브에 저장합니다 (로그인 후 표시)" hidden>드라이브 저장</button><button id="openf">열기</button></div>
     <label hidden id="labOptWrap" title="줄 간격을 좁히고 다음 장 첫 줄을 하단에 표시합니다"><input type="checkbox" id="labNextLine"> 실험실 · 다음 장 첫 줄</label>
     <button id="more" aria-expanded="false" aria-controls="moreTools">더보기</button>
     <span id="autosaveState" role="status">기기에 저장됨</span>
@@ -1515,11 +1515,14 @@ function snapshotPages(){
   }
   return q;
 }
-async function savePages(){
-  if(!P.length)return;
+function savedDocument(){
   const q=snapshotPages();
   const body='{"app":"sermon-prompter","v":1,"lines":'+LINES+(MOBILE?',"mobile":'+MFS:'')+',"pages":[\n'+q.map(p=>JSON.stringify(p)).join(',\n')+'\n],"meta":'+JSON.stringify(window.PromUI?.metadata()||{})+'}\n';
-  const name=baseName+'_프롬프터.json', blob=new Blob([body],{type:'application/json'});
+  return {pages:q,body,name:baseName+'_프롬프터.json'};
+}
+async function savePages(){
+  if(!P.length)return;
+  const {pages:q,body,name}=savedDocument(),blob=new Blob([body],{type:'application/json'});
   window.PromDrive?.save(name,body);      // 구글에 로그인했으면 드라이브에도 같은 이름으로 저장한다
   if(window.showSaveFilePicker){      // 크롬: 내 컴퓨터에서 저장할 폴더·이름을 고른다
     try{
@@ -1542,6 +1545,31 @@ function parseSaved(text){
   return {pages,lines,mobile:o.mobile||false,meta:o.meta||{}};
 }
 $('save').onclick=savePages;
+$('saveDrive').onclick=async()=>{
+  if(!P.length)return;
+  if(!window.PromDrive?.loggedIn()){toast('먼저 첫 화면에서 구글 로그인해 주세요.',5000);return;}
+  const {name,body}=savedDocument();
+  await window.PromDrive.save(name,body);
+};
+async function saveHwpx(){
+  if(!P.length)return;
+  try{
+    const pages=snapshotPages();
+    const blob=await PromHwpx.create(pages,{title:baseName});
+    const name=baseName+'_프롬프터.hwpx';
+    if(window.showSaveFilePicker){
+      try{
+        const h=await showSaveFilePicker({suggestedName:name,types:[{description:'한글 HWPX',accept:{'application/hwp+zip':['.hwpx']}}]});
+        const w=await h.createWritable();await w.write(blob);await w.close();
+        toast('한글 파일로 저장했습니다 · '+h.name+' · '+pages.length+'쪽',6000);return;
+      }catch(e){if(e&&e.name==='AbortError')return;}
+    }
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),10000);
+    toast('한글 파일로 저장했습니다 · '+name+' · '+pages.length+'쪽',6000);
+  }catch(e){toast('한글 저장에 실패했습니다: '+(e.message||e),6000);}
+}
+$('saveHwpx').onclick=saveHwpx;
 // 원고를 쪽마다 슬라이드 한 장인 PPTX로 저장한다 (지금 배경: 검정이면 검정 바탕·흰 글씨)
 async function currentPptBackgroundJpeg(){
   const raw=$('page').style.backgroundImage;
@@ -2427,7 +2455,7 @@ if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 <script src="overview.js?v=20261023-one-top-row"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
 <script src="extras.js?v=20261023-stage-hide1"></script>
-<script src="ppt/drive-config.js?v=20261020-sync1"></script><script src="google-session.js?v=20261021-session1"></script><script src="prompter-pptx.js?v=20261024-onebox1"></script><script src="drive-sync.js?v=20261021-session1"></script>
+<script src="ppt/drive-config.js?v=20261020-sync1"></script><script src="google-session.js?v=20261021-session1"></script><script src="prompter-pptx.js?v=20261024-onebox1"></script><script src="prompter-hwpx.js?v=20261024-hwpx1"></script><script src="drive-sync.js?v=20261024-drivebutton1"></script>
 
 <div data-prom-support class="prom-support-floating" aria-label="사용자 도움말"></div><script src="support.js?v=20261023-voice-start"></script></body>
 </html>
