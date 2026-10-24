@@ -2301,7 +2301,14 @@ async function loadFile(f){
     else if(/\.txt$/i.test(f.name)) r={pages:parseTxt(await f.text()),bg:null};
     else if(/\.docx$/i.test(f.name)) r=await parseDocx(await f.arrayBuffer());
     else if(/\.doc$/i.test(f.name)) r=await parseDoc(await f.arrayBuffer());
-    else if(/\.pptx$/i.test(f.name)) r=await window.PromPptxOriginal.parse(await f.arrayBuffer());
+    else if(/\.pptx$/i.test(f.name)){
+      const buffer=await f.arrayBuffer();
+      try{r=await window.PromPptxOriginal.parse(buffer);}
+      catch(error){
+        r=await parsePptx(buffer);
+        toast('PPT 원본 모양을 모두 읽지 못해 텍스트 원고로 가져왔습니다: '+error.message,7000);
+      }
+    }
     else if(/\.ppt$/i.test(f.name)) r=await parsePpt(await f.arrayBuffer());
     else if(/\.pdf$/i.test(f.name)) r=await parsePdf(await f.arrayBuffer());
     else throw new Error('hwp, hwpx, doc, docx, ppt, pptx, pdf, txt, html 파일만 열 수 있습니다.');
