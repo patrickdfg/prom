@@ -28,5 +28,10 @@ const clean=R.instructions('파랑: 하단 자막.\n하단 자막은 900px 글�
 // Color-marked manuscripts work without numbers, but unmarked text is skipped.
 global.window=global;global.CaptionContentRules=R;global.CaptionCore=require('../core.js');global.document={currentScript:{src:'http://localhost/ppt/builder.js'},fonts:{load:async()=>{}},createElement:()=>({getContext:()=>({font:'',measureText:t=>({width:t.length*15})})})};global.crypto=require('node:crypto').webcrypto;require('../builder.js');
 const plainSpecs=CaptionBuilder.analyze(rows(['본문입니다. 두 줄 자막으로 바꾸면 안 됩니다.']),{allText:true});assert.equal(plainSpecs.length,1);assert.equal(plainSpecs[0].layout,'caption');assert.deepEqual(CaptionBuilder.analyze({lines:['색상과 번호가 없는 일반 본문입니다.']}),[]);
-const out=CaptionBuilder.analyze(rows(['본문의 설명입니다.','1. 짧은 항목입니다.','2. 둘째 항목입니다.']),{});assert.equal(out.length,2);assert(out.every(s=>s.layout==='proverb'));assert.equal(out[0].start,require('../core.js').normalize('본문의 설명입니다.').length);
+const numberInput=rows(['본문의 설명입니다.','1. 짧은 항목입니다.','2. 둘째 항목입니다.']);
+for(const row of numberInput.richLines)for(const run of row.runs)run.hex='000000';
+const out=CaptionBuilder.analyze(numberInput,{});assert.equal(out.length,2);assert(out.every(s=>s.layout==='proverb'));assert.equal(out[0].start,require('../core.js').normalize('본문의 설명입니다.').length);
+// Blue text before an ordered list is an explicit caption in the current mixed-source rule.
+numberInput.richLines[0].runs[0].hex='0000FF';
+const mixed=CaptionBuilder.analyze(numberInput,{});assert.equal(mixed.length,3);assert.equal(mixed[0].layout,'caption');assert(mixed.slice(1).every(s=>s.layout==='proverb'));
 console.log('PASS numbered scope and color-marked fallback, paragraph continuation, ad exclusion, header extraction, worship slots/order/count/links, saved master style and explicit worship scope');
