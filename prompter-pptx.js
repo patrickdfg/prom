@@ -17,21 +17,28 @@ function backgroundPic(){
     '<p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+W+'" cy="'+H+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>';
 }
 function slide(lines,count,dark,hasBackground,fontName){
-  // Browser #page uses 16:9 and spreads lines evenly across its inset area.
-  // 7.5 in height = 540 pt, so match the CSS font-to-page-height ratio.
+  // Keep every original page as one editable textbox, with one paragraph per displayed line.
   const col=colors(dark),rows=Math.max(1,count),size=540*11.29/118*5/rows;
-  const top=rows===7?.1339:rows===6?.0882:.0424, pitch=(1-2*top)/rows;
-  const lineShapes=Array.from({length:rows},(_,i)=>{
-    const rs=(lines[i]||[]).filter(r=>r&&r.t);
-    if(!rs.length)return '';
-    const ox=Math.round(W*.0238),oy=Math.round(H*(top+pitch*i)),ew=Math.round(W*.9524),eh=Math.round(H*pitch),id=i+3;
-    const para='<a:p><a:pPr algn="ctr"/>'+rs.map(r=>run(r,size,col,fontName)).join('')+'<a:endParaRPr lang="ko-KR" sz="'+Math.round(size*100)+'"/></a:p>';
-    return '<p:sp><p:nvSpPr><p:cNvPr id="'+id+'" name="'+(i+1)+'줄 원고"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>'+
-      '<p:spPr><a:xfrm><a:off x="'+ox+'" y="'+oy+'"/><a:ext cx="'+ew+'" cy="'+eh+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr>'+
-      '<p:txBody><a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" anchor="ctr"><a:normAutofit/></a:bodyPr><a:lstStyle/>'+para+'</p:txBody></p:sp>';
+  const top=rows===7?.1339:rows===6?.0882:.0424,pitch=(1-2*top)/rows;
+  // Preserve intentional empty lines between text. Trailing blank screen slots need no paragraphs.
+  let used=0;
+  for(let i=0;i<Math.min(rows,lines.length);i++){
+    if((lines[i]||[]).some(r=>r&&r.t))used=i+1;
+  }
+  const lineSpacing=Math.round(540*pitch*100);
+  const paras=Array.from({length:used},(_,i)=>{
+    const runs=(lines[i]||[]).filter(r=>r&&r.t);
+    return '<a:p><a:pPr algn="ctr"><a:lnSpc><a:spcPts val="'+lineSpacing+'"/></a:lnSpc>'+
+      '<a:spcBef><a:spcPts val="0"/></a:spcBef><a:spcAft><a:spcPts val="0"/></a:spcAft></a:pPr>'+
+      runs.map(r=>run(r,size,col,fontName)).join('')+
+      '<a:endParaRPr lang="ko-KR" sz="'+Math.round(size*100)+'"/></a:p>';
   }).join('');
+  const ox=Math.round(W*.0238),oy=Math.round(H*top),ew=Math.round(W*.9524),eh=Math.round(H*pitch*used);
+  const textShape=used?'<p:sp><p:nvSpPr><p:cNvPr id="3" name="원고 전체"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>'+
+    '<p:spPr><a:xfrm><a:off x="'+ox+'" y="'+oy+'"/><a:ext cx="'+ew+'" cy="'+eh+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr>'+
+    '<p:txBody><a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" anchor="ctr"><a:normAutofit/></a:bodyPr><a:lstStyle/>'+paras+'</p:txBody></p:sp>':'';
   return x('<p:sld '+NS+'><p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="'+col.bg+'"/></a:solidFill><a:effectLst/></p:bgPr></p:bg><p:spTree>'+tree+
-    (hasBackground?backgroundPic():'')+lineShapes+'</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>');
+    (hasBackground?backgroundPic():'')+textShape+'</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>');
 }
 const theme=x('<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="PROM"><a:themeElements><a:clrScheme name="PROM"><a:dk1><a:srgbClr val="000000"/></a:dk1><a:lt1><a:srgbClr val="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="1F1F1F"/></a:dk2><a:lt2><a:srgbClr val="EEEEEE"/></a:lt2><a:accent1><a:srgbClr val="2683C6"/></a:accent1><a:accent2><a:srgbClr val="008000"/></a:accent2><a:accent3><a:srgbClr val="FF0000"/></a:accent3><a:accent4><a:srgbClr val="FFFF00"/></a:accent4><a:accent5><a:srgbClr val="888888"/></a:accent5><a:accent6><a:srgbClr val="0000FF"/></a:accent6><a:hlink><a:srgbClr val="0000FF"/></a:hlink><a:folHlink><a:srgbClr val="800080"/></a:folHlink></a:clrScheme><a:fontScheme name="PROM"><a:majorFont><a:latin typeface="Malgun Gothic"/><a:ea typeface="Malgun Gothic"/><a:cs typeface=""/></a:majorFont><a:minorFont><a:latin typeface="Malgun Gothic"/><a:ea typeface="Malgun Gothic"/><a:cs typeface=""/></a:minorFont></a:fontScheme><a:fmtScheme name="PROM"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst><a:lnStyleLst><a:ln w="9525"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="9525"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="9525"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements></a:theme>');
 const master=x('<p:sldMaster '+NS+'><p:cSld><p:spTree>'+tree+'</p:spTree></p:cSld><p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/><p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst><p:txStyles><p:titleStyle/><p:bodyStyle/><p:otherStyle/></p:txStyles></p:sldMaster>');
