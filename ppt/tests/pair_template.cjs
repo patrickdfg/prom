@@ -42,4 +42,8 @@ const coloredReport=P.analyze({lines:[a]},{slides:[colored]});assert.equal(P.bui
  const b=P.build(r,deck,{layouts:{caption:full('x',410),word:full('y',10)},layoutMasters:{}});
  assert.ok(b.design.layouts.proverb&&b.design.layouts.wordGod&&b.design.layouts.proverb!==b.design.layouts.wordGod);
  console.log('PASS 잠언 항목 분류');
+ for(const prefix of ['①','(1)','１．']){
+  const value=prefix+' 하나님을 사랑하며 실천하는 잠언의 내용입니다.',s=full(value,10);s.editor={layout:'wordGod'};
+  assert.equal(P.analyze({lines:[value]},{slides:[s]}).candidates[0].layout,'proverb','numbered full-screen items override incidental speaker words and old labels');
+ }
 }

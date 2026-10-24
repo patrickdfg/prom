@@ -23,12 +23,7 @@ async function scene(layout,text,options={}){
 }
 function colorType(hex){const h=String(hex||'').replace('#','');if(!/^[a-f\d]{6}$/i.test(h))return 'black';const [r,g,b]=[0,2,4].map(i=>parseInt(h.slice(i,i+2),16));if(b>90&&b>r*1.3&&b>g*1.15)return 'blue';if(g>65&&g>r*1.25&&g>b*1.15)return 'green';if(r>130&&r>g*1.5&&r>b*1.5)return 'red';return 'black';}
 function trim(chars){let a=0,b=chars.length;while(a<b&&/\s/.test(chars[a].ch))a++;while(b>a&&/\s/.test(chars[b-1].ch))b--;return chars.slice(a,b);}
-// 인용문 바로 앞 검정 글씨("성령님 말씀입니다." 등)에서 화자를 찾는다. 이름이 둘 이상이면 판정하지 않는다.
-function contextSpeaker(before){const found=new Set();for(const m of String(before||'').slice(-40).matchAll(/성령님?|하나님|예수님?|성자(?:님)?|선생(?:님)?/g))found.add(/성령/.test(m[0])?'wordSpirit':/하나님/.test(m[0])?'wordGod':/선생/.test(m[0])?'wordTeacher':'wordSon');return found.size===1?[...found][0]:'';}
-function speakerLayout(text,fallback='word'){
- const head=plain(text).split(/\r?\n/).filter(s=>s.trim()).slice(0,2).join('\n'),match=head.match(/성령님?|하나님|성자(?:님)?|예수님?|선생님/);
- return match?(/성령/.test(match[0])?'wordSpirit':/하나님/.test(match[0])?'wordGod':/선생님/.test(match[0])?'wordTeacher':'wordSon'):fallback;
-}
+function speakerLayout(text,fallback='word',context=''){return window.CaptionContentRules.speakerLayout(plain(text),fallback,context);}
 function metrics(layout,bank=templateBank){
  const original=bank?.[layout]||bank?.[layoutFallback[layout]],s=original&&window.CaptionMasters?CaptionMasters.inherit({...original,editor:{layout}},masterOverrides):original,b=s?.shapes[s.bodyIndex],p=b?.paragraphs[0],r=p?.runs.find(r=>r.size)||{size:30.6667,font:'마루 부리OTF 굵은',bold:true},pad=b?.padding||[4.8,9.6,4.8,9.6];
  const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d'),font=JSON.stringify(r.font||'Malgun Gothic')+(/마루\s*부리|maru\s*buri/i.test(r.font)?', "PROM MaruBuri"':'');ctx.font=`${r.bold?700:400} ${r.size}px ${font}, "Malgun Gothic", serif`;
@@ -133,7 +128,7 @@ function meaningfulPageSplit(lines,capacity=6){
  return chunks;
 }
 function proverbSpecs(block,options){
- let layout=block.layout||'proverb';if(layout==='word'){const text=block.chars.map(c=>c.ch).join('');layout=/[（(]?[가-힣]{1,8}\s*\d+\s*[:장]\s*\d+/.test(text)?'verse':speakerLayout(text,options.greenLayout||'word');}const m=metrics(layout,options.bank),cap=m.maxLines,items=glueNumber(sentences(block.chars)).map(ch=>wrap(ch,m)),pages=[];let rest=items.flat(),queue=items.map(x=>[...x]);
+ let layout=block.layout||'proverb';if(layout==='word'){const text=block.chars.map(c=>c.ch).join('');layout=/[（(]?[가-힣]{1,8}\s*\d+\s*[:장]\s*\d+/.test(text)?'verse':speakerLayout(text,options.greenLayout||'word',block.speaker);}const m=metrics(layout,options.bank),cap=m.maxLines,items=glueNumber(sentences(block.chars)).map(ch=>wrap(ch,m)),pages=[];let rest=items.flat(),queue=items.map(x=>[...x]);
  const take=n=>{const page=[];while(queue.length&&page.length<n){const head=queue[0];if(page.length&&page.length+head.length>n)break;const k=Math.min(n-page.length,head.length);page.push(...head.splice(0,k));if(!head.length)queue.shift();}return page;};
  const total=()=>queue.reduce((a,x)=>a+x.length,0);
  // Use balanced, punctuation-aware boundaries for full-screen generated content.
@@ -148,11 +143,11 @@ function proverbSpecs(block,options){
 }
 function analyze(project,options={}){
  const rules=window.CaptionContentRules;if(!rules)throw Error('제작 규칙을 불러오지 못했습니다. 페이지를 새로 열어 주세요.');
- const result=[];for(const block of rules.automatic(project).blocks){result.push(...proverbSpecs(block,options));if(result.length>500)throw Error('자막이 500장을 넘습니다. 원고를 나누어 만들어 주세요.');}return result;
+ const result=[];for(const block of rules.automatic(project).blocks)for(const part of rules.speakerBlocks(block)){result.push(...proverbSpecs(part,options));if(result.length>500)throw Error('자막이 500장을 넘습니다. 원고를 나누어 만들어 주세요.');}return result;
 }
 async function prepare(){const bank=await templates();await Promise.all(Object.values(bank).map(s=>{const r=s.shapes[s.bodyIndex].paragraphs[0].runs.find(r=>r.size);return /마루\s*부리/i.test(r?.font||'')?document.fonts.load(`${r.bold?700:400} ${r.size}px "PROM MaruBuri"`).catch(()=>{}):Promise.resolve();}));return bank;}
 async function generate(project,options={}){const bank=await prepare(),specs=analyze(project,{...options,bank});if(!specs.length)throw Error('자막으로 만들 색상 표시나 여러 번호 항목이 없습니다. 자막을 생성하지 않습니다.');const slides=[],links=[];if(options.title){slides.push(await scene('cover',options.title,{date:options.date}));links.push({status:'unlinked',start:null,end:null,score:0,reason:'cover'});}for(const spec of specs){const slide=await scene(spec.layout,spec.text,{padToLines:spec.padToLines});slide.editor.group=spec.group;slide.editor.cumulative=spec.cumulative;slide.editor.step=spec.step;slides.push(slide);links.push({status:'exact',start:spec.start,end:spec.end,score:1,reason:'source'});}return {slides,links,summary:`${CaptionContentRules.automatic(project).label}을 자동 인식해 자막 ${specs.length}장 (하단 ${specs.filter(s=>s.layout==='caption').length}장 · 전체 화면 ${specs.filter(s=>s.layout!=='caption').length}장)을 만들었습니다.`};}
-async function restyle(slides){await prepare();const groups=new Map();for(const s of slides)if(s.editor?.group)groups.set(s.editor.group,s);const out=[];for(const s of slides){if(!s.editor){out.push(s);continue;}const e=s.editor,final=groups.get(e.group)||s,layout=e.layout.startsWith('word')?speakerLayout(final.editor.text,e.layout):e.layout,rebuilt=await scene(layout,e.text,{uid:s.uid,ref:e.ref,date:e.date,padToLines:e.padToLines});for(const key of ['group','cumulative','step'])if(e[key]!==undefined)rebuilt.editor[key]=e[key];if(window.CaptionMedia)CaptionMedia.keep(rebuilt,s);else rebuilt.shapes.push(...s.shapes.filter(sh=>sh.extraText).map(clone));out.push(rebuilt);}return out;}
+async function restyle(slides){await prepare();const groups=new Map();for(const s of slides)if(s.editor?.group)groups.set(s.editor.group,s);const out=[];for(const s of slides){if(!s.editor){out.push(s);continue;}const e=s.editor,final=groups.get(e.group)||s,layout=e.layout==='word'?speakerLayout(final.editor.text,e.layout):e.layout,rebuilt=await scene(layout,e.text,{uid:s.uid,ref:e.ref,date:e.date,padToLines:e.padToLines});for(const key of ['group','cumulative','step'])if(e[key]!==undefined)rebuilt.editor[key]=e[key];if(window.CaptionMedia)CaptionMedia.keep(rebuilt,s);else rebuilt.shapes.push(...s.shapes.filter(sh=>sh.extraText).map(clone));out.push(rebuilt);}return out;}
 function wrapForLayout(value,layout='word'){const m=metrics(layout),chars=Array.from(String(value||''),ch=>({ch,red:false,start:0,end:0}));return wrap(chars,m).map(row=>row.map(c=>c.ch).join(''));}
 return {templates,snapshotTemplate,useTemplate,theme:async()=>{await templates();return themeXml;},scene,generate,analyze,restyle,speakerLayout,metrics,wrapForLayout,meaningfulPageSplit,plain,styledRuns,colorType,layouts};
 })();

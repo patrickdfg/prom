@@ -31,7 +31,12 @@ function catalog(record,defaults={}){
 }
 const label=(record,entry)=>String(record.name||'템플릿')+' · '+entry.name;
 function prepare(record,defaults={}){
- const entries=catalog(record,defaults),names=new Map(entries.map(e=>[e.key,e])),bank=record.design?.layouts||{};
+ let bank=record.design?.layouts||{};
+ const addProverb=!bank.proverb&&bank.wordTeacher&&!record.worship&&record.options?.sourceMode!=='worship'&&record.options?.sourceMode!=='spirit'&&record.id!=='builtin-spirit-word'&&record.copiedFrom!=='builtin-spirit-word';
+ if(addProverb){const proverb=structuredClone(bank.wordTeacher);delete proverb.masterId;delete proverb.uid;if(proverb.editor)proverb.editor.layout='proverb';bank={...bank,proverb};record={...record,design:{...record.design,layouts:bank}};}
+ const entries=catalog(record,defaults);
+ if(addProverb&&!entries.some(e=>e.key==='proverb'))entries.push({key:'proverb',name:defaults.proverb||'잠언 항목'});
+ const names=new Map(entries.map(e=>[e.key,e]));
  const layouts=Object.fromEntries(Object.entries(bank).map(([key,scene])=>[key,{...scene,layoutName:label(record,names.get(key)||{name:defaults[key]||key})}]));
  return {...record,layoutCatalog:entries,design:{...record.design,layouts}};
 }

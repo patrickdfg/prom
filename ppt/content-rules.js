@@ -7,16 +7,46 @@ function mode(rec){return ['numbered','worship','spirit'].includes(rec?.options?
 // Exclude the requested service cues by their heading, so changing Bible passage counts cannot shift the wrong slide out.
 function worshipOmit(record){const saved=record?.options?.worshipOmit;if(Array.isArray(saved))return [...new Set(saved.filter(k=>['prayer','music'].includes(k)))];return /주일\s*예배\s*전반/.test(record?.name||'')?['prayer','music']:[];}
 function omittedCue(slide,omit){const headings=(slide.shapes||[]).filter(sh=>sh.type==='text').map(sh=>norm(text(sh)));return omit.includes('prayer')&&headings.includes('대표기도')||omit.includes('music')&&headings.some(t=>/^(?:성가대(?:가정국)?(?:특송)?|가정국특송|특송)$/.test(t));}
-function rule(value){if(value==='spirit')return '[현재 제작 규칙]\n성령말씀: 색상과 번호 표시 없이 원고의 문장을 생성합니다. 제목은 첫 표지에만 표시합니다. 빈 줄은 새 문단·새 페이지로 구분합니다. 6줄이 넘으면 마침표·물음표·느낌표를 우선하고 쉼표·연결어미·페이지별 줄 수 균형을 고려해 자연스럽게 나눕니다. 한 줄만 덩그러니 남는 분할은 피하며, 한 줄씩 표시 체크 여부에 따라 누적 또는 완성 페이지로 만듭니다.';return value==='worship'?'[현재 제작 규칙]\n예배 전반: 원고 앞부분의 제목과 성경본문만 가져와 원본 PPT의 해당 자리를 교체합니다. 설교 본문은 자막으로 만들지 않습니다.\n교독문·광고는 별도 입력한 것만 포함하고 비워 두면 생략합니다. 기도·찬양 등 나머지 순서는 원본 PPT 내용을 유지하므로 송출 전에 확인합니다.':'[현재 제작 규칙]\n주일·수요·새벽 설교: 원고를 자동 인식합니다. 연속 번호 1→2(→3…) 구간은 번호별 전체 화면으로, 그 이전과 이후는 파랑·초록 색상 자막 규칙으로 함께 생성합니다. 둘 다 없으면 자막을 생성하지 않습니다.\n번호 목록은 전체 화면, 파랑은 하단 2줄, 초록은 말씀·성구 화면으로 만듭니다. 전체 화면 내용이 여러 장이면 문장 종료·쉼표·연결어미와 페이지별 줄 수를 함께 고려하여 균형 있게 나눕니다. 하단 자막은 기존 2줄 기준을 유지하며, 제목·날짜·진행 안내·광고는 본문에 섞지 않습니다.';}
-function instructions(value,scope){const lines=String(value||'').split('\n').filter(l=>!/^\[현재 제작 규칙\]|^(?:주일·수요·새벽 설교:|예배 전반: 원고 앞부분|교독문·광고·기도·찬양 등|교독문·광고는 별도 입력|번호 목록은 전체 화면,|한 항목을 템플릿|선택한 각 항목·(?:문단|구간)을)/.test(l)&&!/(?:파랑: 하단 자막|초록: 말씀|검정: 설교 전문|전체 화면 말씀의 첫 두 줄|하단 자막은 .*두 줄|전체 원고.*(?:하단|자막)|누적 공개.*(?:확인|선택|연결|옵션)|번호가 붙은 항목만 자막|원고의 번호 항목을 사용)/.test(l));return rule(scope)+'\n\n'+lines.join('\n').trim();}
+function rule(value){if(value==='spirit')return '[현재 제작 규칙]\n성령말씀: 색상과 번호 표시 없이 원고의 문장을 생성합니다. 제목은 첫 표지에만 표시합니다. 빈 줄은 새 문단·새 페이지로 구분합니다. 6줄이 넘으면 마침표·물음표·느낌표를 우선하고 쉼표·연결어미·페이지별 줄 수 균형을 고려해 자연스럽게 나눕니다. 한 줄만 덩그러니 남는 분할은 피하며, 한 줄씩 표시 체크 여부에 따라 누적 또는 완성 페이지로 만듭니다.';return value==='worship'?'[현재 제작 규칙]\n예배 전반: 원고 앞부분의 제목과 성경본문만 가져와 원본 PPT의 해당 자리를 교체합니다. 설교 본문은 자막으로 만들지 않습니다.\n교독문·광고는 별도 입력한 것만 포함하고 비워 두면 생략합니다. 기도·찬양 등 나머지 순서는 원본 PPT 내용을 유지하므로 송출 전에 확인합니다.':'[현재 제작 규칙]\n주일·수요·새벽 설교: 원고를 자동 인식합니다. 연속 번호 1→2(→3…) 구간은 번호별 전체 화면으로, 그 이전과 이후는 파랑·초록 색상 자막 규칙으로 함께 생성합니다. 둘 다 없으면 자막을 생성하지 않습니다.\n화자 안내를 우선하여 성령님·하나님·성자·선생님 말씀 레이아웃을 구분하고, 화자가 바뀌면 별도 화면으로 나눕니다. 잠언 번호는 화자 이름보다 우선합니다. 「잠언」 제목 아래 번호 항목은 한 개만 있어도 잠언으로 만듭니다.\n번호 목록은 전체 화면, 파랑은 하단 2줄, 초록은 말씀·성구 화면으로 만듭니다. 전체 화면 내용이 여러 장이면 문장 종료·쉼표·연결어미와 페이지별 줄 수를 함께 고려하여 균형 있게 나눕니다. 하단 자막은 기존 2줄 기준을 유지하며, 제목·날짜·진행 안내·광고는 본문에 섞지 않습니다.';}
+function instructions(value,scope){const lines=String(value||'').split('\n').filter(l=>!/^\[현재 제작 규칙\]|^(?:주일·수요·새벽 설교:|예배 전반: 원고 앞부분|교독문·광고·기도·찬양 등|교독문·광고는 별도 입력|화자 안내를 우선하여|번호 목록은 전체 화면,|한 항목을 템플릿|선택한 각 항목·(?:문단|구간)을)/.test(l)&&!/(?:파랑: 하단 자막|초록: 말씀|검정: 설교 전문|전체 화면 말씀의 첫 두 줄|하단 자막은 .*두 줄|전체 원고.*(?:하단|자막)|누적 공개.*(?:확인|선택|연결|옵션)|번호가 붙은 항목만 자막|원고의 번호 항목을 사용)/.test(l));return rule(scope)+'\n\n'+lines.join('\n').trim();}
 function itemNumber(value){const raw=String(value||'').trimStart(),s=raw.normalize('NFKC');return /^[①-⑳㉑-㉟㊱-㊿]/.test(raw)||/^\(\s*\d{1,3}\s*\)/.test(s)||/^\d{1,3}\s*[.)、](?!\d)/.test(s);}
+const speakerName='성령(?:님)?|하나님|성자(?:님)?|예수(?:님)?|선생(?:님)?';
+const speakerKey=name=>/성령/.test(name)?'wordSpirit':/하나님/.test(name)?'wordGod':/선생/.test(name)?'wordTeacher':'wordSon';
+function speakerCues(value){
+ const pattern=new RegExp('('+speakerName+')(?:께서(?:는)?|께서는|의|이|가|은|는)?\\s*(?:(?:이렇게|다음과 같이|사명자로서)\\s*)?(?:말씀(?:하시기를|하기를|하시되|하셨(?:습니다|다|는데|고)|하십니다|하신다|하신\\s*말씀|입니다|이다)|말합니다|말하였다|이르시되|가라사대|말씀(?=\\s*(?:[:：.。>〉\\]】)）]|$)))','g');
+ return [...String(value||'').matchAll(pattern)].map(m=>({index:m.index,end:m.index+m[0].length,layout:speakerKey(m[1])}));
+}
+function contextSpeaker(value){const text=String(value||'').trim(),label=text.match(new RegExp('^[<〈\\[【(（]?\\s*('+speakerName+')(?:께서(?:는)?|은|는|이|가)?\\s*[>〉\\]】)）:：.。]*$'));if(label)return speakerKey(label[1]);const tail=text.match(new RegExp('('+speakerName+')(?:께서(?:는)?|은|는)\\s*[:：“‘\"\']*$'));if(tail)return speakerKey(tail[1]);const cues=speakerCues(text),last=cues.at(-1);return last&&/^[\s.。:：<>〈〉\[\]【】()（）“”‘’"']*$/.test(text.slice(last.end))?last.layout:'';}
+function speakerLayout(value,fallback='word',context=''){
+ const text=String(value||'').replace(/<\/?[rb]>/g,''),cue=speakerCues(text)[0];if(cue)return cue.layout;
+ if(context)return context;
+ const head=text.split(/\r?\n/).filter(s=>s.trim()).slice(0,2).join('\n'),names=new Set([...head.matchAll(new RegExp(speakerName,'g'))].map(m=>speakerKey(m[0])));
+ if(!names.size)return fallback;
+ const coordinated=new RegExp('('+speakerName+')\\s*(?:과|와|,|·|및)\\s*('+speakerName+')').test(head);
+ return names.size>1&&coordinated?fallback:speakerKey(head.match(new RegExp(speakerName))[0]);
+}
+function speakerBlocks(block){
+ if(block.layout!=='word')return [block];
+ const value=block.chars.map(c=>c.ch).join(''),cues=speakerCues(value),parts=[];let from=0,active=block.speaker||'';
+ for(const cue of cues){
+  let at=Array.from(value.slice(0,cue.index)).length;
+  while(at>from&&/[“‘"'〈「『]/.test(block.chars[at-1].ch))at--;
+  // A new attributed quotation starts a new layout; an opening cue owns its whole sentence.
+  const prefix=block.chars.slice(from,at).map(c=>c.ch).join('');
+  if(active&&cue.layout!==active&&/[.!?。…]|\n/.test(prefix)){parts.push({...block,speaker:active,chars:block.chars.slice(from,at)});from=at;}
+  active=cue.layout;
+ }
+ parts.push({...block,speaker:active||block.speaker,chars:block.chars.slice(from)});
+ return parts.filter(p=>p.chars.some(c=>norm(c.ch)));
+}
 function numbered(project){
- const rows=project.richLines?.length===project.lines.length?project.richLines:project.lines.map(text=>({text})),out=[];let offset=0,current=null,excluded=false,lastSource;
- for(const row of rows){if(row.source!==lastSource){excluded=false;current=null;lastSource=row.source;}const value=row.text||'',start=offset;offset+=norm(value).length;
+ const rows=project.richLines?.length===project.lines.length?project.richLines:project.lines.map(text=>({text})),out=[];let offset=0,current=null,excluded=false,lastSource,explicitProverb=false;
+ for(const row of rows){if(row.source!==lastSource){excluded=false;current=null;explicitProverb=false;lastSource=row.source;}const value=row.text||'',start=offset;offset+=norm(value).length;
   if(/(?:예배\s*광고|교회\s*광고|교독문|예배\s*순서)/.test(value)&&!itemNumber(value)){excluded=true;current=null;continue;}
-  if(/^\s*(?:<|\[|【)?\s*잠언\s*(?:말씀|항목)?\s*(?:>|\]|】|[:：])?\s*$/.test(value)){excluded=false;current=null;continue;}
+  if(/^\s*(?:<|\[|【)?\s*잠언\s*(?:말씀|항목)?\s*(?:>|\]|】|[:：])?\s*$/.test(value)){excluded=false;current=null;explicitProverb=true;continue;}
+  if(/^\s*[<〈\[【][^>〉\]】]+[>〉\]】]\s*$/.test(value)){explicitProverb=false;current=null;}
   const number=itemNumber(value);
-  if(number&&!excluded){current={layout:'proverb',chars:[],paragraph:row.paragraph,source:row.source};out.push(current);}
+  if(number&&!excluded){current={layout:'proverb',chars:[],paragraph:row.paragraph,source:row.source,explicitProverb};out.push(current);}
   else if(!current||row.paragraph==null||row.paragraph!==current.paragraph||row.source!==current.source||/^\s*(?:할렐루야|아멘[.!！]?\s*$|마무리|마지막으로|오늘은 여기|이상으로|기도[\s:：]|찬양[\s:：])/.test(value)){current=null;continue;}
   if(!current)continue;
   const styled=(row.runs||[]).flatMap(r=>{const hex=String(r.hex||'').replace('#',''),red=/^[a-f\d]{6}$/i.test(hex)&&parseInt(hex.slice(0,2),16)>130&&parseInt(hex.slice(0,2),16)>parseInt(hex.slice(2,4),16)*1.5;return Array.from(r.text||'',ch=>({ch,red}));});const chars=styled.map(c=>c.ch).join('')===value?styled:Array.from(value,ch=>({ch,red:false}));let at=start;for(const {ch,red} of chars){const n=norm(ch).length;current.chars.push({ch,red,start:at,end:at+n});at+=n;}current.chars.push({ch:'\n',red:false,start:offset,end:offset});
@@ -36,6 +66,7 @@ function sequentialProverbs(blocks){
  const result=[];let run=[];
  const flush=()=>{if(run.length>=2&&listSequenceNumber(run[0].chars.map(c=>c.ch).join(''))===1)result.push(...run);run=[];};
  for(const block of blocks){
+  if(block.explicitProverb){flush();result.push(block);continue;}
   const number=listSequenceNumber(block.chars.map(c=>c.ch).join(''));
   if(number===null)continue;
   if(run.length&&number!==listSequenceNumber(run.at(-1).chars.map(c=>c.ch).join(''))+1)flush();
@@ -71,12 +102,13 @@ function automatic(project){
  const shade=hex=>{const h=String(hex||'').replace('#','');if(!/^[a-f\d]{6}$/i.test(h))return '';const [r,g,b]=[0,2,4].map(i=>parseInt(h.slice(i,i+2),16));return b>90&&b>r*1.3&&b>g*1.15?'caption':g>65&&g>r*1.25&&g>b*1.15?'word':r>130&&r>g*1.5&&r>b*1.5?'red':'';};
  const highlighted=eligible.some(({row})=>(row.runs||[]).some(r=>['caption','word'].includes(shade(r.hex))&&norm(r.text)));
  if(!highlighted)return numberedBlocks.length?{kind:'numbered',label:'번호 항목',blocks:numberedBlocks}:{kind:'unmarked',label:'자막 표시 없음',blocks:[]};
- const blocks=[];let current=null;
- for(const {row,start} of eligible){
+ const blocks=[];let current=null,speaker='',previousEnd=-1;
+ for(const {row,start,end} of eligible){
+  if(previousEnd>=0&&previousEnd!==start)speaker='';previousEnd=end;
   const group=row.paragraph==null?Symbol():String(row.source??'')+':'+row.paragraph;if(current?.group!==group)current=null;
   const types=(row.runs||[]).map(r=>shade(r.hex));const runs=row.runs?.map((r,i)=>({text:r.text,red:types[i]==='red',layout:types[i]==='red'?(types.slice(0,i).reverse().find(t=>['caption','word'].includes(t))||types.slice(i+1).find(t=>['caption','word'].includes(t))||current?.layout):types[i]}))||[];
-  let at=start;for(const run of runs){if(!run.layout){at+=norm(run.text).length;current=null;continue;}if(current?.layout!==run.layout)current=null;if(!current){current={layout:run.layout,group,chars:[]};blocks.push(current);}for(const ch of run.text||''){const n=norm(ch).length;current.chars.push({ch,red:run.red,start:at,end:at+n});at+=n;}}
-  if(current)current.chars.push({ch:'\n',red:false,start:at,end:at});
+  let at=start;for(const run of runs){if(!run.layout){if(norm(run.text))speaker=contextSpeaker(run.text);at+=norm(run.text).length;current=null;continue;}if(current?.layout!==run.layout)current=null;if(!current){current={layout:run.layout,group,speaker,chars:[]};blocks.push(current);}for(const ch of run.text||''){const n=norm(ch).length;current.chars.push({ch,red:run.red,start:at,end:at+n});at+=n;}}
+  if(current){current.chars.push({ch:'\n',red:false,start:at,end:at});if(current.layout==='word')speaker=speakerCues(row.text).at(-1)?.layout||speaker;}
  }
  const colored=blocks.filter(b=>b.chars.some(c=>norm(c.ch))&&outsideNumbered(b.chars.find(c=>c.end>c.start)?.start??-1,[...b.chars].reverse().find(c=>c.end>c.start)?.end??-1));
  const merged=[...colored,...numberedBlocks].sort((a,b)=>(a.chars.find(c=>c.end>c.start)?.start??0)-(b.chars.find(c=>c.end>c.start)?.start??0));
@@ -136,5 +168,5 @@ function generateWorship(project,record,deck,options={}){
 }
 let cachedSource='',cachedDeck=null;
 async function sourceDeck(record,importer){const src=record?.pair?.sources?.deck;if(!src?.data)throw Error('예배 전반 템플릿에는 원본 PPT가 필요합니다. 원고와 완성 PPT로 템플릿을 다시 등록해 주세요.');if(src.data!==cachedSource){const blob=await(await fetch(src.data)).blob();cachedDeck=await importer(new File([blob],src.name));cachedSource=src.data;}return cachedDeck;}
-const api={mode,worshipOmit,rule,instructions,numbered,automatic,itemNumber,header,learn,prepareWorship,generateWorship,sourceDeck,dateText};if(typeof module==='object'&&module.exports)module.exports=api;else root.CaptionContentRules=api;
+const api={mode,worshipOmit,rule,instructions,numbered,automatic,itemNumber,header,learn,prepareWorship,generateWorship,sourceDeck,dateText,speakerLayout,speakerCues,contextSpeaker,speakerBlocks};if(typeof module==='object'&&module.exports)module.exports=api;else root.CaptionContentRules=api;
 })(typeof window==='object'?window:globalThis);

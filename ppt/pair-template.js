@@ -2,6 +2,7 @@
 (function(root){
 'use strict';
 const C=typeof module==='object'&&module.exports?require('./core.js'):root.CaptionCore;
+const R=typeof module==='object'&&module.exports?require('./content-rules.js'):root.CaptionContentRules;
 const textOf=shape=>(shape.paragraphs||[]).map(p=>(p.runs||[]).map(r=>r.text||'').join('')).join('\n');
 const choices={caption:'하단 자막',word:'말씀',wordGod:'하나님 말씀',wordSon:'성자 말씀',wordSpirit:'성령 말씀',wordTeacher:'선생님 말씀 (인물 없음)',verse:'성경 구절',emphasis:'큰 글씨 강조',proverb:'잠언 항목'};
 const copy=x=>structuredClone(x);
@@ -23,9 +24,9 @@ function analyze(manuscript,deck){
   if(row.bodyIndex<0||links[i].status!=='exact')return;
   const {slide,shape,text}=row,known=slide.editor?.layout;
   // 번호로 시작하는 전체 화면 장은 잠언 항목이다. 글에 '하나님'이 들어 있어도 말씀 장과 섞지 않는다.
-  const numbered=/^\s*\d+\s*[.)]\s*\S/.test(text)&&shape.w/slide.width>=.8&&shape.y/slide.height<.6;
-  let layout=Object.hasOwn(choices,known)?known:shape.y/slide.height>=.6?'caption':numbered?'proverb':/[（(]?[가-힣]{1,8}\s*\d+\s*[:장]\s*\d+/.test(text)?'verse':'word';
-  if(layout==='word'){const speaker=text.split('\n').filter(s=>s.trim()).slice(0,2).join('\n').match(/성령님?|하나님|성자(?:님)?|예수님?|선생님/);if(speaker)layout=/성령/.test(speaker[0])?'wordSpirit':/하나님/.test(speaker[0])?'wordGod':/선생님/.test(speaker[0])?'wordTeacher':'wordSon';}
+  const numbered=R.itemNumber(text)&&shape.w/slide.width>=.8&&shape.y/slide.height<.6;
+  let layout=numbered?'proverb':Object.hasOwn(choices,known)?known:shape.y/slide.height>=.6?'caption':/[（(]?[가-힣]{1,8}\s*\d+\s*[:장]\s*\d+/.test(text)?'verse':'word';
+  if(layout==='word')layout=R.speakerLayout(text,'word');
   const counts=new Map();for(const p of shape.paragraphs||[])for(const r of p.runs||[]){const key=JSON.stringify([r.font,r.size,r.bold,r.color]);const v=counts.get(key)||{run:r,n:0};v.n+=C.normalize(r.text).length;counts.set(key,v);}
   const base=[...counts.values()].sort((a,b)=>b.n-a.n)[0]?.run||{};
   candidates.push({slideIndex:i,bodyIndex:row.bodyIndex,layout,text,start:links[i].start,end:links[i].end,cumulative:links[i].reason==='cumulative',font:base.font||'',size:base.size||0,style:structuredClone(base),lines:text.split('\n').length});
