@@ -9,6 +9,7 @@ const context={window:{},document:{getElementById:$,createElement:element},struc
  CaptionCore:require('../core.js'),CaptionBuilder:{async scene(layout,text,options={}){return {...slide(options.uid||'new',text),bodyIndex:0,editor:{layout,text,...options}}},colorType:()=>'',plain:s=>s,styledRuns:(text,options)=>[{...options,text}]},
  CaptionMasters:{key:()=> 'original',identify(s){s.shapes.forEach((sh,i)=>{sh.masterSlot||='base:'+i});return s}},CaptionRender:{show:(host,s)=>preview=structuredClone(s),release(){}},
  CaptionRecipes:{async sync(){}},CaptionWorkspace:{prepareEdit(){},snapshot:()=>structuredClone(project),rows:()=>[],currentRange:()=>null,message:s=>{throw Error(s)},apply(slides,links){applyCount++;project.slides=slides;project.links=links;}}};
+vm.runInNewContext(fs.readFileSync('ppt/editor-history.js','utf8'),context);
 vm.runInNewContext(fs.readFileSync('ppt/editor.js','utf8'),context);
 (async()=>{
  const editor=context.window.CaptionEditor;

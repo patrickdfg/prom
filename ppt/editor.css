@@ -6,7 +6,7 @@
 #editorDialog .editor-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;flex:1;min-height:0}
 #editorDialog .editor-fields{overflow:auto;padding-right:10px;min-height:0}
 #editorDialog .editor-display{position:static;align-self:stretch;overflow:auto;min-height:0}
-#editorDialog .editor-display>.slide-host{width:min(100%,calc((96dvh - 210px)*8/9));margin:10px auto 0}
+#editorDialog .editor-display>.slide-host{width:min(100%,calc((96dvh - 270px)*8/9));margin:10px auto 0}
 #editorDialog .editor-bottom{position:static;flex-shrink:0;padding-top:12px;margin-top:8px}
 #editorDialog .editor-media-tools{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:8px 0}
 #editorDialog .editor-media-tools button{font-size:12px;padding:6px 8px}
@@ -21,3 +21,15 @@
 #editLibraryGrid span{font-size:12px;overflow-wrap:anywhere}
 @media(max-width:900px) and (min-width:761px){#editorDialog .editor-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}}
 @media(max-width:760px){#editorDialog{padding:12px}#editorDialog .editor-grid{display:flex;flex-direction:column;overflow:auto}#editorDialog .editor-fields{overflow:visible;padding-right:0;flex-shrink:0}#editorDialog .editor-display{order:-1;overflow:visible;flex-shrink:0}#editorDialog .editor-display>.slide-host{width:100%}}
+
+#editorDialog .editor-geometry{margin:14px 0 0;min-width:0;padding:12px;border:1px solid #506a88;border-radius:9px}
+#editorDialog .editor-object-align{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+#editorDialog .editor-object-align button{padding:7px 10px;font-size:13px}
+#editorDialog .editor-geometry .editor-inline{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+#editorDialog .editor-geometry label{min-width:0}
+#editorDialog .editor-geometry input{box-sizing:border-box;width:100%;min-width:0}
+#editorDialog .editor-geometry .editor-small{margin:8px 0 0}
+@media(max-width:420px){#editorDialog .editor-geometry .editor-inline{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+#editorDialog #editorHint{font-size:12px;line-height:1.5;margin:8px 0}
+#editorDialog .editor-geometry .editor-small{font-size:12px}
