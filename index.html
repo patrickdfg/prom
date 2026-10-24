@@ -1366,7 +1366,7 @@ function ceRefresh(){
     sep.querySelector('[data-move="down"]').disabled=!prev||!next||!prevHasText;
     const up=sep.querySelector('[data-move="up"]');
     up.disabled=!prev||!next||!hasRoom||!nextHasText;
-    const reason=!nextHasText?'다음 장에 옮길 글이 없습니다.':!hasRoom?'앞 장이 가득 찼습니다. ↓ 다음 장으로 한 줄 보내 공간을 만드세요.':'';
+    const reason=!nextHasText?'다음 장에 옮길 글이 없습니다.':!hasRoom?'앞 장이 가득 찼습니다. 앞 장 원고를 정리해 빈칸을 확보하세요.':'';
     up.title=reason||'다음 장 첫 글줄을 앞 장으로';
     const hint=sep.querySelector('.ce-move-hint');
     hint.textContent=reason;hint.hidden=!reason;
@@ -1459,7 +1459,7 @@ cePages.addEventListener('click',e=>{
     if(next.body.children.length===1&&!ceHasText(next.body.firstElementChild))next.body.firstElementChild.remove();
     next.body.insertBefore(row,next.body.firstElementChild);
   }else{
-    if(!ceCanMakeRoom(prev)){ceState.textContent='앞 장이 가득 찼습니다. 먼저 ↓ 다음 장으로 줄을 보내세요.';return;}
+    if(!ceCanMakeRoom(prev)){ceState.textContent='앞 장이 가득 찼습니다. 앞 장 원고를 정리해 빈칸을 확보하세요.';return;}
     // A blank at the top of the next page must not block the first actual text row.
     const row=[...next.body.children].find(ceHasText);
     if(!row){ceState.textContent='다음 장에 옮길 글이 없습니다.';return;}
