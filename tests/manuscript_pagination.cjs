@@ -31,7 +31,7 @@ function check(paras,K){
   return {pages,lines};
 }
 for(const K of [5,6,7])for(const paras of fixtures)check(paras,K);
-const headed=check(fixtures[3],5).pages;
+const headed=check(fixtures.find(paras=>paras.some(p=>p.runs.some(r=>r.t==='<소제목>'))),5).pages;
 assert(headed.some(pg=>text(pg).some(t=>t.includes('<소제목>'))&&text(pg).some(t=>t.includes('본문'))),'short heading stays with its following paragraph');
 const colored=[{runs:[{t:'1.',hex:'FF0000'},{t:' 강조한 첫 단어와 나머지 문장을 읽습니다.',hex:'0000FF'}],marks:[{off:8,page:2}]}];
 const coloredPages=check(colored,5).pages;
