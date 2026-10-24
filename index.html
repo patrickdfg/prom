@@ -1289,6 +1289,7 @@ ceStyle.textContent=[
 '#continuousEditor .ce-break:before,#continuousEditor .ce-break:after{content:"";flex:1;height:2px;background:#486789}',
 '#continuousEditor .ce-break button{padding:6px 9px;font-size:12px;white-space:nowrap}',
 '#continuousEditor .ce-break button:disabled{opacity:.35;cursor:not-allowed}',
+'#continuousEditor .ce-move-hint{font-size:11px;color:#ffdaaa;white-space:normal}',
 '#continuousEditor #ceState{position:sticky;bottom:0;z-index:3;padding:10px 20px;background:#1e3049;color:#b9d8ff;font-size:13px}',
 '@media(max-width:620px){#continuousEditor .ce-head{align-items:stretch;flex-direction:column}#continuousEditor .ce-pages{padding:0 10px 20px}#continuousEditor .ce-break{gap:4px;flex-wrap:wrap}#continuousEditor .ce-break button{font-size:11px}}'
 ].join('\n');
@@ -1309,7 +1310,7 @@ function ceAddCard(runs=[]){
   const pi=ceCards.length;
   if(pi){
     const separator=document.createElement('div');separator.className='ce-break';separator.dataset.boundary=String(pi);
-    separator.innerHTML='<span>쪽 경계</span><button type="button" data-move="down" title="앞 장 마지막 줄을 다음 장으로">↓ 다음 장</button><button type="button" data-move="up" title="다음 장 첫 줄을 앞 장으로">↑ 앞 장</button>';
+    separator.innerHTML='<span>쪽 경계</span><button type="button" data-move="down" title="앞 장 마지막 줄을 다음 장으로">↓ 다음 장</button><button type="button" data-move="up" title="다음 장 첫 글줄을 앞 장으로">↑ 앞 장</button><small class="ce-move-hint" hidden></small>';
     cePages.appendChild(separator);
   }
   const card=document.createElement('section');card.className='ce-card';
@@ -1353,17 +1354,32 @@ function ceMark(card){card.dirty=true;ceChanged=true;dirty=true;}
 function ceRefresh(){
   ceCards.forEach((entry,i)=>{
     entry.card.querySelector('.ce-label').textContent=(i+1)+'쪽';
-    entry.card.querySelector('.ce-amount').textContent=entry.body.children.length+' / '+LINES+'줄';
+    entry.card.querySelector('.ce-amount').textContent=entry.body.children.length+' / '+LINES+'칸 (글 '+[...entry.body.children].filter(ceHasText).length+'줄)';
     entry.body.setAttribute('aria-label',(i+1)+'쪽 원고');
   });
   $('ceCount').textContent=ceCards.length+'쪽 · 장당 '+LINES+'줄';
   cePages.querySelectorAll('.ce-break').forEach(sep=>{
     const i=+sep.dataset.boundary,prev=ceCards[i-1],next=ceCards[i];
-    sep.querySelector('[data-move="down"]').disabled=!prev||!next||!ceReadPage(prev).some(line=>line.some(run=>run.t.trim()));
-    sep.querySelector('[data-move="up"]').disabled=!prev||!next||(prev.body.children.length>=LINES&&ceHasText(prev.body.lastElementChild))||!ceReadPage(next).some(line=>line.some(run=>run.t.trim()));
+    const prevHasText=!!prev&&ceReadPage(prev).some(line=>line.some(run=>run.t.trim()));
+    const nextHasText=!!next&&ceReadPage(next).some(line=>line.some(run=>run.t.trim()));
+    const hasRoom=!!prev&&ceCanMakeRoom(prev);
+    sep.querySelector('[data-move="down"]').disabled=!prev||!next||!prevHasText;
+    const up=sep.querySelector('[data-move="up"]');
+    up.disabled=!prev||!next||!hasRoom||!nextHasText;
+    const reason=!nextHasText?'다음 장에 옮길 글이 없습니다.':!hasRoom?'앞 장이 가득 찼습니다. ↓ 다음 장으로 한 줄 보내 공간을 만드세요.':'';
+    up.title=reason||'다음 장 첫 글줄을 앞 장으로';
+    const hint=sep.querySelector('.ce-move-hint');
+    hint.textContent=reason;hint.hidden=!reason;
   });
 }
 function ceHasText(row){return !!row&&ceReadRuns(row).some(run=>run.t.trim());}
+function ceCanMakeRoom(card){
+  // Only exterior blank rows are reusable; intentionally blank interior rows still occupy a slot.
+  const rows=[...card.body.children];let first=0,last=rows.length-1;
+  while(last>=first&&!ceHasText(rows[last]))last--;
+  while(first<=last&&!ceHasText(rows[first]))first++;
+  return last-first+1<LINES;
+}
 function ceMakeRoom(card){
   // Use only exterior empty spacer rows to make room; preserve interior paragraph gaps.
   while(card.body.children.length>=LINES&&card.body.lastElementChild&&!ceHasText(card.body.lastElementChild))
@@ -1443,9 +1459,14 @@ cePages.addEventListener('click',e=>{
     if(next.body.children.length===1&&!ceHasText(next.body.firstElementChild))next.body.firstElementChild.remove();
     next.body.insertBefore(row,next.body.firstElementChild);
   }else{
+    if(!ceCanMakeRoom(prev)){ceState.textContent='앞 장이 가득 찼습니다. 먼저 ↓ 다음 장으로 줄을 보내세요.';return;}
+    // A blank at the top of the next page must not block the first actual text row.
+    const row=[...next.body.children].find(ceHasText);
+    if(!row){ceState.textContent='다음 장에 옮길 글이 없습니다.';return;}
     ceMakeRoom(prev);
-    if(prev.body.children.length>=LINES){ceState.textContent='앞 장이 가득 찼습니다. 먼저 다음 장으로 줄을 보내세요.';return;}
-    const row=next.body.firstElementChild;if(!ceHasText(row))return;prev.body.appendChild(row);
+    if(prev.body.children.length>=LINES){ceState.textContent='앞 장의 줄 수를 먼저 줄여 주세요.';return;}
+    if(prev.body.children.length===1&&!ceHasText(prev.body.firstElementChild))prev.body.firstElementChild.remove();
+    prev.body.appendChild(row);
   }
   ceMark(prev);ceMark(next);ceFlow();ceState.textContent='쪽 사이의 줄 위치를 조정했습니다.';
 });
