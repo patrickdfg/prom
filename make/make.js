@@ -178,7 +178,7 @@ const plainText=sh=>(sh?.paragraphs||[]).map(p=>(p.runs||[]).map(r=>r.text||'').
 const scene=()=>draft.layouts[layoutKey],cur=()=>scene()?.shapes[shapeIx];
 const isBody=i=>i===scene().bodyIndex;
 // 화면을 거의 다 덮는 그림은 '배경'으로 보고 요소 목록에서 빼서 배경 그림 버튼으로만 바꾼다.
-const isBg=(sh,s=scene())=>sh?.type==='image'&&(sh.background||(sh.w>=s.width*.9&&sh.h>=s.height*.9));
+const isBg=(sh,s=scene())=>sh?.type==='image'&&(sh.background||(!sh.manualGeometry&&sh.w>=s.width*.9&&sh.h>=s.height*.9));
 const firstFront=()=>{const s=scene();let i=0;while(i<s.shapes.length&&isBg(s.shapes[i],s))i++;return i;};
 function shapeLabel(sh,i,s){if(i===s.bodyIndex)return '본문 글상자 (원고 글자가 들어감)';const t=plainText(sh).trim().slice(0,14);if(sh.type==='text')return `글상자 ${i+1}`+(t?` · ${t}`:'');if(sh.type==='image')return `그림 ${i+1}`+(sh.background?' (배경)':'');return ({ellipse:'원',roundRect:'둥근 사각형'}[sh.geom]||'사각형')+` ${i+1}`;}
 
@@ -251,7 +251,7 @@ let raf=0;function changed(){dirty=true;cancelAnimationFrame(raf);raf=requestAni
 function select(i){shapeIx=i;$('mShape').value=i;fillControls();outline();}
 
 // 칸에서 고친 값 반영
-function applyGeometry(){const sh=cur();if(!sh)return;mark('geo');for(const [id,k] of [['mX','x'],['mY','y'],['mW','w'],['mH','h']]){const v=parseFloat($(id).value);if(Number.isFinite(v))sh[k]=k==='w'||k==='h'?Math.max(4,v):v;}changed();}
+function applyGeometry(){const sh=cur();if(!sh)return;mark('geo');for(const [id,k] of [['mX','x'],['mY','y'],['mW','w'],['mH','h']]){const v=parseFloat($(id).value);if(Number.isFinite(v))sh[k]=k==='w'||k==='h'?Math.max(4,v):v;}if(sh.type==='image'){sh.manualGeometry=true;sh.background=false;}changed();}
 function applyText(e){
   const sh=cur();if(!sh||sh.type!=='text')return;mark('text:'+(e?.target?.id||''));
   const {r:old}=textBase(sh),font=$('mFont').value.trim()||old.font||'Malgun Gothic',size=Number.isFinite(parseFloat($('mSize').value))?Math.max(6,parseFloat($('mSize').value))*96/72:old.size||32,line=Math.min(3,Math.max(.5,parseFloat($('mLine').value)||1.3));
@@ -349,7 +349,7 @@ addEventListener('resize',outline);
   host.addEventListener('pointerdown',e=>{
     if(!draft||!previewScene)return;host.focus({preventScroll:true});const p=toSlide(e),shapes=scene().shapes;
     const handle=e.target.closest?.('.hdl')?.dataset.h;
-    if(!handle){let hit=-1;for(let i=shapes.length-1;i>=0;i--){const sh=shapes[i];if(sh.background||sh.rotate)continue;if(sh.type==='image'&&sh.w>=previewScene.width*.9&&sh.h>=previewScene.height*.9)continue;if(p.x>=sh.x&&p.x<=sh.x+sh.w&&p.y>=sh.y&&p.y<=sh.y+sh.h){hit=i;break;}}if(hit<0)return;select(hit);}
+    if(!handle){let hit=-1;for(let i=shapes.length-1;i>=0;i--){const sh=shapes[i];if(sh.background||sh.rotate)continue;if(sh.type==='image'&&!sh.manualGeometry&&sh.w>=previewScene.width*.9&&sh.h>=previewScene.height*.9)continue;if(p.x>=sh.x&&p.x<=sh.x+sh.w&&p.y>=sh.y&&p.y<=sh.y+sh.h){hit=i;break;}}if(hit<0)return;select(hit);}
     const sh=cur();drag={h:handle||'',sx:p.x,sy:p.y,g:{x:sh.x,y:sh.y,w:sh.w,h:sh.h},marked:false};host.setPointerCapture(e.pointerId);e.preventDefault();
   });
   host.addEventListener('pointermove',e=>{
@@ -359,7 +359,7 @@ addEventListener('resize',outline);
     else{let {x,y,w,h}=g;if(drag.h.includes('e'))w=g.w+dx;if(drag.h.includes('s'))h=g.h+dy;if(drag.h.includes('w')){x=g.x+dx;w=g.w-dx;}if(drag.h.includes('n')){y=g.y+dy;h=g.h-dy;}
       if(e.shiftKey&&drag.h.length===2){const r=g.w/g.h;if(w/h>r)w=h*r;else h=w/r;if(drag.h.includes('w'))x=g.x+g.w-w;if(drag.h.includes('n'))y=g.y+g.h-h;}
       if(w<10){if(drag.h.includes('w'))x-=10-w;w=10;}if(h<10){if(drag.h.includes('n'))y-=10-h;h=10;}Object.assign(sh,{x:Math.round(x),y:Math.round(y),w:Math.round(w),h:Math.round(h)});}
-    $('mX').value=sh.x;$('mY').value=sh.y;$('mW').value=sh.w;$('mH').value=sh.h;dirty=true;outline();
+    if(sh.type==='image'){sh.manualGeometry=true;sh.background=false;}$('mX').value=sh.x;$('mY').value=sh.y;$('mW').value=sh.w;$('mH').value=sh.h;dirty=true;outline();
   });
   const end=()=>{if(!drag)return;const moved=drag.marked;drag=null;if(moved)changed();};host.addEventListener('pointerup',end);host.addEventListener('pointercancel',end);
 })();
@@ -376,7 +376,7 @@ addEventListener('keydown',e=>{
   if(mod&&k==='v'){if(clipboard){e.preventDefault();const c=clone(clipboard);c.x+=20;c.y+=20;insert(c);}return;}
   if(k==='delete'||k==='backspace'){e.preventDefault();remove();return;}
   const step=e.shiftKey?10:1,mv={arrowleft:[-step,0],arrowright:[step,0],arrowup:[0,-step],arrowdown:[0,step]}[k];
-  if(mv&&cur()){e.preventDefault();mark('nudge');cur().x+=mv[0];cur().y+=mv[1];fillControls();outline();changed();}
+  if(mv&&cur()){e.preventDefault();mark('nudge');cur().x+=mv[0];cur().y+=mv[1];if(cur().type==='image')cur().manualGeometry=true;fillControls();outline();changed();}
 });
 // 글꼴 목록
 (()=>{const names=['마루 부리OTF 굵은','Malgun Gothic','맑은 고딕','바탕','궁서','돋움','굴림','HY견고딕','HY견명조','나눔고딕','나눔명조','나눔스퀘어','Noto Sans KR','Noto Serif KR','Pretendard','Arial'];for(const n of names){const o=document.createElement('option');o.value=n;$('mFonts').append(o);}})();
@@ -473,7 +473,7 @@ $('makeToLive').onclick=async()=>{
 지금 만든 PPT로 바꿀까요? 이전 작업은 이 기기에 한 벌 보관해 둡니다.`)){status('makeStatus','넘기기를 취소했습니다.');return;}
       // 백업과 새 작업 저장은 아래의 한 트랜잭션에서 함께 처리한다.
     }
-    const project={version:1,lines:deck.lines,richLines:deck.richLines,scriptName:deck.scriptName||'',deckName:deck.deckName||'',slides:structuredClone(deck.slides),links:structuredClone(deck.links),layoutMasters:{},
+    const project={version:1,lines:deck.lines,richLines:deck.richLines,scriptName:deck.scriptName||'',deckName:deck.deckName||'',slides:structuredClone(deck.slides),links:structuredClone(deck.links),layoutMasters:structuredClone(deck.layoutMasters||{}),
       generationTemplate:deckTemplateRec?structuredClone(deckTemplateRec):null,announcements:deck.announcements||'',responsiveReading:deck.responsiveReading||'',
       exportSize:structuredClone(deck.exportSize||{width:1920,height:1080})};   // 동일 원고 재현은 원본 크기도 유지
     const stamp=crypto.randomUUID(),packed=packLive({...project,makeTransferId:stamp});
@@ -507,8 +507,9 @@ $('mInstructions').onclick=()=>openInstructions($('mTemplate').value);
    만들기 화면의 덱에 맞춰 대신 만들어 준다. 원고 연결 구간·누적 표시처럼 방송용에만 필요한 칸은 화면에서 숨긴다. */
 window.CaptionWorkspace={
   snapshot(){if(!deck)throw Error('먼저 PPT를 만드세요.');return structuredClone(deck);},
-  apply(slides,links,opts={}){deck={...deck,slides,links,...(opts.deckName?{deckName:opts.deckName}:{})};if(Number.isInteger(opts.selected))selected=Math.max(-1,Math.min(opts.selected,slides.length-1));renderGrid(deck.slides);if(opts.message)toast(opts.message,5000);},
+  apply(slides,links,opts={}){deck={...deck,slides,links,...(opts.layoutMasters?{layoutMasters:structuredClone(opts.layoutMasters)}:{}),...(opts.deckName?{deckName:opts.deckName}:{})};if(Number.isInteger(opts.selected))selected=Math.max(-1,Math.min(opts.selected,slides.length-1));renderGrid(deck.slides);if(opts.message)toast(opts.message,5000);},
   selected:()=>selected,
+  layoutMasters:()=>structuredClone(deck?.layoutMasters||{}),
   message:text=>toast(String(text).replace(/\s*복제한 자막의 원고 연결 구간을 지정하세요\./,''),5000),   // 방송용 PPT 전용 안내(원고 연결 구간)는 이 화면에 없다
   prepareEdit(){},rememberRich(){},
   rows:()=>deck?CaptionCore.segments(deck.lines,deck.links):[],
