@@ -40,7 +40,12 @@
         for(const run of pg[i]||[]){const span=document.createElement('span');span.textContent=run.t;span.className=['b','r','n'].includes(run.c)?run.c:'';line.appendChild(span);}
         lines.appendChild(line);
       }
-      paper.appendChild(lines);
+      if(window.PromPptxOriginal?.isActive()){
+        paper.style.aspectRatio=String(window.PromPptxOriginal.aspect()||16/9);
+        const layer=document.createElement('div');
+        paper.appendChild(layer);
+        window.PromPptxOriginal.renderSlide(layer,window.PromPptxOriginal.slide(pi),pg,lineRange[pi],cursor,false);
+      }else paper.appendChild(lines);
       const label=document.createElement('div');label.className='slide-label';
       const number=document.createElement('span');number.textContent=String(pi+1);
       const badge=document.createElement('span');badge.className='slide-live';badge.textContent='현재 원고';
@@ -53,7 +58,7 @@
   }
   function update(){
     if(!enabled)return;
-    const next=JSON.stringify([P,LINES,MOBILE,$('theme').value,$('page').style.backgroundImage]);
+    const next=JSON.stringify([P,LINES,MOBILE,$('theme').value,$('page').style.backgroundImage,window.PromPptxOriginal?.key(0)]);
     const rebuilt=signature!==next;
     if(rebuilt){signature=next;build();}
     cards.forEach((card,pi)=>{
