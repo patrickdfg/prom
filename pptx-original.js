@@ -65,16 +65,23 @@ window.PromPptxOriginal = (() => {
       bold:rPr?.getAttribute('b')==='1',italic:rPr?.getAttribute('i')==='1',
       underline:!!rPr?.getAttribute('u')&&rPr.getAttribute('u')!=='none',font};
   }
-  function paragraphs(txBody){
+  function paragraphs(txBody,fallbackTx=null){
     const out=[];
+    const ownStyles=direct(txBody,A,'lstStyle');
+    const baseStyles=direct(fallbackTx,A,'lstStyle');
     for(const par of kids(txBody,A,'p')){
       const ppr=direct(par,A,'pPr');
+      const level=Math.min(8,Math.max(0,numeric(ppr?.getAttribute('lvl'))));
+      const levelName='lvl'+(level+1)+'pPr';
+      const levelStyle=direct(ownStyles,A,levelName)||direct(baseStyles,A,levelName);
+      const inheritedRun=direct(levelStyle,A,'defRPr');
+      const directRun=direct(ppr,A,'defRPr');
       const ending=direct(par,A,'endParaRPr');
-      const defaultSize=numeric(ending?.getAttribute('sz'),2800)/100;
+      const defaultSize=numeric(directRun?.getAttribute('sz')||inheritedRun?.getAttribute('sz')||ending?.getAttribute('sz'),2800)/100;
       const lineNode=direct(direct(ppr,A,'lnSpc'),A,'spcPts');
       const linePts=lineNode?numeric(lineNode.getAttribute('val'))/100:null;
       let current=[];
-      const save=()=>{const text=current.map(r=>r.t).join('');out.push({runs:current,text,align:ppr?.getAttribute('algn')||'l',linePts});current=[];};
+      const save=()=>{const text=current.map(r=>r.t).join('');out.push({runs:current,text,align:ppr?.getAttribute('algn')||levelStyle?.getAttribute('algn')||'l',linePts});current=[];};
       for(const item of par.children){
         if(item.namespaceURI!==A)continue;
         if(item.localName==='r'||item.localName==='fld')current.push(parseRun(item,defaultSize));
@@ -85,9 +92,25 @@ window.PromPptxOriginal = (() => {
     return out;
   }
   const num=(n)=>Math.max(0,Math.min(1.5,numeric(n)));
-  function drawingShape(el,dim){
+  function placeholderShape(node,documents){
+    const ph=by(node,P,'ph');if(!ph)return null;
+    const idx=ph.getAttribute('idx'),type=ph.getAttribute('type')||'obj';
+    for(const doc of documents){
+      const tree=direct(direct(doc?.documentElement,P,'cSld'),P,'spTree');
+      const candidates=[...(tree?.children||[])].filter(x=>x.namespaceURI===P&&x.localName==='sp'&&by(x,P,'ph'));
+      const byIndex=idx!==null?candidates.find(x=>by(x,P,'ph')?.getAttribute('idx')===idx):null;
+      const byType=candidates.find(x=>(by(x,P,'ph')?.getAttribute('type')||'obj')===type);
+      if(byIndex||byType)return byIndex||byType;
+    }
+    return null;
+  }
+  function drawingShape(el,dim,fallback=null){
     const spPr=direct(el,P,'spPr');
-    const g=geometry(spPr,dim.w,dim.h);
+    let g=geometry(spPr,dim.w,dim.h);
+    if((!g.w||!g.h)&&fallback){
+      const inherited=geometry(direct(fallback,P,'spPr'),dim.w,dim.h);
+      g={...inherited,...Object.fromEntries(Object.entries(g).filter(([k,v])=>!['x','y','w','h'].includes(k)||v!==0))};
+    }
     const tx=direct(el,P,'txBody');
     const body=direct(tx,A,'bodyPr');
     const preset=direct(spPr,A,'prstGeom')?.getAttribute('prst')||'rect';
@@ -103,7 +126,7 @@ window.PromPptxOriginal = (() => {
       },
       vertical:body?.getAttribute('anchor')||'t',
       wrap:body?.getAttribute('wrap')!=='none',
-      paragraphs:tx?paragraphs(tx):[]
+      paragraphs:tx?paragraphs(tx,direct(fallback,P,'txBody')):[]
     };
   }
   function drawingPicture(el,dim,relationships){
@@ -169,7 +192,8 @@ window.PromPptxOriginal = (() => {
           if(node.namespaceURI!==P)continue;
           if(inherited&&by(node,P,'ph'))continue;
           if(node.localName==='sp'){
-            const shape=drawingShape(node,dim);
+            const fallbackDocs=part===doc?[layoutDoc,masterDoc]:part===layoutDoc?[masterDoc]:[];
+            const shape=drawingShape(node,dim,placeholderShape(node,fallbackDocs));
             if(inherited)for(const par of shape.paragraphs)par.rowIndex=-1;
             objects.push(shape);
           }
