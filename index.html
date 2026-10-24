@@ -1486,12 +1486,31 @@ function parseSaved(text){
 }
 $('save').onclick=savePages;
 // 원고를 쪽마다 슬라이드 한 장인 PPTX로 저장한다 (지금 배경: 검정이면 검정 바탕·흰 글씨)
+async function currentPptBackgroundJpeg(){
+  const raw=$('page').style.backgroundImage;
+  const url=/^url\(["']?(.+?)["']?\)$/.exec(raw)?.[1]||BG_DEFAULT;
+  const img=await new Promise((resolve,reject)=>{
+    const i=new Image();
+    i.onload=()=>resolve(i);
+    i.onerror=()=>reject(new Error('원고 배경 이미지를 읽지 못했습니다.'));
+    i.src=url;
+  });
+  const canvas=document.createElement('canvas');canvas.width=1920;canvas.height=1080;
+  const ctx=canvas.getContext('2d');
+  if(!ctx)throw new Error('PPT 배경 이미지 변환을 지원하지 않는 브라우저입니다.');
+  const sw=img.naturalWidth,sh=img.naturalHeight,scale=Math.max(1920/sw,1080/sh);
+  const w=sw*scale,h=sh*scale;
+  ctx.drawImage(img,(1920-w)/2,(1080-h)/2,w,h);
+  return canvas.toDataURL('image/jpeg',.92).split(',')[1];
+}
 async function savePptx(){
   if(!P.length)return;
   try{
     // 쪽이 이어질 때 붙는 >> 표시도 그대로 넣는다
     const pages=snapshotPages().map(pg=>pg.map(l=>l.filter(r=>r&&r.t)));
-    const blob=await PromPptx.create(pages,{count:LINES,dark:$('theme').value==='dark',title:baseName});
+    const backgroundJpeg=$('theme').value==='cloud'?await currentPptBackgroundJpeg():'';
+    const fontName=$('page').classList.contains('fallback')?'Malgun Gothic':'HY견고딕';
+    const blob=await PromPptx.create(pages,{count:LINES,dark:$('theme').value==='dark',title:baseName,backgroundJpeg,fontName});
     const name=baseName+'_프롬프터.pptx';
     if(window.showSaveFilePicker){
       try{const h=await showSaveFilePicker({suggestedName:name,types:[{description:'PowerPoint',accept:{'application/vnd.openxmlformats-officedocument.presentationml.presentation':['.pptx']}}]});const w=await h.createWritable();await w.write(blob);await w.close();toast('PPT로 저장했습니다 · '+h.name+' · '+pages.length+'장',6000);return;}
@@ -2342,7 +2361,7 @@ if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 <script src="overview.js?v=20261023-one-top-row"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
 <script src="extras.js?v=20261023-stage-hide1"></script>
-<script src="ppt/drive-config.js?v=20261020-sync1"></script><script src="google-session.js?v=20261021-session1"></script><script src="prompter-pptx.js?v=20261020-pptx2"></script><script src="drive-sync.js?v=20261021-session1"></script>
+<script src="ppt/drive-config.js?v=20261020-sync1"></script><script src="google-session.js?v=20261021-session1"></script><script src="prompter-pptx.js?v=20261024-visual1"></script><script src="drive-sync.js?v=20261021-session1"></script>
 
 <div data-prom-support class="prom-support-floating" aria-label="사용자 도움말"></div><script src="support.js?v=20261023-voice-start"></script></body>
 </html>
