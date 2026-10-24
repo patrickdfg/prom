@@ -4,6 +4,7 @@ window.PromBuiltinTemplates=(()=>{
 // version을 올리면 고치지 않은 기본 템플릿은 새 것으로 바뀐다. 사용자가 마스터 편집으로 고친 것(edited)은 그대로 둔다.
 const LIST=[
   {id:'builtin-sunday',file:'sunday.json',version:1},
+  {id:'builtin-sunday-worship',file:'sunday.json',version:1,transform:'sunday-worship'},
   {id:'builtin-dawn',file:'dawn.json',version:2},
   {id:'builtin-spirit-word',file:'spirit-word.json',version:7},
 ];
@@ -66,6 +67,11 @@ async function seed(){
       const res=await fetch(new URL(t.file+'?v='+t.version,base));if(!res.ok)continue;
       let rec=await res.json();if(rec?.version!==1||!rec.design?.layouts)continue;
       if(t.transform==='spirit')rec=spiritPreset(rec);
+      if(t.transform==='sunday-worship'){
+        rec.name='기본 주일예배 전체 템플릿';
+        rec.options={...rec.options,sourceMode:'numbered',serviceExtras:true};
+        rec.instructions='주일예배 전체: 말씀 원고와 선택한 교독문·광고만 만듭니다. 교독문이나 광고가 없으면 해당 순서는 생략하고 입력된 자료로 계속 만듭니다.\n'+rec.instructions;
+      }
       Object.assign(rec,{id:t.id,builtin:true,builtinVersion:t.version,edited:false});
       if(have&&t.id==='builtin-spirit-word'){
         // Keep user-modified artwork as a separately selectable personal template.

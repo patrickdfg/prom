@@ -2,6 +2,38 @@
 window.MakePptEngine=(()=>{
  'use strict';
  const B=CaptionBuilder,R=CaptionContentRules,P=CaptionPairTemplate,L=MakeTemplateLayouts;
+ function policy(record){
+  if(record?.id==='builtin-sunday')return {full:false,sermonOnly:true};
+  const full=record?.options?.serviceExtras===true||R.mode(record)==='worship'||/주일\s*예배\s*(?:전체|전반)/.test(record?.name||'');
+  return {full,sermonOnly:!full&&[record?.id,record?.copiedFrom].includes('builtin-sunday')};
+ }
+ const slideText=s=>(s.shapes||[]).filter(sh=>sh.type==='text').flatMap(sh=>(sh.paragraphs||[]).flatMap(p=>(p.runs||[]).map(r=>r.text||''))).join('\n');
+ const readingSlide=s=>s.servicePart==='responsiveReading'||/^\s*(?:교독문|성시\s*교독|인도자\s*[:：]|회중\s*[:：])/m.test(slideText(s));
+ const adSlide=s=>/^\s*(?:교회\s*광고|예배\s*광고|광고\s*[:：]?\s*$)/m.test(slideText(s));
+ async function serviceExtras(result,record,options){
+  const readingTemplate=result.slides.find(readingSlide),adTemplate=result.slides.find(adSlide),hasAdBindings=!!record?.announcementTemplate?.slots?.length;
+  const readingAt=Math.max(0,result.slides.findIndex(readingSlide));
+  const keep=result.slides.map((s,i)=>readingSlide(s)||!hasAdBindings&&adSlide(s)?-1:i).filter(i=>i>=0);
+  result={...result,slides:keep.map(i=>result.slides[i]),links:keep.map(i=>result.links[i])};
+  const reading=String(options.responsiveReading||'').trim();
+  if(reading){
+   const formatted=readingTemplate?MakeAnnouncements.format(readingTemplate,reading):await (async()=>{
+    const rows=reading.split(/\r?\n/).filter(s=>s.trim()).flatMap(line=>B.wrapForLayout(line,'word')),slides=[];
+    for(const chunk of B.meaningfulPageSplit(rows.map(text=>({text})),6))slides.push(await B.scene('word',chunk.map(r=>r.text).join('\n')));
+    return slides;
+   })();
+   let at=Math.min(readingAt,result.slides.length);
+   for(const slide of formatted){
+    slide.servicePart='responsiveReading';slide.layoutName=record.name+' · 교독문';
+    result.slides.splice(at,0,slide);result.links.splice(at++,0,{status:'unlinked',start:null,end:null,score:0,reason:'responsive-reading'});
+   }
+  }
+  const ads=String(options.announcements||'').trim(),fallbackSlide=ads?(adTemplate||await B.scene('word','교회 광고')):null;
+  result=MakeAnnouncements.replace(result,record,ads,{omitEmpty:true,fallbackSlide});
+  if(!result.slides.length)throw Error('만들 자료가 없습니다. 말씀 원고·교독문·광고 중 하나 이상을 넣어 주세요.');
+  if(result.slides.length>500)throw Error('생성된 화면이 500장을 넘습니다. 자료를 나누어 넣어 주세요.');
+  return {...result,responsiveReading:reading,summary:(result.summary||'입력 자료로 제작')+' · 교독문 '+(reading?'포함':'생략')+' · 광고 '+(ads?'포함':'생략')};
+ }
  // Plain-text 성령말씀 workflow. No numbered list or font-color markers required.
  async function generateSpirit(project,record,options={}){
   const raw=(project.lines||[]).map(v=>String(v??'').trim());
@@ -99,20 +131,30 @@ window.MakePptEngine=(()=>{
   let record=template?L.prepare(window.MakeAnnouncements?MakeAnnouncements.upgrade(structuredClone(template)):structuredClone(template),B.layouts):null;
   if(record?.id==='builtin-spirit-word'||record?.options?.sourceMode==='spirit')return generateSpirit(project,record,options);
   await B.useTemplate(record?.design||null);
+  const service=policy(record);
   const run=async()=>{
-   if(R.mode(record)==='worship'){
+   if(service.full&&!(project.lines||[]).some(s=>String(s).trim()))return {slides:[],links:[],record,exportSize:{width:1920,height:1080}};
+   if(R.mode(record)==='worship'&&record?.pair?.sources?.deck?.data){
     const result=R.generateWorship(project,record,await R.sourceDeck(record,CaptionImport.deck),options);
     record=L.prepare(result.record,B.layouts);await B.useTemplate(record.design);
     return {...result,record,worship:true,exportSize:{width:1920,height:1080}};
    }
-   const original=await P.generate(project,record,CaptionImport.deck,CaptionImport.manuscriptRich,options);
+   const original=service.sermonOnly?null:await P.generate(project,record,CaptionImport.deck,CaptionImport.manuscriptRich,options);
    if(original)return {...original,record:L.prepare(original.record,B.layouts)};
-   const generated=await B.generate(project,options),woven=P.weave(record?.fixedSlides||[],generated.slides,generated.links);
+   let generated;
+   if(service.full){
+    let h;try{h=R.header(project);}catch{};
+    generated=R.automatic(project).blocks.length?await B.generate(project,{...options,title:h?'':options.title}):{slides:[],links:[]};
+    if(h){const heads=[await B.scene('cover',options.title||h.title,{date:options.date})];for(const p of h.passages)heads.push(await B.scene('verse',p.ref+'\n'+p.text));generated.slides.unshift(...heads);generated.links.unshift(...[h.titleRange,...h.passages].map(range=>({status:'exact',start:range.start,end:range.end,score:1,reason:'service-heading'})));}
+   }else generated=await B.generate(project,options);
+   const woven=P.weave(service.sermonOnly?[]:record?.fixedSlides||[],generated.slides,generated.links);
    return {...generated,...woven,record,exportSize:{width:1920,height:1080}};
   };
   // A previously open PPT must not add its project-specific master overrides to a different selected template.
   const result=await (window.CaptionMasters?.withRecords?CaptionMasters.withRecords({},run):run());
-  return options.announcements?.trim()||result.record?.announcementTemplate?MakeAnnouncements.replace(result,result.record,options.announcements):{...result,announcements:String(options.announcements||'')};
+  if(service.sermonOnly)return {...result,announcements:'',responsiveReading:''};
+  if(service.full)return serviceExtras(result,result.record,options);
+  return options.announcements?.trim()?MakeAnnouncements.replace(result,result.record,options.announcements):{...result,announcements:'',responsiveReading:''};
  }
- return {generate};
+ return {generate,policy};
 })();

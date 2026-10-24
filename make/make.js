@@ -385,11 +385,16 @@ addEventListener('keydown',e=>{
 function scopeHint(){const rec=byId($('makeTemplate').value),omit=R.worshipOmit(rec);if(rec&&(rec.id==='builtin-spirit-word'||rec.copiedFrom==='builtin-spirit-word'||R.mode(rec)==='spirit')){$('makeScopeHint').textContent='성령말씀: 텍스트 원고 전체를 문장별 누적 자막으로 만듭니다. 제목은 표지에 한 번만 표시합니다.';return;}$('makeScopeHint').textContent=R.mode(rec)==='worship'?'제목·성경본문만 교체합니다.'+(omit.length?' 대표기도·성가대/특송은 제외합니다.':'')+' 교독문·광고 등은 원본 PPT 내용이므로 확인해 주세요.':'등록한 같은 원고는 원본 PPT 모양과 순서로 재현합니다. 다른 주일·수요·새벽 원고는 자동 인식합니다. 여러 번호 항목이 있으면 항목별로, 없으면 파랑은 하단 2줄, 초록은 말씀·성구 화면으로 만듭니다. 둘 다 없으면 자막을 생성하지 않습니다.';}
 function adaptMakeInputs(){
  const rec=byId($('makeTemplate').value),spirit=!!rec&&(rec.id==='builtin-spirit-word'||rec.copiedFrom==='builtin-spirit-word'||R.mode(rec)==='spirit');
+ const service=MakePptEngine.policy(rec);
  $('makePastePanel').open=spirit;
- $('makeAdsField').hidden=spirit;
+ $('makeAdsField').hidden=spirit||service.sermonOnly;
+ $('makeReadingField').hidden=!service.full;
+ $('makeResponsiveReading').disabled=!service.full;
  $('makeSpiritRevealField').hidden=!spirit;
- $('makeAdsHint').hidden=spirit;
- $('makeAnnouncements').disabled=spirit;
+ $('makeAdsHint').hidden=spirit||service.sermonOnly;
+ $('makeAnnouncements').disabled=spirit||service.sermonOnly;
+ if(service.sermonOnly)$('makeScopeHint').textContent='주일설교는 말씀 원고만으로 만듭니다. 광고·교독문은 포함하지 않습니다.';
+ else if(service.full)$('makeScopeHint').textContent='주일예배 전체는 말씀·교독문·광고 중 입력한 자료만 만듭니다. 교독문이나 광고를 비워 두어도 계속 진행합니다.';
  $('makeFileField').querySelector('input').accept=spirit?'.hwp,.hwpx,.docx,.txt,.pdf':'.hwp,.hwpx,.docx,.txt';
  $('makeFileField').firstChild.textContent=spirit?'원고 파일 (PDF · HWP · HWPX · DOCX · TXT, 선택)':'원고 파일 (HWP · HWPX · DOCX · TXT, 여러 개 선택)';
 }
@@ -409,7 +414,8 @@ $('makeRun').onclick=async()=>{
   if(busy)return;
   busy=true;$('makeRun').disabled=true;$('makeDownload').disabled=true;status('makeStatus','원고를 읽고 PPT를 만드는 중…');
   try{
-    let rec=byId($('makeTemplate').value);const rich=await makeInputs.read(R.mode(rec)==='spirit'?spiritManuscriptImporter:CaptionImport.manuscriptRich);
+    let rec=byId($('makeTemplate').value);const service=MakePptEngine.policy(rec),hasScript=makeInputs.files().length||makeInputs.pastes().some(t=>t.trim());
+    const rich=service.full&&!hasScript?{lines:[],richLines:[],name:'주일예배'}:await makeInputs.read(R.mode(rec)==='spirit'?spiritManuscriptImporter:CaptionImport.manuscriptRich);
     // Keep blank paragraph separators in plain pasted spirit manuscripts.
     // The generic importer intentionally drops empty lines, which otherwise merges paragraphs.
     if(R.mode(rec)==='spirit'){
@@ -429,11 +435,11 @@ $('makeRun').onclick=async()=>{
       }
     }
     const project={lines:rich.lines,richLines:rich.richLines,scriptName:rich.name,slides:[],links:[]};
-    const opts={title:$('makeTitle').value.trim(),date:$('makeDate').value.trim(),announcements:R.mode(rec)==='spirit'?'':$('makeAnnouncements').value,spiritReveal:$('makeSpiritReveal').checked};
+    const opts={title:$('makeTitle').value.trim(),date:$('makeDate').value.trim(),announcements:R.mode(rec)==='spirit'||service.sermonOnly?'':$('makeAnnouncements').value,responsiveReading:service.full?$('makeResponsiveReading').value:'',spiritReveal:$('makeSpiritReveal').checked};
     const woven=await MakePptEngine.generate(project,rec,opts);rec=woven.record;const summary=woven.summary||'원고를 자동 인식했습니다.';
     if(rec?.worship&&!byId(rec.id)?.worship){await put(rec);$('mTemplate').value=rec.id;draft=null;dirty=false;}
     // 편집 중 장면 좌표는 유지하고, 다운로드 크기는 공통 엔진의 결과를 따른다.
-    deck={...project,announcements:woven.announcements,slides:woven.slides,links:woven.links,deckName:stem(rich.name)+'_자막.pptx',generationTemplate:rec?structuredClone(rec):null,exportSize:woven.exportSize||{width:1920,height:1080}};deckTemplate=rec?.design||null;deckTemplateRec=rec||null;selected=-1;
+    deck={...project,announcements:woven.announcements,responsiveReading:woven.responsiveReading,slides:woven.slides,links:woven.links,deckName:stem(rich.name)+'_자막.pptx',generationTemplate:rec?structuredClone(rec):null,exportSize:woven.exportSize||{width:1920,height:1080}};deckTemplate=rec?.design||null;deckTemplateRec=rec||null;selected=-1;
     renderGrid(deck.slides);$('makeDownload').disabled=false;$('makeToLive').disabled=false;$('makeEditTools').hidden=false;
     status('makeStatus',`${deck.slides.length}장을 만들었습니다${rec?` (템플릿: ${rec.name})`:''}. ${summary}. 확인 후 PPTX 다운로드를 누르세요.`);
   }catch(e){status('makeStatus',e.message||String(e),true);}
@@ -468,7 +474,7 @@ $('makeToLive').onclick=async()=>{
       // 백업과 새 작업 저장은 아래의 한 트랜잭션에서 함께 처리한다.
     }
     const project={version:1,lines:deck.lines,richLines:deck.richLines,scriptName:deck.scriptName||'',deckName:deck.deckName||'',slides:structuredClone(deck.slides),links:structuredClone(deck.links),layoutMasters:{},
-      generationTemplate:deckTemplateRec?structuredClone(deckTemplateRec):null,announcements:deck.announcements||'',
+      generationTemplate:deckTemplateRec?structuredClone(deckTemplateRec):null,announcements:deck.announcements||'',responsiveReading:deck.responsiveReading||'',
       exportSize:structuredClone(deck.exportSize||{width:1920,height:1080})};   // 동일 원고 재현은 원본 크기도 유지
     const stamp=crypto.randomUUID(),packed=packLive({...project,makeTransferId:stamp});
     await new Promise((ok,no)=>{const tx=db.transaction('projects','readwrite'),store=tx.objectStore('projects'),r=store.get('last');

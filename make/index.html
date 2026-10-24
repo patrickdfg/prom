@@ -36,7 +36,8 @@
       <details id="makePastePanel" class="more manuscript-paste"><summary>원고 복사·붙여넣기 / 직접 입력</summary><div id="makePasteList"></div><button id="makePasteAdd" type="button">+ 붙여넣을 원고 추가</button></details>
       <p class="hint">여러 파일은 위에 표시된 순서대로 이어지고, 붙여넣은 원고는 그 뒤에 추가됩니다.</p>
       <label id="makeAdsField" class="field">광고 복사·붙여넣기 (선택)<textarea id="makeAnnouncements" rows="7" placeholder="1. 첫 번째 광고&#10;- 시간&#10;- 장소&#10;&#10;2. 두 번째 광고"></textarea></label>
-      <p id="makeAdsHint" class="hint">광고는 번호별로 한 장씩 원본 광고 화면에 넣습니다. 설교 원고에는 합치지 않습니다. 비워 두면 기존 광고를 유지합니다.</p>
+      <p id="makeAdsHint" class="hint">광고는 말씀 원고와 따로 만듭니다. 주일예배 전체에서 비워 두면 광고 순서를 생략합니다.</p>
+      <label id="makeReadingField" class="field" hidden>교독문 복사·붙여넣기 (선택)<textarea id="makeResponsiveReading" rows="5" placeholder="교독문 제목과 내용을 붙여넣으세요. 비워 두면 생략합니다."></textarea></label>
       <label hidden>제작 대상<select id="makeScope"><option value="numbered">설교 원고 · 자동 인식</option><option value="worship">예배 전반 · 제목과 성경본문만</option></select></label>
       <p id="makeScopeHint" class="hint"></p>
       <label id="makeSpiritRevealField" class="field" hidden><span><input id="makeSpiritReveal" type="checkbox" checked> 한 줄씩 표시 (해제하면 완성된 페이지씩 표시)</span></label>
@@ -199,12 +200,12 @@
 <script src="../ppt/core.js?v=20261022-speech-frequency1"></script>
 <script src="../ppt/importers.js?v=20261021-ads2"></script>
 <script src="../ppt/slide-size.js?v=20261021-fidelity3"></script><script src="../ppt/render.js?v=20261021-reproduce1"></script>
-<script src="../ppt/builtin-templates.js?v=20261022-spirit-published-v7"></script>
+<script src="../ppt/builtin-templates.js?v=20261024-optional-service1"></script>
 <script src="../ppt/layout-masters.js?v=20261021-reproduce1"></script>
-<script src="../ppt/content-rules.js?v=20261022-ordered-proverbs2"></script><script src="../ppt/builder.js?v=20261022-common-pagebreak1"></script>
-<script src="../ppt/pptx-export.js?v=20261021-ads2"></script>
+<script src="../ppt/content-rules.js?v=20261024-optional-service1"></script><script src="../ppt/builder.js?v=20261022-common-pagebreak1"></script>
+<script src="../ppt/pptx-export.js?v=20261024-optional-service1"></script>
 <script src="../ppt/pair-template.js?v=20261021-reproduce1"></script>
-<script src="../ppt/image-library.js?v=20261023-resilient1"></script><script src="manuscripts.js?v=20261021-scope1"></script><script src="template-layouts.js?v=20261022-spirit-visible2"></script><script src="announcements.js?v=20261021-adtemplate2"></script><script src="engine.js?v=20261022-spirit-text-layer2"></script><script src="make.js?v=20261023-resilient1"></script>
+<script src="../ppt/image-library.js?v=20261023-resilient1"></script><script src="manuscripts.js?v=20261021-scope1"></script><script src="template-layouts.js?v=20261022-spirit-visible2"></script><script src="announcements.js?v=20261024-optional-service1"></script><script src="engine.js?v=20261024-optional-service1"></script><script src="make.js?v=20261024-optional-service1"></script>
 <script src="../ppt/font-picker.js?v=20261017-font1"></script>
 <script src="../ppt/editor-media.js?v=20261021-fidelity3"></script><script src="../ppt/editor.js?v=20261023-assets1"></script>
 <script src="../ppt/drive-config.js?v=20261020-sync1"></script><script src="../google-session.js?v=20261021-session1"></script>

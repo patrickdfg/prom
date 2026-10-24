@@ -70,17 +70,30 @@ function render(slot,lines,number){
   s.uid=root.crypto?.randomUUID?.()||String(Math.random());s.bodyIndex=slot.bodyIndex;s.text=take.join('\n');s.announcement={number,page:pages.length+1};s.masterId=slot.masterId||s.masterId;delete s.editor;pages.push(s);
  }return pages;
 }
-function replace(result,record,value){
+function replace(result,record,value,options={}){
+ if(!parse(value).length&&options.omitEmpty){
+  const bindings=record?.announcementTemplate?.slots||discover(record),keys=new Set();
+  for(const slot of bindings){const slide=slot.slide||record.fixedSlides?.[slot.fixedIndex]?.slide;if(slide)keys.add(signature(slide));if(slot.sourceIdentity)keys.add(slot.sourceIdentity);}
+  const keep=result.slides.map((s,i)=>keys.has(signature(s))?-1:i).filter(i=>i>=0);
+  return {...result,slides:keep.map(i=>result.slides[i]),links:keep.map(i=>result.links[i]),announcements:'',announcementCount:0};
+ }
  const items=parse(value);if(!items.length&&!record?.announcementTemplate)return {...result,announcements:String(value||'')};
- const slots=learn(record);if(!slots.length)throw Error('선택한 템플릿에 광고 화면이 없습니다. 광고가 포함된 완성 PPT로 템플릿을 등록해 주세요.');
+ let slots;try{slots=learn(record);}catch(e){if(!options.fallbackSlide)throw e;slots=[];}if(!slots.length){
+  if(options.fallbackSlide&&items.length){const slide=options.fallbackSlide,body=slide.bodyIndex??bodyIndex(slide),ads=items.flatMap((lines,i)=>render({slide,bodyIndex:body},lines,i+1));return {...result,slides:[...result.slides,...ads],links:[...result.links,...ads.map(()=>({status:'unlinked',start:null,end:null,score:0,reason:'announcement'}))],announcements:String(value),announcementCount:items.length};}
+  throw Error('선택한 템플릿에 광고 화면이 없습니다. 광고가 포함된 완성 PPT로 템플릿을 등록해 주세요.');
+ }
  const identities=new Map();for(const slot of slots)for(const key of [slot.signature,slot.sourceIdentity].filter(Boolean))identities.set(key,slot);
  const indices=result.slides.map((s,i)=>identities.has(signature(s))?i:-1).filter(i=>i>=0);
- if(!indices.length)throw Error('템플릿의 광고 화면을 결과에서 찾지 못했습니다. 광고 슬라이드를 포함해 템플릿을 다시 저장해 주세요.');
+ if(!indices.length){
+  if(options.fallbackSlide&&items.length){const ads=items.flatMap((lines,i)=>render(slots[Math.min(i,slots.length-1)],lines,i+1));return {...result,slides:[...result.slides,...ads],links:[...result.links,...ads.map(()=>({status:'unlinked',start:null,end:null,score:0,reason:'announcement'}))],announcements:String(value),announcementCount:items.length};}
+  throw Error('템플릿의 광고 화면을 결과에서 찾지 못했습니다. 광고 슬라이드를 포함해 템플릿을 다시 저장해 주세요.');
+ }
  if(!items.length){const slides=result.slides.map((s,i)=>{if(!indices.includes(i))return s;const slot=identities.get(signature(s));return {...clone(slot.slide),uid:s.uid,bodyIndex:slot.bodyIndex,masterId:slot.masterId||slot.slide.masterId};});return {...result,slides,announcements:String(value||'')};}
  const ads=items.flatMap((lines,i)=>render(slots[Math.min(i,slots.length-1)],lines,i+1)),remove=new Set(indices),slides=[],links=[];
  for(let i=0;i<result.slides.length;i++){if(i===indices[0])for(const s of ads){slides.push(s);links.push({status:'unlinked',start:null,end:null,score:0,reason:'announcement'});}if(!remove.has(i)){slides.push(result.slides[i]);links.push(result.links[i]);}}
  if(slides.length>500)throw Error('자막과 광고가 500장을 넘습니다. 광고를 나누어 넣어 주세요.');
  return {...result,slides,links,announcements:String(value),announcementCount:items.length,summary:(result.summary||'자막 생성')+` · 광고 ${items.length}개를 원본 광고 서식 ${ads.length}장으로 교체`};
 }
-const api={parse,learn,replace,upgrade,expand,collapse,preview};if(typeof module==='object'&&module.exports)module.exports=api;else root.MakeAnnouncements=api;
+function format(slide,value){return render({slide,bodyIndex:slide.bodyIndex??bodyIndex(slide)},String(value).split(/\r?\n/),1).map(s=>{delete s.announcement;return s;});}
+const api={parse,learn,replace,upgrade,expand,collapse,preview,format};if(typeof module==='object'&&module.exports)module.exports=api;else root.MakeAnnouncements=api;
 })(typeof window==='object'?window:globalThis);
