@@ -1347,15 +1347,21 @@ function ceRefresh(){
   cePages.querySelectorAll('.ce-break').forEach(sep=>{
     const i=+sep.dataset.boundary,prev=ceCards[i-1],next=ceCards[i];
     sep.querySelector('[data-move="down"]').disabled=!prev||!next||!ceReadPage(prev).some(line=>line.some(run=>run.t.trim()));
-    sep.querySelector('[data-move="up"]').disabled=!prev||!next||prev.body.children.length>=LINES||!ceReadPage(next).some(line=>line.some(run=>run.t.trim()));
+    sep.querySelector('[data-move="up"]').disabled=!prev||!next||(prev.body.children.length>=LINES&&ceHasText(prev.body.lastElementChild))||!ceReadPage(next).some(line=>line.some(run=>run.t.trim()));
   });
+}
+function ceHasText(row){return !!row&&ceReadRuns(row).some(run=>run.t.trim());}
+function ceMakeRoom(card){
+  // A trailing empty display row is available capacity, not a reason to create another page.
+  while(card.body.children.length>=LINES&&card.body.lastElementChild&&!ceHasText(card.body.lastElementChild))
+    card.body.lastElementChild.remove();
 }
 function ceFlow(){
   for(let i=0;i<ceCards.length;i++){
     const entry=ceCards[i];ceNormalize(entry);
     while(entry.body.children.length>LINES){
-      const next=ceCards[i+1]||ceAddCard();
-      if(next.body.children.length===1&&!ceReadRuns(next.body.firstElementChild).length)next.body.firstElementChild.remove();
+      const next=ceCards[i+1]||ceAddCard();ceMakeRoom(next);
+      if(next.body.children.length===1&&!ceHasText(next.body.firstElementChild))next.body.firstElementChild.remove();
       next.body.insertBefore(entry.body.lastElementChild,next.body.firstChild);
       ceMark(entry);ceMark(next);
     }
@@ -1402,12 +1408,15 @@ cePages.addEventListener('click',e=>{
   const sep=button.closest('.ce-break'),i=+sep.dataset.boundary,prev=ceCards[i-1],next=ceCards[i];
   if(!prev||!next)return;
   if(button.dataset.move==='down'){
-    const row=prev.body.lastElementChild;if(!row)return;
-    if(next.body.children.length===1&&!ceReadRuns(next.body.firstElementChild).length)next.body.firstElementChild.remove();
+    while(prev.body.children.length>1&&!ceHasText(prev.body.lastElementChild))prev.body.lastElementChild.remove();
+    const row=prev.body.lastElementChild;if(!ceHasText(row))return;
+    ceMakeRoom(next);
+    if(next.body.children.length===1&&!ceHasText(next.body.firstElementChild))next.body.firstElementChild.remove();
     next.body.insertBefore(row,next.body.firstElementChild);
   }else{
+    ceMakeRoom(prev);
     if(prev.body.children.length>=LINES){ceState.textContent='앞 장이 가득 찼습니다. 먼저 다음 장으로 줄을 보내세요.';return;}
-    const row=next.body.firstElementChild;if(!row)return;prev.body.appendChild(row);
+    const row=next.body.firstElementChild;if(!ceHasText(row))return;prev.body.appendChild(row);
   }
   ceMark(prev);ceMark(next);ceFlow();ceState.textContent='쪽 사이의 줄 위치를 조정했습니다.';
 });
