@@ -1,0 +1,21 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),L=require('../image-library.js');
+const {webcrypto}=require('node:crypto');if(!globalThis.crypto)globalThis.crypto=webcrypto;
+const data=name=>'data:image/png;base64,'+Buffer.from(name).toString('base64');
+const transparent=data('transparent custom artwork'),opaque=data('opaque artwork'),blank=data('empty transparent artwork'),broken=data('broken image');
+const samples=new Map([[transparent,new Uint8ClampedArray([20,40,60,0,20,40,60,255])],[opaque,new Uint8ClampedArray([20,40,60,255,20,40,60,255])],[blank,new Uint8ClampedArray(8)]]),decoded=[];
+global.Image=class {naturalWidth=2;naturalHeight=1;async decode(){decoded.push(this.src);if(!samples.has(this.src))throw Error('unreadable image');}};
+global.document={createElement(tag){assert.equal(tag,'canvas');let source;return {getContext(){return {drawImage(image){source=image.src},getImageData(){return {data:samples.get(source)}}}}}}};
+const shape=src=>({type:'image',src,x:0,y:0,w:100,h:80});
+const dawn=JSON.parse(fs.readFileSync('ppt/templates/dawn.json','utf8')),wave=dawn.design.layouts.passage.shapes[1].src;
+const record={id:'personal',name:'주일예배전반 복제',design:{layouts:{word:{width:960,height:540,shapes:[shape(transparent),shape(opaque),shape(blank),shape(broken),shape(wave),{...shape(opaque),w:960,h:540}]}}}};
+(async()=>{
+ const before=JSON.stringify(record);await L.prepare([record]);const artwork=L.collect([record],'artwork');assert.equal(artwork.length,1);assert.equal(artwork[0].src,transparent,'unrelated transparent artwork from the same named template stays');
+ assert(!decoded.includes(wave),'known green wave is excluded by source identity before decoding');
+ assert.equal(L.collect([record],'background').length,1,'opaque background choices remain available');assert.equal(JSON.stringify(record),before,'preparing gallery never modifies original records or shapes');
+ const count=decoded.length;await L.prepare([record]);assert.equal(decoded.length,count,'image checks are cached');
+ const catalog=JSON.parse(fs.readFileSync('ppt/images/library/catalog.json','utf8'));assert.equal(catalog.items.filter(x=>x.kind==='background').length,9);assert.equal(catalog.items.filter(x=>x.kind==='artwork').length,10);
+ for(const id of ['banner-gold-ribbon-v1','banner-lavender-leaves-v1','banner-blue-diamond-v1','banner-pink-flowers-v1','banner-blue-wave-v1'])assert(!catalog.items.some(x=>x.id===id));
+ assert(catalog.items.some(x=>x.id==='banner-gold-ribbon-transparent-v1'),'transparent ribbon stays');assert.equal(catalog.items.filter(x=>x.file.startsWith('v2/')).length,6,'all six transparent banners stay');
+ for(const name of ['make/index.html','ppt/index.html'])assert(fs.readFileSync(name,'utf8').includes('image-library.js?v=20261024-gallery-prune1'));
+ console.log('PASS opaque/empty/unreadable artwork removed, exact green-wave exclusion, unrelated transparent art and all backgrounds retained, cache, template immutability, five obsolete banners and both editor references');
+})().catch(e=>{console.error(e);process.exitCode=1});
