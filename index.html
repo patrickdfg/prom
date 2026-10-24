@@ -971,7 +971,12 @@ function buildUnits(paras){
   const units=[]; let blk=0, last=null;
   for(let pi=s;pi<paras.length;pi++){
     const p=paras[pi];
-    if(!p.runs.some(r=>r.t.replace(/[\s 　]/g,''))&&units.length)blk++;
+    if(p.pb&&units.length)blk++;      // 원고의 명시적인 쪽 나누기도 유지한다
+    if(!p.runs.some(r=>r.t.replace(/[\s 　]/g,''))&&units.length){
+      // <소제목>만 외딴 한 쪽이 되지 않도록 그 뒤의 빈 줄은 다음 본문과 잇는다.
+      const tail=units[units.length-1].words.map(w=>w.segs.map(s=>s.t).join('')).join(' ');
+      if(!/^<[^>]+>$/.test(tail))blk++;
+    }
     else if(indentMode&&units.length&&rawOf(p).trim()&&!indented(p))blk++;
     if(proverbs&&p.num&&units.length&&rawOf(p).trim())blk++;      // 번호가 붙은 문단 = 새 잠언
     const {segs,mpos}=paraSegs(p);
@@ -998,6 +1003,13 @@ function wrapUnit(u){
     for(const m of w.marks)segs.push({t:' ',c:'k'},{t:String(m),c:'r'});
     return {segs,w:pw(segs.map(s=>s.t).join('')),end:w.num?'':w.segs.length?w.segs[w.segs.length-1].t.slice(-1):''};
   });
+  // 문단 첫 번호의 마침표는 문장 끝이 아니다. 번호와 첫 단어는 한 줄에 붙인다.
+  // 한글 자동 번호와 직접 쓴 "1. 내용" 모두 처리하되 본문 속 숫자·소수점은 건드리지 않는다.
+  if(ws.length>1&&(u.words[0].num||/^(?:\d+[.)]|[①-⑳])$/.test(u.words[0].segs.map(s=>s.t).join('')))){
+    const first=ws.shift(), next=ws[0];
+    next.segs=[...first.segs,{t:' ',c:first.segs[first.segs.length-1].c},...next.segs];
+    next.w+=first.w+0.5;
+  }
   const n=ws.length; if(!n)return [];
   const join=arr=>{
     const runs=[]; const add=(t,c)=>{const l=runs[runs.length-1]; if(l&&l.c===c)l.t+=t; else runs.push({t,c})};
@@ -1054,6 +1066,7 @@ function paginateLines(L,K,mix=3.0){
   if(MOBILE)return paginateMobile(L,K);
   const info=L.map(l=>{const t=plainOf(l); return {sent:!l.nosent&&R_SENT.test(t),clause:R_CLAUSE.test(t),ue:!!l.ue,wd:pw(l.runs.map(r=>r.t).join('').trimEnd())}});
   const cost=(i,j)=>{
+    if(L[i].blk!==L[j-1].blk)return Infinity; // 빈 줄 경계 뒤 문단을 앞 쪽의 여백에 채우지 않는다
     const k=j-i, last=j===N, sf=K-k; let c=0;
     if(k===1)return 50;
     if(k===2)c+=1.5; else if(sf>=2)c+=0.4;
