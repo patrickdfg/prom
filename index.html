@@ -1257,7 +1257,7 @@ ceDialog.innerHTML='<div class="ce-head"><div><strong>원고 연속 편집</stro
 document.body.appendChild(ceDialog);
 const ceStyle=document.createElement('style');
 ceStyle.textContent=[
-'#continuousEditor{width:min(1050px,calc(100vw - 24px));max-width:none;max-height:94dvh;padding:0;border:1px solid #526b8a;border-radius:15px;background:#101a29;color:#f4f7fc;box-shadow:0 20px 80px #000b}',
+'#continuousEditor{position:fixed;top:50%;left:50%;right:auto;bottom:auto;transform:translate(-50%,-50%);margin:0;width:min(1050px,calc(100vw - 24px));max-width:none;max-height:min(84dvh,780px);overflow-y:auto;padding:0;border:1px solid #526b8a;border-radius:15px;background:#101a29;color:#f4f7fc;box-shadow:0 20px 80px #000b}',
 '#continuousEditor::backdrop{background:#050911c9}',
 '#continuousEditor .ce-head{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;background:#1e3049;border-bottom:1px solid #526b8a}',
 '#continuousEditor .ce-head>div{display:flex;align-items:center;gap:12px;flex-wrap:wrap}',
