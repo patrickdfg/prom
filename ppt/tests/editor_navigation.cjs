@@ -1,13 +1,13 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const elements=new Map();
-function element(){return {value:'',children:[],hidden:false,disabled:false,checked:false,open:false,textContent:'',parentElement:{hidden:false,nextElementSibling:{hidden:false}},closest(){return {hidden:false}},replaceChildren(){this.children=[]},append(x){this.children.push(x)},addEventListener(type,fn){if(type==='close')this.closeEvent=fn;else this[type]=fn},showModal(){this.open=true},close(){this.open=false;this.closeEvent?.()},focus(){},select(){}};}
+function element(){return {value:'',children:[],get options(){return this.children},hidden:false,disabled:false,checked:false,open:false,textContent:'',parentElement:{hidden:false,nextElementSibling:{hidden:false}},closest(){return {hidden:false}},replaceChildren(){this.children=[]},append(x){this.children.push(x)},addEventListener(type,fn){if(type==='close')this.closeEvent=fn;else this[type]=fn},showModal(){this.open=true},close(){this.open=false;this.closeEvent?.()},focus(){},select(){}};}
 const $=id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id)};
 const slide=(uid,text)=>({uid,width:960,height:540,text,shapes:[{type:'text',x:0,y:0,w:960,h:100,paragraphs:[{align:'center',runs:[{text,size:32,font:'Original Font',color:'#111111'}]}]}]});
 const project={slides:[slide('a','First caption'),slide('b','Second caption'),slide('c','Third caption')],links:Array.from({length:3},()=>({status:'unlinked',start:null,end:null})),lines:[]};
 let preview,applyCount=0;
 const context={window:{},document:{getElementById:$,createElement:element},structuredClone,crypto:require('node:crypto').webcrypto,confirm:()=>true,
  CaptionCore:require('../core.js'),CaptionBuilder:{async scene(layout,text,options={}){return {...slide(options.uid||'new',text),bodyIndex:0,editor:{layout,text,...options}}},colorType:()=>'',plain:s=>s,styledRuns:(text,options)=>[{...options,text}]},
- CaptionMasters:{key:()=> 'original'},CaptionRender:{show:(host,s)=>preview=structuredClone(s),release(){}},
+ CaptionMasters:{key:()=> 'original',identify(s){s.shapes.forEach((sh,i)=>{sh.masterSlot||='base:'+i});return s}},CaptionRender:{show:(host,s)=>preview=structuredClone(s),release(){}},
  CaptionRecipes:{async sync(){}},CaptionWorkspace:{prepareEdit(){},snapshot:()=>structuredClone(project),rows:()=>[],currentRange:()=>null,message:s=>{throw Error(s)},apply(slides,links){applyCount++;project.slides=slides;project.links=links;}}};
 vm.runInNewContext(fs.readFileSync('ppt/editor.js','utf8'),context);
 (async()=>{

@@ -8,6 +8,8 @@ async function decode(file){if(!imageType(file?.type))throw Error('PNG·JPG 등 
 function backdrop(sh,s){return sh.editorBackground||root.CaptionSize?.fullBleed(sh,{...s,preserveGeometry:false})||(sh.type==='rect'&&!sh.extraShape&&!sh.manualGeometry&&!sh.rotate&&Math.abs(sh.x)<=s.width*.1&&Math.abs(sh.y)<=s.height*.1&&Math.abs(s.width-sh.x-sh.w)<=s.width*.1&&Math.abs(s.height-sh.y-sh.h)<=s.height*.1);}
 function background(s,images=[],color=s.background){const body=s.shapes[s.bodyIndex];s.shapes=s.shapes.filter(sh=>!backdrop(sh,s));s.shapes.unshift(...images.map(sh=>({...structuredClone(sh),type:'image',editorBackground:true,background:true,x:0,y:0,w:s.width,h:s.height,manualGeometry:false})));if(body)s.bodyIndex=s.shapes.indexOf(body);s.background=color;s.backgroundFill=null;s.backgroundEdited=true;return s;}
 function keep(next,from){
+ // A normal-slide picture edit belongs to that slide, not its template.
+ if(from.imageEdited&&next.editor?.layout===from.editor?.layout){const body=next.shapes[next.bodyIndex];next.shapes=next.shapes.filter(sh=>sh.type!=='image'||sh.editorBackground);from.shapes.forEach((sh,i)=>{if(sh.type==='image'&&!sh.editorBackground)next.shapes.splice(Math.min(i,next.shapes.length),0,structuredClone(sh));});next.bodyIndex=next.shapes.indexOf(body);next.imageEdited=true;}
  if(from.backgroundEdited)background(next,from.shapes.filter(sh=>sh.editorBackground),from.background);
  const pending=[];
  for(const sh of from.shapes.filter(sh=>sh.extraText||sh.extraShape||sh.extraImage)){
