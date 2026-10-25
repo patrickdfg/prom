@@ -120,7 +120,8 @@ window.MakePptEngine=(()=>{
     }
    }
    for(const chunk of splitBalancedPages(rows)){
-    await emitGroup(chunk.map(row=>[row.text]));
+    const lines=B.spreadShortText(chunk.map(row=>row.text),'word');
+    await emitGroup(lines.map(text=>[text]));
    }
   }
     if(slides.length===1)throw Error('표지 이외의 본문이 없습니다. 원고 내용을 확인해 주세요.');
