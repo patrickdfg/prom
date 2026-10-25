@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -140,25 +141,34 @@ namespace PromBridge
             return Math.Abs((long)window.Left - monitor.Left) <= 2 && Math.Abs((long)window.Top - monitor.Top) <= 2
                 && Math.Abs((long)window.Right - monitor.Right) <= 2 && Math.Abs((long)window.Bottom - monitor.Bottom) <= 2;
         }
+        public static bool HasCoveringWindow(IntPtr start, Func<IntPtr, IntPtr> previousWindow, Predicate<IntPtr> covers)
+        {
+            // Hidden windows count in the z-order too. Stop on an actual end/cycle, not an
+            // arbitrary number of windows that can hide a real presentation farther up.
+            var visited = new HashSet<IntPtr>();
+            for (IntPtr window = start; window != IntPtr.Zero && visited.Add(window); window = previousWindow(window)) {
+                if (covers(window)) return true;
+            }
+            return false;
+        }
         private static bool IsProjectorInFront(IntPtr projector, Rectangle monitor)
         {
             // Examine z-order instead of WindowFromPoint. The bridge status window or a small popup may cover
             // the monitor centre even while OBS is the visible presentation; only a large presentation surface
             // (PowerPoint, Chrome or another fullscreen window) above OBS means that OBS is behind.
-            IntPtr above = GetWindow(projector, 3);
-            int ownPid = Process.GetCurrentProcess().Id, guard = 0;
-            while (above != IntPtr.Zero && guard++ < 512) {
+            int ownPid;
+            using (var ownProcess = Process.GetCurrentProcess()) { ownPid = ownProcess.Id; }
+            return !HasCoveringWindow(GetWindow(projector, 3), h => GetWindow(h, 3), delegate(IntPtr above) {
                 if (IsWindowVisible(above) && !IsIconic(above)) {
                     uint pid; GetWindowThreadProcessId(above, out pid);
                     if (pid != ownPid) {
                         Rect rect;
                         if (GetWindowRect(above, out rect)
-                            && IsPresentationSurface(Rectangle.FromLTRB(rect.Left, rect.Top, rect.Right, rect.Bottom), monitor)) return false;
+                            && IsPresentationSurface(Rectangle.FromLTRB(rect.Left, rect.Top, rect.Right, rect.Bottom), monitor)) return true;
                     }
                 }
-                above = GetWindow(above, 3);
-            }
-            return true;
+                return false;
+            });
         }
         public PresentationWindow Find()
         {
@@ -270,7 +280,7 @@ namespace PromBridge
             if (c.Request.HttpMethod == "OPTIONS") { r.StatusCode = 204; return; }
             if (c.Request.HttpMethod == "GET" && path == "health") {
                 PresentationWindow window = switcher.Inspect();
-                string body = "{\"ready\":true,\"app\":\"PromWindowBridge\",\"version\":\"1.4.1\",\"mode\":\"obs-projector-z-order\",\"obs\":" + (window != null ? "true" : "false") + ",\"front\":" + (window != null && window.InFront ? "true" : "false") + "}";
+                string body = "{\"ready\":true,\"app\":\"PromWindowBridge\",\"version\":\"1.4.2\",\"mode\":\"obs-projector-z-order\",\"obs\":" + (window != null ? "true" : "false") + ",\"front\":" + (window != null && window.InFront ? "true" : "false") + "}";
                 byte[] bytes = Encoding.UTF8.GetBytes(body);
                 r.ContentType = "application/json; charset=utf-8";
                 r.OutputStream.Write(bytes, 0, bytes.Length);
@@ -311,7 +321,7 @@ namespace PromBridge
         public BridgeForm(EventWaitHandle showEvent)
         {
             this.showEvent = showEvent;
-            Text = "OBS 전체화면 전환 · 1.4.1";
+            Text = "OBS 전체화면 전환 · 1.4.2";
             ClientSize = new Size(620, 520);
             MinimumSize = new Size(636, 559);
             StartPosition = FormStartPosition.CenterScreen;
@@ -351,7 +361,7 @@ namespace PromBridge
             menu.Items.Add("앞 / 뒤 전환", null, delegate { Switch("toggle", "트레이"); });
             menu.Items.Add("토글키 설정…", null, delegate { ShowStatus(); ConfigureToggleHotkey(); });
             menu.Items.Add("프로그램 종료", null, delegate { Quit(); });
-            tray.Icon = Icon; tray.Text = "OBS 전체화면 전환 · 1.4.1"; tray.ContextMenuStrip = menu;
+            tray.Icon = Icon; tray.Text = "OBS 전체화면 전환 · 1.4.2"; tray.ContextMenuStrip = menu;
             tray.DoubleClick += delegate { ShowStatus(); };
             tray.Visible = true;
             timer.Interval = 1500; timer.Tick += delegate { RefreshTarget(); };

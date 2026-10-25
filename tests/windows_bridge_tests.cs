@@ -72,6 +72,12 @@ class Tests
             Check(NativeWindows.IsPresentationSurface(new Rectangle(1920, 0, 2048, 1110), monitor), "Chrome fullscreen/work-area surface must count");
             Check(!NativeWindows.IsPresentationSurface(new Rectangle(2500, 250, 620, 520), monitor), "bridge status window must not hide OBS front state");
             Check(!NativeWindows.IsPresentationSurface(new Rectangle(1920, 0, 1100, 1152), monitor), "narrow side window must not hide OBS front state");
+            Func<IntPtr, IntPtr> previousWindow = h => h.ToInt64() < 600 ? new IntPtr(h.ToInt64() + 1) : IntPtr.Zero;
+            Check(NativeWindows.HasCoveringWindow(new IntPtr(1), previousWindow, h => h.ToInt64() == 560), "PPT beyond 512 hidden windows must still cover OBS");
+            Check(!NativeWindows.HasCoveringWindow(new IntPtr(1), previousWindow, h => false), "uncovered OBS must remain in front after a long search");
+            Check(NativeWindows.HasCoveringWindow(new IntPtr(1), previousWindow, h => h.ToInt64() == 1), "nearest covering window must be detected");
+            Check(!NativeWindows.HasCoveringWindow(new IntPtr(1), h => new IntPtr(1), h => false), "changing z-order cycles must terminate");
+            Check(!NativeWindows.HasCoveringWindow(IntPtr.Zero, previousWindow, h => true), "empty z-order must not cover OBS");
             var fake = new FakeWindows(); var switcher = new Switcher(fake); string message;
             Check(switcher.Switch("toggle", out message) && !fake.LastFront, "first toggle must lower a visible OBS projector");
             Check(switcher.Switch("toggle", out message) && fake.LastFront, "second toggle must raise OBS projector");
