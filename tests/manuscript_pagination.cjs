@@ -15,7 +15,10 @@ const fixtures=[
   [para('자동 번호의 첫째 설명입니다.',{num:'1.'}),para('자동 번호의 둘째 설명입니다.',{num:'2.'}),para('자동 번호의 셋째 설명입니다.',{num:'3.'})],
   [para('원고 앞쪽 내용입니다.'),para(''),para('<소제목>'),para(''),para('소제목 다음의 본문을 읽습니다.')],
   [para('앞쪽 문장입니다.'),para('명시적인 쪽 나눔 뒤의 문장입니다.',{pb:true})],
-  [para('3.14 값을 확인합니다. 2026.10.24 날짜도 그대로 둡니다.')]
+  [para('3.14 값을 확인합니다. 2026.10.24 날짜도 그대로 둡니다.')],
+  [para('1'),para('다음 내용을 끝까지 기억하며 실천해야 합니다.')],
+  [para('1.'),para('다음 내용을 끝까지 기억하며 실천해야 합니다.')],
+  [para('1.\n다음 내용을 끝까지 기억하며 실천해야 합니다.')]
 ];
 function check(paras,K){
   const original=JSON.stringify(paras),units=c.buildUnits(paras),lines=units.flatMap(c.wrapUnit),pages=c.buildPrompter(paras,K);
@@ -25,7 +28,7 @@ function check(paras,K){
     assert(pg.length<=K,'page row limit');
     const nonempty=pg.filter(l=>l.some(r=>r.t.trim()&&r.t.trim()!=='>>'));
     assert(nonempty.every((l,i)=>i===0||!l.some(r=>r.paragraphStart)),'a new block must begin on a fresh page');
-    assert(text(pg).every(t=>!/^\d+[.)]$/.test(t.trim())),'number must not occupy a separate line');
+    assert(text(pg).every(t=>!/^\d+\.?$/.test(t.trim())),'bare number or number-dot must not occupy a separate line');
   }
   assert.equal(JSON.stringify(paras),original,'source formatting, marks and text are immutable');
   return {pages,lines};
@@ -43,6 +46,12 @@ assert(mobile[0].some(l=>l.some(r=>r.paragraphStart)));
 vm.runInContext('MOBILE=false',c);
 const existing=c.parseTxt('첫째 줄\n둘째 줄\n셋째 줄\n넷째 줄\n다섯째 줄');
 assert.equal(existing.length,1);assert.equal(text(existing[0]).join('|'),'첫째 줄|둘째 줄|셋째 줄|넷째 줄|다섯째 줄','preformatted prompter unchanged');
+const sparse=check([para('하나님을 사랑하고 우리 모두 기뻐하며 살아갑니다.')],5).pages;
+assert(sparse.some(pg=>text(pg).length>=2),'long single-line manuscript can be spread naturally');
+const brief=check([para('참 좋은 말씀입니다.')],5).pages;
+assert.deepEqual(brief.flatMap(text),['참 좋은 말씀입니다.'],'genuinely short manuscript stays short');
+const longPaste=c.parseTxt('1.\n하나님을 사랑하고 이웃을 사랑하며 오늘 하루도 기쁨으로 살아가야 합니다. 지금 해야 할 일을 늦지 않게 하십시오.');
+assert(longPaste.flatMap(text).every(t=>!/^\d+\.?$/.test(t.trim())),'pasted long manuscript must attach isolated number');
 (async()=>{
   if(process.argv[2]){
     const {pages}=await c.parseHwp(fs.readFileSync(process.argv[2]));assert(pages.ms,'actual HWP recognized as manuscript');
