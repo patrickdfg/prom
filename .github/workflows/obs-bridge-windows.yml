@@ -1,0 +1,38 @@
+name: OBS fullscreen bridge Windows build
+
+on:
+  pull_request:
+    paths:
+      - "windows-bridge/**"
+      - "tests/windows_bridge_tests.cs"
+      - ".github/workflows/obs-bridge-windows.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compile-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile Windows bridge
+        shell: pwsh
+        run: |
+          .\windows-bridge\build.ps1
+      - name: Compile and run existing bridge regression tests
+        shell: pwsh
+        run: |
+          $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          $bridge = Join-Path $PWD 'windows-bridge\bin\PromWindowBridge.exe'
+          $testExe = Join-Path $PWD 'windows-bridge\bin\BridgeTests.exe'
+          & $compiler /nologo /target:exe /platform:anycpu /codepage:65001 /r:System.Windows.Forms.dll /r:System.Drawing.dll ("/r:" + $bridge) ("/out:" + $testExe) (Join-Path $PWD 'tests\windows_bridge_tests.cs')
+          if ($LASTEXITCODE -ne 0) { throw 'Test compilation failed' }
+          & $testExe
+          if ($LASTEXITCODE -ne 0) { throw 'Regression tests failed' }
+      - name: Publish trial Windows executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: OBSFullscreenBridge-1.3.1-test
+          path: windows-bridge/bin/PromWindowBridge.exe
+          if-no-files-found: error

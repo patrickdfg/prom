@@ -116,8 +116,26 @@ namespace PromBridge
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo info);
         [DllImport("user32.dll")] private static extern IntPtr WindowFromPoint(Point point);
         [DllImport("user32.dll")] private static extern IntPtr GetAncestor(IntPtr h, uint flag);
-        [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr h, int command);
+        [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr h);
+        [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr h);
         [DllImport("user32.dll", SetLastError = true)] private static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int w, int height, uint flags);
+
+        private IntPtr lastPowerPointForeground = IntPtr.Zero;
+        private const uint KeepBoundsAndFocus = 0x0213; // SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER
+
+        private static bool IsPowerPointWindow(IntPtr handle)
+        {
+            if (handle == IntPtr.Zero || !IsWindow(handle)) return false;
+            uint pid;
+            GetWindowThreadProcessId(handle, out pid);
+            try {
+                using (Process p = Process.GetProcessById((int)pid))
+                    return string.Equals(p.ProcessName, "POWERPNT", StringComparison.OrdinalIgnoreCase);
+            } catch (ArgumentException) { return false; }
+              catch (InvalidOperationException) { return false; }
+              catch (System.ComponentModel.Win32Exception) { return false; }
+        }
 
         public static bool IsFullscreenProjector(string process, string title, Rectangle window, Rectangle monitor)
         {
@@ -164,9 +182,24 @@ namespace PromBridge
         }
         public bool Order(PresentationWindow window, bool front)
         {
-            if (front) ShowWindow(window.Handle, 4);
-            // Keep location, size, keyboard focus and owner order unchanged.
-            return SetWindowPos(window.Handle, new IntPtr(front ? -1 : 1), 0, 0, 0, 0, 0x0213);
+            if (front) {
+                IntPtr focused = GetForegroundWindow();
+                // Remember PowerPoint only, never a browser or an unrelated app.
+                lastPowerPointForeground = focused != window.Handle && IsPowerPointWindow(focused) ? focused : IntPtr.Zero;
+
+                // Recover the TOPMOST flag left by older releases before raising the projector.
+                // HWND_TOP raises it temporarily without pinning it over every other application.
+                if (!SetWindowPos(window.Handle, new IntPtr(-2), 0, 0, 0, 0, KeepBoundsAndFocus)) return false;
+                return SetWindowPos(window.Handle, IntPtr.Zero, 0, 0, 0, 0, KeepBoundsAndFocus);
+            }
+
+            // HWND_BOTTOM also removes TOPMOST if an older release left it set.
+            bool projectorHadFocus = GetForegroundWindow() == window.Handle;
+            if (!SetWindowPos(window.Handle, new IntPtr(1), 0, 0, 0, 0, KeepBoundsAndFocus)) return false;
+            // Only restore focus when OBS itself held it; don't interrupt unrelated applications.
+            if (projectorHadFocus && IsPowerPointWindow(lastPowerPointForeground))
+                SetForegroundWindow(lastPowerPointForeground);
+            return true;
         }
     }
     public sealed class Switcher
@@ -236,7 +269,7 @@ namespace PromBridge
             if (c.Request.HttpMethod == "OPTIONS") { r.StatusCode = 204; return; }
             if (c.Request.HttpMethod == "GET" && path == "health") {
                 PresentationWindow window = switcher.Inspect();
-                string body = "{\"ready\":true,\"app\":\"PromWindowBridge\",\"version\":\"1.3.0\",\"mode\":\"obs-projector-z-order\",\"obs\":" + (window != null ? "true" : "false") + ",\"front\":" + (window != null && window.InFront ? "true" : "false") + "}";
+                string body = "{\"ready\":true,\"app\":\"PromWindowBridge\",\"version\":\"1.3.1\",\"mode\":\"obs-projector-z-order\",\"obs\":" + (window != null ? "true" : "false") + ",\"front\":" + (window != null && window.InFront ? "true" : "false") + "}";
                 byte[] bytes = Encoding.UTF8.GetBytes(body);
                 r.ContentType = "application/json; charset=utf-8";
                 r.OutputStream.Write(bytes, 0, bytes.Length);
@@ -339,7 +372,8 @@ namespace PromBridge
                 status.Text = "● 웹 연결 실패 · 기존 보조 프로그램을 종료한 뒤 다시 실행하세요."; status.ForeColor = Color.Firebrick;
                 Log("웹 연결 실패: " + error.Message);
             }
-            toggleBinding = new ToggleHotkey(0x22, 0);
+            // Do not reserve PgDn: PowerPoint uses it to advance slides.
+            toggleBinding = new ToggleHotkey(0x77, 3); // Ctrl + Alt + F8
             try { if (File.Exists(ToggleHotkeyPath)) toggleBinding = ToggleHotkey.Load(ToggleHotkeyPath); }
             catch (IOException error) { Log("단축키 설정 읽기 실패: " + error.Message); }
             catch (UnauthorizedAccessException error) { Log("단축키 설정 읽기 실패: " + error.Message); }
@@ -360,7 +394,9 @@ namespace PromBridge
                     return false;
                 }
             }
-            hotkeyStatus.Text = registered ? toggleBinding + " 사용 중 · 누를 때마다 OBS 전체화면 앞 / 뒤 전환" : "토글 단축키 꺼짐 · 원래 키 동작을 사용합니다.";
+            hotkeyStatus.Text = registered && toggleBinding.Key == 0x22 && toggleBinding.Modifiers == 0
+                ? "주의: PgDn은 PPT 다음 장을 가로챕니다. 토글키를 Ctrl + Alt + F8 등으로 바꾸세요."
+                : registered ? toggleBinding + " 사용 중 · 누를 때마다 OBS 전체화면 앞 / 뒤 전환" : "토글 단축키 꺼짐 · 원래 키 동작을 사용합니다.";
             hotkeyStatus.ForeColor = Color.DimGray;
             return true;
         }
@@ -417,6 +453,9 @@ namespace PromBridge
         }
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
+            // Hiding with X and exiting must both undo projector pinning by old versions.
+            string restoreMessage;
+            switcher.Switch("slideshow", out restoreMessage);
             if (!quitting && e.CloseReason == CloseReason.UserClosing) { e.Cancel = true; Hide(); return; }
             timer.Stop();
             if (registered) UnregisterHotKey(Handle, HotkeyId);
