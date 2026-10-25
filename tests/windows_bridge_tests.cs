@@ -43,6 +43,7 @@ class Tests
             Check(ToggleHotkey.FromKeys(Keys.Control | Keys.Alt | Keys.F8).ToString() == "Ctrl + Alt + F8", "modifier combination capture failed");
             Check(ToggleHotkey.FromKeys(Keys.F8).Key == 119, "plain key capture failed");
             Check(ToggleHotkey.FromKeys(Keys.Next).ToString() == "PgDn", "PgDn capture failed");
+            Check(ToggleHotkey.FromKeys(Keys.Tab).Key == 9 && ToggleHotkey.FromKeys(Keys.Tab).ToString() == "Tab", "Tab toggle capture failed");
             Check(ToggleHotkey.FromKeys(Keys.ControlKey) == null && ToggleHotkey.FromKeys(Keys.ShiftKey) == null, "modifier alone must not bind");
             Check(ToggleHotkey.FromKeys(Keys.Escape) == null && ToggleHotkey.FromKeys(Keys.F12) == null && ToggleHotkey.FromKeys(Keys.LWin) == null, "reserved keys must not bind");
             string settingsDirectory = Path.Combine(Path.GetTempPath(), "prom-hotkey-test-" + Guid.NewGuid().ToString("N"));
@@ -65,9 +66,13 @@ class Tests
             Check(!NativeWindows.IsFullscreenProjector("chrome", "Fullscreen Projector", monitor, monitor), "Chrome must never match");
             Check(!NativeWindows.IsFullscreenProjector("obs64", "설정", monitor, monitor), "OBS dialogs must never match");
             Check(!NativeWindows.IsFullscreenProjector("obs64", "프로젝터 - 미리보기", new Rectangle(1912, -8, 2064, 1168), monitor), "maximized bordered projector must not count as fullscreen");
+            Check(NativeWindows.IsPresentationSurface(monitor, monitor), "PowerPoint fullscreen must count as a presentation surface");
+            Check(NativeWindows.IsPresentationSurface(new Rectangle(1920, 0, 2048, 1110), monitor), "Chrome fullscreen/work-area surface must count");
+            Check(!NativeWindows.IsPresentationSurface(new Rectangle(2500, 250, 620, 520), monitor), "bridge status window must not hide OBS front state");
+            Check(!NativeWindows.IsPresentationSurface(new Rectangle(1920, 0, 1100, 1152), monitor), "narrow side window must not hide OBS front state");
             var fake = new FakeWindows(); var switcher = new Switcher(fake); string message;
-            Check(switcher.Switch("toggle", out message) && !fake.LastFront, "first PgDn must lower a visible OBS projector");
-            Check(switcher.Switch("toggle", out message) && fake.LastFront, "second PgDn must raise OBS projector");
+            Check(switcher.Switch("toggle", out message) && !fake.LastFront, "first toggle must lower a visible OBS projector");
+            Check(switcher.Switch("toggle", out message) && fake.LastFront, "second toggle must raise OBS projector");
             fake.Slide.InFront = false;
             Check(switcher.Switch("toggle", out message) && fake.LastFront, "toggle must respect manual order changes");
             Check(switcher.Switch("obs", out message) && fake.LastFront, "start cue must raise only OBS projector");
@@ -98,7 +103,7 @@ class Tests
                 fake.Throw = false;
                 Check(Request("slideshow", "POST", BridgeServer.Origin, out body) == 204, "server must recover after exception");
             }
-            Console.WriteLine("PASS hotkey capture/validation/save/load/clear, fullscreen projector selection, editor/Chrome exclusions, toggle/cues, failure recovery, HTTP checks, shutdown");
+            Console.WriteLine("PASS hotkey capture/validation/save/load/clear, fullscreen projector selection, PPT/Chrome presentation-surface detection, bridge-popup exclusion, toggle/cues, failure recovery, HTTP checks, shutdown");
             return 0;
         } catch (Exception error) { Console.Error.WriteLine(error); return 1; }
     }

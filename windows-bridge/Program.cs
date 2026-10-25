@@ -104,7 +104,6 @@ namespace PromBridge
     {
         private delegate bool Callback(IntPtr hwnd, IntPtr data);
         [StructLayout(LayoutKind.Sequential)] private struct Rect { public int Left, Top, Right, Bottom; }
-        [StructLayout(LayoutKind.Sequential)] private struct Point { public int X, Y; }
         [StructLayout(LayoutKind.Sequential)] private struct MonitorInfo { public int Size; public Rect Monitor, Work; public uint Flags; }
         [DllImport("user32.dll")] private static extern bool EnumWindows(Callback cb, IntPtr data);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetWindowText(IntPtr h, StringBuilder text, int max);
@@ -114,11 +113,20 @@ namespace PromBridge
         [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr h, out Rect rect);
         [DllImport("user32.dll")] private static extern IntPtr MonitorFromWindow(IntPtr h, uint flags);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo info);
-        [DllImport("user32.dll")] private static extern IntPtr WindowFromPoint(Point point);
-        [DllImport("user32.dll")] private static extern IntPtr GetAncestor(IntPtr h, uint flag);
+        [DllImport("user32.dll")] private static extern IntPtr GetWindow(IntPtr h, uint command);
         [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr h, int command);
         [DllImport("user32.dll", SetLastError = true)] private static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int w, int height, uint flags);
 
+        public static bool IsPresentationSurface(Rectangle window, Rectangle monitor)
+        {
+            if (monitor.Width <= 0 || monitor.Height <= 0 || window.Width <= 0 || window.Height <= 0) return false;
+            var center = new System.Drawing.Point(monitor.Left + monitor.Width / 2, monitor.Top + monitor.Height / 2);
+            var overlap = Rectangle.Intersect(window, monitor);
+            long overlapArea = Math.Max(0, overlap.Width) * (long)Math.Max(0, overlap.Height);
+            long monitorArea = monitor.Width * (long)monitor.Height;
+            return window.Contains(center) && window.Width >= monitor.Width * 7 / 10 && window.Height >= monitor.Height * 7 / 10
+                && overlapArea >= monitorArea * 6 / 10;
+        }
         public static bool IsFullscreenProjector(string process, string title, Rectangle window, Rectangle monitor)
         {
             if (process != "obs64" && process != "obs32" && process != "obs") return false;
@@ -127,6 +135,26 @@ namespace PromBridge
             if (monitor.Width <= 0 || monitor.Height <= 0) return false;
             return Math.Abs((long)window.Left - monitor.Left) <= 2 && Math.Abs((long)window.Top - monitor.Top) <= 2
                 && Math.Abs((long)window.Right - monitor.Right) <= 2 && Math.Abs((long)window.Bottom - monitor.Bottom) <= 2;
+        }
+        private static bool IsProjectorInFront(IntPtr projector, Rectangle monitor)
+        {
+            // Examine z-order instead of WindowFromPoint. The bridge status window or a small popup may cover
+            // the monitor centre even while OBS is the visible presentation; only a large presentation surface
+            // (PowerPoint, Chrome or another fullscreen window) above OBS means that OBS is behind.
+            IntPtr above = GetWindow(projector, 3);
+            int ownPid = Process.GetCurrentProcess().Id, guard = 0;
+            while (above != IntPtr.Zero && guard++ < 512) {
+                if (IsWindowVisible(above) && !IsIconic(above)) {
+                    uint pid; GetWindowThreadProcessId(above, out pid);
+                    if (pid != ownPid) {
+                        Rect rect;
+                        if (GetWindowRect(above, out rect)
+                            && IsPresentationSurface(Rectangle.FromLTRB(rect.Left, rect.Top, rect.Right, rect.Bottom), monitor)) return false;
+                    }
+                }
+                above = GetWindow(above, 3);
+            }
+            return true;
         }
         public PresentationWindow Find()
         {
@@ -152,9 +180,8 @@ namespace PromBridge
                 if (!GetWindowRect(hwnd, out bounds) || !GetMonitorInfo(MonitorFromWindow(hwnd, 2), ref monitor)) return true;
                 if (!IsFullscreenProjector(process, title, Rectangle.FromLTRB(bounds.Left, bounds.Top, bounds.Right, bounds.Bottom),
                     Rectangle.FromLTRB(monitor.Monitor.Left, monitor.Monitor.Top, monitor.Monitor.Right, monitor.Monitor.Bottom))) return true;
-                bool front = false;
-                var center = new Point { X = bounds.Left + (bounds.Right - bounds.Left) / 2, Y = bounds.Top + (bounds.Bottom - bounds.Top) / 2 };
-                front = GetAncestor(WindowFromPoint(center), 2) == hwnd;
+                var monitorBounds = Rectangle.FromLTRB(monitor.Monitor.Left, monitor.Monitor.Top, monitor.Monitor.Right, monitor.Monitor.Bottom);
+                bool front = IsProjectorInFront(hwnd, monitorBounds);
                 result = new PresentationWindow { Handle = hwnd, Title = title, InFront = front };
                 matches++;
                 return matches < 2;
@@ -236,7 +263,7 @@ namespace PromBridge
             if (c.Request.HttpMethod == "OPTIONS") { r.StatusCode = 204; return; }
             if (c.Request.HttpMethod == "GET" && path == "health") {
                 PresentationWindow window = switcher.Inspect();
-                string body = "{\"ready\":true,\"app\":\"PromWindowBridge\",\"version\":\"1.3.0\",\"mode\":\"obs-projector-z-order\",\"obs\":" + (window != null ? "true" : "false") + ",\"front\":" + (window != null && window.InFront ? "true" : "false") + "}";
+                string body = "{\"ready\":true,\"app\":\"PromWindowBridge\",\"version\":\"1.4.0\",\"mode\":\"obs-projector-z-order\",\"obs\":" + (window != null ? "true" : "false") + ",\"front\":" + (window != null && window.InFront ? "true" : "false") + "}";
                 byte[] bytes = Encoding.UTF8.GetBytes(body);
                 r.ContentType = "application/json; charset=utf-8";
                 r.OutputStream.Write(bytes, 0, bytes.Length);
@@ -288,7 +315,7 @@ namespace PromBridge
             var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(22), ColumnCount = 1, RowCount = 10 };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             for (int i = 0; i < 10; i++) layout.RowStyles.Add(new RowStyle(i == 7 ? SizeType.Percent : SizeType.Absolute, i == 7 ? 100 : (i == 0 ? 43 : i == 3 || i == 6 || i == 9 ? 46 : 30)));
-            layout.Controls.Add(new Label { Text = "OBS 전체화면만 앞 / 뒤 전환", AutoSize = true, Font = new Font("맑은 고딕", 14, FontStyle.Bold), Dock = DockStyle.Fill }, 0, 0);
+            layout.Controls.Add(new Label { Text = "OBS 전체화면만 앞 / 뒤 · PPT / Chrome 초점 유지", AutoSize = true, Font = new Font("맑은 고딕", 14, FontStyle.Bold), Dock = DockStyle.Fill }, 0, 0);
             status.Dock = DockStyle.Fill; layout.Controls.Add(status, 0, 1);
             target.Dock = DockStyle.Fill; target.AutoEllipsis = true; layout.Controls.Add(target, 0, 2);
             var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
@@ -339,8 +366,17 @@ namespace PromBridge
                 status.Text = "● 웹 연결 실패 · 기존 보조 프로그램을 종료한 뒤 다시 실행하세요."; status.ForeColor = Color.Firebrick;
                 Log("웹 연결 실패: " + error.Message);
             }
-            toggleBinding = new ToggleHotkey(0x22, 0);
-            try { if (File.Exists(ToggleHotkeyPath)) toggleBinding = ToggleHotkey.Load(ToggleHotkeyPath); }
+            toggleBinding = new ToggleHotkey(0x09, 0);
+            try {
+                if (File.Exists(ToggleHotkeyPath)) {
+                    toggleBinding = ToggleHotkey.Load(ToggleHotkeyPath);
+                    if (toggleBinding != null && toggleBinding.Key == 0x22 && toggleBinding.Modifiers == 0) {
+                        toggleBinding = new ToggleHotkey(0x09, 0);
+                        ToggleHotkey.Save(ToggleHotkeyPath, toggleBinding);
+                        Log("기존 PgDn 토글키를 Tab으로 바꿨습니다. PgDn은 PPT / Chrome 넘김에 그대로 사용합니다.");
+                    }
+                }
+            }
             catch (IOException error) { Log("단축키 설정 읽기 실패: " + error.Message); }
             catch (UnauthorizedAccessException error) { Log("단축키 설정 읽기 실패: " + error.Message); }
             updating = true; hotkey.Checked = toggleBinding != null; updating = false;
@@ -360,7 +396,7 @@ namespace PromBridge
                     return false;
                 }
             }
-            hotkeyStatus.Text = registered ? toggleBinding + " 사용 중 · 누를 때마다 OBS 전체화면 앞 / 뒤 전환" : "토글 단축키 꺼짐 · 원래 키 동작을 사용합니다.";
+            hotkeyStatus.Text = registered ? toggleBinding + " 사용 중 · OBS 전체화면만 앞 / 뒤 전환" : "토글 단축키 꺼짐 · 원래 키 동작을 사용합니다.";
             hotkeyStatus.ForeColor = Color.DimGray;
             return true;
         }
