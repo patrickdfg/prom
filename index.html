@@ -358,7 +358,20 @@ function paginate(paras){
   if(!isManuscript) return chunk(paras.flatMap(p=>paraLines(p,false)),5);   // 쪽나눔 없는 프롬프터
   // 일반 원고: 빈 줄로 나뉜 덩어리마다 새 쪽에서 시작하고 폭 14 안팎으로 접는다 (html 처럼 바로 여는 경로용)
   const pages=[]; let block=[];
-  const flush=()=>{if(block.length)pages.push(...chunk(block,5));block=[]};
+  const flush=()=>{
+    if(block.length){
+      // 자동으로 접은 긴 텍스트에서 1 / 1. 만 홀로 남지 않게 같은 덩어리의 다음 글과 붙인다.
+      for(let i=0;i<block.length-1;i++){
+        if(!/^\d+\.?$/.test(lineText(block[i]).normalize('NFKC').trim()))continue;
+        const together=[...block[i],{t:' ',c:'k'},...block[i+1]],rows=wrapRuns(together,14);
+        if(rows.some(r=>/^\d+\.?$/.test(lineText(r).trim())))continue;
+        block.splice(i,2,...rows);
+      }
+      const items=spreadSparsePrompterLines(block.map((runs,i)=>({runs,blk:0,ue:i===block.length-1})),5);
+      pages.push(...chunk(items.map(l=>l.runs),5));
+    }
+    block=[];
+  };
   for(const p of paras){
     const ls=paraLines(p,true).filter(l=>lineText(l).trim());
     if(!ls.length){flush();continue}
@@ -1005,6 +1018,12 @@ function buildUnits(paras){
     });
     marksAt(chars.length); endUnit();
   }
+  // 번호만 적힌 원고 줄은 같은 문단의 다음 본문과 합친다. 원본 원고·쪽 경계는 바꾸지 않는다.
+  for(let i=0;i<units.length-1;i++){
+    const cur=units[i],next=units[i+1],value=cur.words.map(w=>w.segs.map(r=>r.t).join('')).join('').normalize('NFKC').trim();
+    if(cur.blk!==next.blk||cur.words.length!==1||!/^\d+\.?$/.test(value)||!next.words.length)continue;
+    next.words.unshift(cur.words[0]);units.splice(i,1);i--;
+  }
   units.proverbs=proverbs; return units;
 }
 // 뜻 단위 하나를 폭 17.5 안에서 줄로 접는다 (한 줄에 들어가면 그대로, 아니면 12.5 안팎으로 고르게, 마침표·쉼표 뒤를 선호)
@@ -1016,7 +1035,7 @@ function wrapUnit(u){
   });
   // 문단 첫 번호의 마침표는 문장 끝이 아니다. 번호와 첫 단어는 한 줄에 붙인다.
   // 한글 자동 번호와 직접 쓴 "1. 내용" 모두 처리하되 본문 속 숫자·소수점은 건드리지 않는다.
-  if(ws.length>1&&(u.words[0].num||/^(?:\d+[.)]|[①-⑳])$/.test(u.words[0].segs.map(s=>s.t).join('')))){
+  if(ws.length>1&&(u.words[0].num||/^(?:\d+(?:[.)])?|[①-⑳])$/.test(u.words[0].segs.map(s=>s.t).join('')))){
     const first=ws.shift(), next=ws[0];
     next.segs=[...first.segs,{t:' ',c:first.segs[first.segs.length-1].c},...next.segs];
     next.w+=first.w+0.5;
@@ -1112,9 +1131,28 @@ function paginateLines(L,K,mix=3.0){
   }
   return pages;
 }
+// 한 덩어리가 1~2줄인데 내용이 충분하면 단어 경계에서 자연스럽게 2~3줄로 펼친다.
+// 수동 줄바꿈, 서로 다른 문단, 원본 PPT, 원고의 빨간 쪽번호를 다시 조합하지 않는다.
+function spreadSparsePrompterLines(lines,K){
+  if(MOBILE||K<3)return lines;
+  const out=[];
+  for(let i=0;i<lines.length;){
+    let j=i+1;while(j<lines.length&&lines[j].blk===lines[i].blk)j++;
+    const group=lines.slice(i,j);i=j;
+    if(group.length>2||group.length===2&&group[0].ue||group.some(l=>l.runs.some(r=>r.c==='r'))){out.push(...group);continue}
+    const joined=[];
+    for(const l of group){if(joined.length)joined.push({t:' ',c:'k'});joined.push(...l.runs.map(r=>({...r})))}
+    const total=pw(joined.map(r=>r.t).join('')),target=group.length===1&&total>=MAXW*.72?2:group.length===2&&total>=MAXW*1.28?3:group.length;
+    if(target<=group.length){out.push(...group);continue}
+    const maxW=Math.min(MAXW,Math.max(5,total/target+1.2)),rows=wrapRuns(joined,maxW);
+    if(rows.length<target||rows.length>Math.min(K,target+1)||rows.some(r=>pw(r.map(x=>x.t).join(''))<3||/^\d+\.?$/.test(r.map(x=>x.t).join('').trim()))){out.push(...group);continue}
+    rows.forEach((runs,k)=>out.push({runs,blk:group[0].blk,ue:k===rows.length-1&&group.at(-1).ue,nosent:group.at(-1).nosent}));
+  }
+  return out;
+}
 // 일반 원고(hwp·hwpx·글) → 프롬프터 규칙 K줄 쪽
 function buildPrompter(paras,K){
-  const U=buildUnits(paras), L=U.flatMap(wrapUnit);
+  const U=buildUnits(paras), L=spreadSparsePrompterLines(U.flatMap(wrapUnit),K);
   return paginateLines(L,K,U.proverbs?8.0:3.0);      // 잠언은 한 잠언을 한 쪽에 두려고 섞는 비용을 크게 둔다
 }
 // 이미 프롬프터로 만든 쪽(5줄 기준)을 다른 줄 수로 다시 나눈다. 빈 줄 채움과 >> 는 지우고 새 쪽 규칙으로 다시 넣는다
