@@ -11,6 +11,7 @@ const note=(msg,ms)=>{const s=$('driveState');if(s)s.textContent=msg;if(ms&&type
 function paint(){
   const b=$('driveLogin');if(b){b.textContent=loggedIn()?'계정 바꾸기':'구글 로그인';b.disabled=busy;}
   const r=$('driveRefresh');if(r){r.hidden=!loggedIn();r.disabled=busy;}
+  const saveButton=$('saveDrive');if(saveButton){saveButton.hidden=!loggedIn();saveButton.disabled=busy;}
   if(!loggedIn()&&!busy&&!$('driveState').textContent)note('로그인하면 저장한 원고를 다른 컴퓨터에서도 열 수 있습니다.');
 }
 function sdk(){
@@ -76,10 +77,16 @@ async function upload(name,body){
   return true;
 }
 async function save(name,body){
-  if(!loggedIn())return;
-  try{busy=true;paint();note('드라이브에 저장 중…');await upload(name,body);busy=false;await list();note('드라이브에도 저장했습니다 · '+name.replace(/_프롬프터\.json$|\.json$/,''),5000);}
-  catch(e){busy=false;note(e.message+' 이 기기 저장은 그대로입니다.',8000);}
-  paint();
+  if(!loggedIn()){note('먼저 구글 로그인해 주세요.',5000);return false;}
+  if(busy){note('드라이브 작업이 진행 중입니다. 잠시 뒤 다시 눌러 주세요.',4000);return false;}
+  try{
+    busy=true;paint();note('드라이브에 저장 중…');
+    await upload(name,body);
+    busy=false;await list();
+    note('드라이브에도 저장했습니다 · '+name.replace(/_프롬프터\.json$|\.json$/,''),5000);
+    return true;
+  }catch(e){note(e.message+' 이 기기 저장은 그대로입니다.',8000);return false;}
+  finally{busy=false;paint();}
 }
 // 로그인한 계정에 이 프로그램이 저장한 원고 목록을 보여 주고, 누르면 연다
 async function list(){
