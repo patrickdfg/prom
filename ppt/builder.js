@@ -36,8 +36,28 @@ function metrics(layout,bank=templateBank){
 const DETERMINER=/^(그|이|저|각|온|모든|한|두|세|네|몇|새|첫|이런|그런|저런|어떤|무슨|여러|온갖|갖은|매|전|총|약|단|그의|나의|너의|우리의|자기의)$/;
 const BOUND=/^(것|거|수|줄|때|데|듯|뿐|만큼|대로|중|간에|간|나름|등|바|따름|적|채|김|척|체|양|만|분|번|장|절|년|월|일|시|개|명|가지|및)(?![가-힣]{3})/;
 const AUX=/^(않|못하|못한|못할|못합|있|없|주|줘|준|줄|보|봐|본|버리|버린|싶|놓|두었|둔|드리|드립|계시|계신|지|져|진|질|하게|되었|되어|된다|됩니|합니다|했습니다|하십니다|하셨습니다|하였습니다|입니다|이다|이었|같|말았|말고|말아)/;
+// 자동 제작 자막에서 목록 표지(1 / 1.)를 본문과 떨어진 한 줄로 두지 않는다.
+const isBareNumber=value=>/^\d+\.?$/.test(String(value||'').normalize('NFKC').trim());
+function attachBareNumbers(rows){
+ const out=rows.map(row=>[...row]),asText=row=>row.map(c=>c.ch).join('');
+ for(let i=0;i<out.length;i++){
+  if(!isBareNumber(asText(out[i]))||out.length===1)continue;
+  if(i+1<out.length){
+   const next=out[i+1],cut=next.findIndex(c=>/\s/.test(c.ch)),at=cut<0?next.length:cut,head=next.slice(0,at);
+   if(!head.length)continue;
+   const last=out[i].at(-1),space={...last,ch:' ',start:last.end,end:last.end};
+   out[i]=[...out[i],space,...head];
+   const rest=trim(next.slice(at));if(rest.length)out[i+1]=rest;else out.splice(i+1,1);
+  }else if(i>0){
+   const last=out[i][0],space={...last,ch:' ',start:last.start,end:last.start};
+   out[i-1].push(space,...out[i]);out.splice(i,1);
+  }
+ }
+ return out;
+}
 function breakScore(prev,next){
  const p=prev.replace(/[”’"')）」』\]]+$/,''),q=next.replace(/^[“‘"'(（「『\[]+/,'');
+ if(isBareNumber(p))return 100; // 목록 번호의 마침표 뒤에서는 줄을 나누지 않는다.
  if(/[.!?。]$/.test(p))return .2;
  if(/[,，:;]$/.test(p))return .35;
  if(/\d$/.test(p)&&/^[가-힣]/.test(q))return 4;                                  // 3 / 장
@@ -61,7 +81,7 @@ function balance(chars,m,rowCount){
  const n=words.length;if(n<rowCount)return null;
  const cache=new Map(),text=(a,b)=>chars.slice(words[a][0],words[b-1][1]).map(c=>c.ch).join('');
  const unit=(m.width*.3)**2,per=m.maxLines||rowCount;
- const cost=(a,b,k)=>{const key=(a*1000+b)*2+(k%per===0&&k<rowCount?1:0);if(cache.has(key))return cache.get(key);const str=text(a,b),w=m.measure(str);let v=w>m.width?Infinity:(m.width-w)**2;
+ const cost=(a,b,k)=>{const key=(a*1000+b)*2+(k%per===0&&k<rowCount?1:0);if(cache.has(key))return cache.get(key);const str=text(a,b),w=m.measure(str);let v=w>m.width||n>1&&isBareNumber(str)?Infinity:(m.width-w)**2;
   if(v<Infinity&&b<n){let sc=breakScore(text(b-1,b),text(b,b+1));if(w<m.width*.45&&sc>.4)sc=Math.max(sc,1.2);   // 너무 짧은 줄은 좋은 곳이어도 덤을 주지 않는다
   v=v*Math.min(1,sc)+unit*Math.max(0,sc-.6)*(key%2?2.5:1);}
   cache.set(key,v);return v;};
@@ -71,7 +91,7 @@ function balance(chars,m,rowCount){
  const rows=[];for(let k=rowCount,j=n;k>0;k--){const a=from[k][j];rows.unshift(trim(chars.slice(words[a][0],words[j-1][1])));j=a;}
  return rows.every(r=>r.length)?rows:null;
 }
-function wrap(chars,m){const greedy=wrapGreedy(chars,m);if(greedy.length<2||chars.some(c=>c.ch==='\n'))return greedy;return balance(trim(chars),m,greedy.length)||greedy;}
+function wrap(chars,m){const greedy=wrapGreedy(chars,m);if(greedy.length<2||chars.some(c=>c.ch==='\n'))return attachBareNumbers(greedy);return attachBareNumbers(balance(trim(chars),m,greedy.length)||greedy);}
 function wrapGreedy(chars,m){const rows=[];let rest=trim(chars);while(rest.length){let end=0,text='';while(end<rest.length&&rest[end].ch!=='\n'){const next=text+rest[end].ch;if(end&&m.measure(next)>m.width)break;text=next;end++;}if(end<rest.length&&rest[end].ch!=='\n'){let cut=-1;for(let i=0;i<end;i++)if(/[\s,，]/.test(rest[i].ch)&&m.measure(rest.slice(0,i+1).map(c=>c.ch).join(''))>=m.width*.6)cut=i+1;if(cut>0)end=cut;}const row=trim(rest.slice(0,end));if(row.length)rows.push(row);rest=trim(rest.slice(Math.max(1,end)));}return rows;}
 function markup(chars){let text='',red=false;for(const c of chars){if(c.red!==red){text+=c.red?'<r>':'</r>';red=c.red;}text+=c.ch;}return text+(red?'</r>':'');}
 // 문장 단위로 자른다. 닫는 따옴표·괄호는 앞 문장에 붙이고, 문장 중간의 원고 줄바꿈은 공백으로 잇는다.
@@ -127,6 +147,25 @@ function meaningfulPageSplit(lines,capacity=6){
  for(let p=pages;p>0;p--){const start=prev[p][end];chunks.unshift(lines.slice(start,end));end=start;}
  return chunks;
 }
+// 짧게 남은 전체 화면 페이지는 글이 충분할 때만 2~3줄로 균형 있게 배치한다.
+function spreadSparseRows(rows,m){
+ const hadBare=rows.some(row=>isBareNumber(row.map(c=>c.ch).join('')));
+ rows=attachBareNumbers(rows);
+ if(!rows.length||rows.length>2||m.maxLines<2)return rows;
+ const joined=[];for(const row of rows){if(joined.length){const edge=joined.at(-1);joined.push({...edge,ch:' ',start:edge.end,end:edge.end});}joined.push(...row);}
+ const total=m.measure(joined.map(c=>c.ch).join(''));
+ if(hadBare&&total<=m.width)return [trim(joined)];
+ const target=rows.length===1&&total>=m.width*.72?2:rows.length===2&&m.maxLines>=3&&total>=m.width*1.28?3:rows.length;
+ const uneven=rows.length===2&&total>=m.width*.6&&rows.some(row=>m.measure(row.map(c=>c.ch).join(''))<m.width*.25);
+ if(target<=rows.length&&!uneven)return rows;
+ const balanced=balance(trim(joined),m,target);
+ if(!balanced||balanced.some(row=>m.measure(row.map(c=>c.ch).join(''))<m.width*.2))return rows;
+ return attachBareNumbers(balanced);
+}
+function spreadShortText(lines,layout='word'){
+ const rows=lines.map(text=>Array.from(String(text),ch=>({ch,start:0,end:0})));
+ return spreadSparseRows(rows,metrics(layout)).map(row=>row.map(c=>c.ch).join(''));
+}
 function proverbSpecs(block,options){
  let layout=block.layout||'proverb';if(layout==='word'){const text=block.chars.map(c=>c.ch).join('');layout=/[（(]?[가-힣]{1,8}\s*\d+\s*[:장]\s*\d+/.test(text)?'verse':speakerLayout(text,options.greenLayout||'word',block.speaker);}const m=metrics(layout,options.bank),cap=m.maxLines,items=glueNumber(sentences(block.chars)).map(ch=>wrap(ch,m)),pages=[];let rest=items.flat(),queue=items.map(x=>[...x]);
  const take=n=>{const page=[];while(queue.length&&page.length<n){const head=queue[0];if(page.length&&page.length+head.length>n)break;const k=Math.min(n-page.length,head.length);page.push(...head.splice(0,k));if(!head.length)queue.shift();}return page;};
@@ -136,7 +175,7 @@ function proverbSpecs(block,options){
  if(layout==='caption'){while(total()>cap)pages.push(take(cap));if(total())pages.push(take(cap));}
  else {
   const allRows=items.flat(),parts=meaningfulPageSplit(allRows,cap);
-  pages.push(...parts);
+  pages.push(...parts.map(rows=>spreadSparseRows(rows,m)));
  }
  const group=crypto.randomUUID();
  return pages.map((lines,i)=>{const chars=lines.flat(),start=chars.find(c=>c.end>c.start)?.start,end=[...chars].reverse().find(c=>c.end>c.start)?.end;return {layout,text:lines.map(markup).join('\n')+(layout!=='caption'&&i<pages.length-1?'\n>>':''),start,end,padToLines:0,group:crypto.randomUUID(),cumulative:false,step:1};}).filter(x=>Number.isInteger(x.start)&&x.end>x.start);
@@ -149,5 +188,5 @@ async function prepare(){const bank=await templates();await Promise.all(Object.v
 async function generate(project,options={}){const bank=await prepare(),specs=analyze(project,{...options,bank});if(!specs.length)throw Error('자막으로 만들 색상 표시나 여러 번호 항목이 없습니다. 자막을 생성하지 않습니다.');const slides=[],links=[];if(options.title){slides.push(await scene('cover',options.title,{date:options.date}));links.push({status:'unlinked',start:null,end:null,score:0,reason:'cover'});}for(const spec of specs){const slide=await scene(spec.layout,spec.text,{padToLines:spec.padToLines});slide.editor.group=spec.group;slide.editor.cumulative=spec.cumulative;slide.editor.step=spec.step;slides.push(slide);links.push({status:'exact',start:spec.start,end:spec.end,score:1,reason:'source'});}return {slides,links,summary:`${CaptionContentRules.automatic(project).label}을 자동 인식해 자막 ${specs.length}장 (하단 ${specs.filter(s=>s.layout==='caption').length}장 · 전체 화면 ${specs.filter(s=>s.layout!=='caption').length}장)을 만들었습니다.`};}
 async function restyle(slides){await prepare();const groups=new Map();for(const s of slides)if(s.editor?.group)groups.set(s.editor.group,s);const out=[];for(const s of slides){if(!s.editor){out.push(s);continue;}const e=s.editor,final=groups.get(e.group)||s,layout=e.layout==='word'?speakerLayout(final.editor.text,e.layout):e.layout,rebuilt=await scene(layout,e.text,{uid:s.uid,ref:e.ref,date:e.date,padToLines:e.padToLines});for(const key of ['group','cumulative','step'])if(e[key]!==undefined)rebuilt.editor[key]=e[key];if(window.CaptionMedia)CaptionMedia.keep(rebuilt,s);else rebuilt.shapes.push(...s.shapes.filter(sh=>sh.extraText).map(clone));out.push(rebuilt);}return out;}
 function wrapForLayout(value,layout='word'){const m=metrics(layout),chars=Array.from(String(value||''),ch=>({ch,red:false,start:0,end:0}));return wrap(chars,m).map(row=>row.map(c=>c.ch).join(''));}
-return {templates,snapshotTemplate,useTemplate,theme:async()=>{await templates();return themeXml;},scene,generate,analyze,restyle,speakerLayout,metrics,wrapForLayout,meaningfulPageSplit,plain,styledRuns,colorType,layouts};
+return {templates,snapshotTemplate,useTemplate,theme:async()=>{await templates();return themeXml;},scene,generate,analyze,restyle,speakerLayout,metrics,wrapForLayout,meaningfulPageSplit,spreadShortText,plain,styledRuns,colorType,layouts};
 })();
