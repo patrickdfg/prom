@@ -101,7 +101,13 @@ namespace PromBridge
         PresentationWindow Find();
         bool Order(PresentationWindow window, bool front);
     }
-    public sealed class NativeWindows : IWindowBackend
+    public interface IPresentationFocus
+    {
+        IntPtr ActiveInputTarget();
+        IntPtr CaptureInputTarget(PresentationWindow projector);
+        bool RestoreInputTarget(IntPtr target);
+    }
+    public sealed class NativeWindows : IWindowBackend, IPresentationFocus
     {
         private delegate bool Callback(IntPtr hwnd, IntPtr data);
         [StructLayout(LayoutKind.Sequential)] private struct Rect { public int Left, Top, Right, Bottom; }
@@ -115,8 +121,56 @@ namespace PromBridge
         [DllImport("user32.dll")] private static extern IntPtr MonitorFromWindow(IntPtr h, uint flags);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo info);
         [DllImport("user32.dll")] private static extern IntPtr GetWindow(IntPtr h, uint command);
+        [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr h);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(IntPtr h, StringBuilder name, int max);
         [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr h, int command);
         [DllImport("user32.dll", SetLastError = true)] private static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int w, int height, uint flags);
+
+        public static bool IsInputPresentation(string process, string windowClass)
+        {
+            return (string.Equals(process, "powerpnt", StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(windowClass, "screenClass", StringComparison.OrdinalIgnoreCase))
+                || (string.Equals(process, "chrome", StringComparison.OrdinalIgnoreCase) && windowClass == "Chrome_WidgetWin_1");
+        }
+        private static bool IsInputTarget(IntPtr h, Rectangle monitor)
+        {
+            if (h == IntPtr.Zero || !IsWindowVisible(h) || IsIconic(h)) return false;
+            Rect rect;
+            if (!GetWindowRect(h, out rect) || !IsPresentationSurface(Rectangle.FromLTRB(rect.Left, rect.Top, rect.Right, rect.Bottom), monitor)) return false;
+            var name = new StringBuilder(256); GetClassName(h, name, name.Capacity);
+            string windowClass = name.ToString();
+            if (!string.Equals(windowClass, "screenClass", StringComparison.OrdinalIgnoreCase) && windowClass != "Chrome_WidgetWin_1") return false;
+            uint pid; GetWindowThreadProcessId(h, out pid);
+            try { using (var process = Process.GetProcessById((int)pid)) { return IsInputPresentation(process.ProcessName, windowClass); } }
+            catch (ArgumentException) { return false; }
+            catch (InvalidOperationException) { return false; }
+            catch (System.ComponentModel.Win32Exception) { return false; }
+        }
+        public IntPtr CaptureInputTarget(PresentationWindow projector)
+        {
+            var info = new MonitorInfo { Size = Marshal.SizeOf(typeof(MonitorInfo)) };
+            if (!GetMonitorInfo(MonitorFromWindow(projector.Handle, 2), ref info)) return IntPtr.Zero;
+            var monitor = Rectangle.FromLTRB(info.Monitor.Left, info.Monitor.Top, info.Monitor.Right, info.Monitor.Bottom);
+            IntPtr current = GetForegroundWindow();
+            if (IsInputTarget(current, monitor)) return current;
+            // Clicking OBS or the helper can leave keyboard focus there. Locate the actual
+            // slideshow/browser underneath OBS on the output monitor, never the PPT editor.
+            IntPtr target = IntPtr.Zero;
+            EnumWindows(delegate(IntPtr h, IntPtr unused) {
+                if (h != projector.Handle && IsInputTarget(h, monitor)) { target = h; return false; }
+                return true;
+            }, IntPtr.Zero);
+            return target;
+        }
+        public IntPtr ActiveInputTarget() { return GetForegroundWindow(); }
+        public bool RestoreInputTarget(IntPtr target)
+        {
+            if (target == IntPtr.Zero) return false;
+            if (!IsWindowVisible(target) || IsIconic(target)) return false;
+            SetForegroundWindow(target);
+            return GetForegroundWindow() == target;
+        }
 
         public static bool IsPresentationSurface(Rectangle window, Rectangle monitor)
         {
@@ -219,18 +273,30 @@ namespace PromBridge
         private readonly IWindowBackend backend;
         public Switcher(IWindowBackend backend) { this.backend = backend; }
         public PresentationWindow Inspect() { lock (gate) return backend.Find(); }
-        public bool Switch(string action, out string message)
+        public bool Switch(string action, out string message, bool activateInput = true)
         {
             lock (gate) {
                 PresentationWindow window = backend.Find();
                 if (window == null) { message = "OBS 전체화면 프로젝터 창을 하나만 열어 주세요."; return false; }
+                var focus = activateInput ? backend as IPresentationFocus : null;
+                IntPtr inputTarget = focus == null ? IntPtr.Zero : focus.CaptureInputTarget(window);
+                IntPtr active = focus == null ? IntPtr.Zero : focus.ActiveInputTarget();
                 bool front;
-                if (action == "toggle") front = !window.InFront;
+                // Like Alt+Tab, the active application determines the next target. Z-order
+                // is only a fallback when the hotkey is pressed from another application.
+                if (action == "toggle") front = active == window.Handle ? false
+                    : inputTarget != IntPtr.Zero && active == inputTarget ? true : !window.InFront;
                 else if (action == "slideshow") front = false;
                 else if (action == "obs") front = true;
                 else { message = "알 수 없는 요청입니다."; return false; }
                 if (!backend.Order(window, front)) { message = "창 전환에 실패했습니다. 다시 시도해 주세요."; return false; }
+                IntPtr destination = front ? window.Handle : inputTarget;
+                if (focus != null && !focus.RestoreInputTarget(destination)) {
+                    message = "화면은 전환됐지만 입력 활성화에 실패했습니다. 같은 모니터의 PPT 슬라이드 쇼 또는 Chrome 발표 화면을 확인해 주세요.";
+                    return false;
+                }
                 message = front ? "OBS 전체화면을 앞으로 가져왔습니다." : "OBS 전체화면을 뒤로 보냈습니다. 슬라이드가 표시됩니다.";
+                if (focus != null) message += front ? " · OBS 입력 활성화" : " · 발표 화면 입력 활성화";
                 return true;
             }
         }
@@ -280,7 +346,7 @@ namespace PromBridge
             if (c.Request.HttpMethod == "OPTIONS") { r.StatusCode = 204; return; }
             if (c.Request.HttpMethod == "GET" && path == "health") {
                 PresentationWindow window = switcher.Inspect();
-                string body = "{\"ready\":true,\"app\":\"PromWindowBridge\",\"version\":\"1.4.2\",\"mode\":\"obs-projector-z-order\",\"obs\":" + (window != null ? "true" : "false") + ",\"front\":" + (window != null && window.InFront ? "true" : "false") + "}";
+                string body = "{\"ready\":true,\"app\":\"PromWindowBridge\",\"version\":\"1.4.3\",\"mode\":\"obs-projector-z-order\",\"obs\":" + (window != null ? "true" : "false") + ",\"front\":" + (window != null && window.InFront ? "true" : "false") + "}";
                 byte[] bytes = Encoding.UTF8.GetBytes(body);
                 r.ContentType = "application/json; charset=utf-8";
                 r.OutputStream.Write(bytes, 0, bytes.Length);
@@ -288,7 +354,9 @@ namespace PromBridge
             }
             if (c.Request.HttpMethod != "POST" || c.Request.Headers["Origin"] != Origin || (path != "obs" && path != "slideshow")) { r.StatusCode = 403; return; }
             string message;
-            bool ok = switcher.Switch(path, out message);
+            // Voice cues must keep the recognition browser's input focus. Only manual
+            // hotkeys/buttons use Alt+Tab-style activation of the displayed application.
+            bool ok = switcher.Switch(path, out message, false);
             r.StatusCode = ok ? 204 : 409;
             log("원고 표식 · " + message);
         }
@@ -321,7 +389,7 @@ namespace PromBridge
         public BridgeForm(EventWaitHandle showEvent)
         {
             this.showEvent = showEvent;
-            Text = "OBS 전체화면 전환 · 1.4.2";
+            Text = "OBS 전체화면 전환 · 1.4.3";
             ClientSize = new Size(620, 520);
             MinimumSize = new Size(636, 559);
             StartPosition = FormStartPosition.CenterScreen;
@@ -332,7 +400,7 @@ namespace PromBridge
             var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(22), ColumnCount = 1, RowCount = 10 };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             for (int i = 0; i < 10; i++) layout.RowStyles.Add(new RowStyle(i == 7 ? SizeType.Percent : SizeType.Absolute, i == 7 ? 100 : (i == 0 ? 43 : i == 3 || i == 6 || i == 9 ? 46 : 30)));
-            layout.Controls.Add(new Label { Text = "OBS 전체화면만 앞 / 뒤 · PPT / Chrome 초점 유지", AutoSize = true, Font = new Font("맑은 고딕", 14, FontStyle.Bold), Dock = DockStyle.Fill }, 0, 0);
+            layout.Controls.Add(new Label { Text = "Tab · OBS ↔ PPT / Chrome 화면·입력 전환", AutoSize = true, Font = new Font("맑은 고딕", 14, FontStyle.Bold), Dock = DockStyle.Fill }, 0, 0);
             status.Dock = DockStyle.Fill; layout.Controls.Add(status, 0, 1);
             target.Dock = DockStyle.Fill; target.AutoEllipsis = true; layout.Controls.Add(target, 0, 2);
             var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
@@ -361,7 +429,7 @@ namespace PromBridge
             menu.Items.Add("앞 / 뒤 전환", null, delegate { Switch("toggle", "트레이"); });
             menu.Items.Add("토글키 설정…", null, delegate { ShowStatus(); ConfigureToggleHotkey(); });
             menu.Items.Add("프로그램 종료", null, delegate { Quit(); });
-            tray.Icon = Icon; tray.Text = "OBS 전체화면 전환 · 1.4.2"; tray.ContextMenuStrip = menu;
+            tray.Icon = Icon; tray.Text = "OBS 전체화면 전환 · 1.4.3"; tray.ContextMenuStrip = menu;
             tray.DoubleClick += delegate { ShowStatus(); };
             tray.Visible = true;
             timer.Interval = 1500; timer.Tick += delegate { RefreshTarget(); };
@@ -413,7 +481,7 @@ namespace PromBridge
                     return false;
                 }
             }
-            hotkeyStatus.Text = registered ? toggleBinding + " 사용 중 · OBS 전체화면만 앞 / 뒤 전환" : "토글 단축키 꺼짐 · 원래 키 동작을 사용합니다.";
+            hotkeyStatus.Text = registered ? toggleBinding + " 사용 중 · OBS ↔ 발표 화면·입력 전환" : "토글 단축키 꺼짐 · 원래 키 동작을 사용합니다.";
             hotkeyStatus.ForeColor = Color.DimGray;
             return true;
         }

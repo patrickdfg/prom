@@ -20,6 +20,19 @@ class FakeWindows : IWindowBackend
         return Success;
     }
 }
+class FakeFocusWindows : FakeWindows, IPresentationFocus
+{
+    public IntPtr Active = new IntPtr(456), Presentation = new IntPtr(456), Activated;
+    public bool ActivateSuccess = true;
+    public int Activations;
+    public IntPtr ActiveInputTarget() { return Active; }
+    public IntPtr CaptureInputTarget(PresentationWindow projector) { return Presentation; }
+    public bool RestoreInputTarget(IntPtr target) {
+        Activations++; Activated = target;
+        if (!ActivateSuccess || target == IntPtr.Zero) return false;
+        Active = target; return true;
+    }
+}
 class Tests
 {
     static void Check(bool value, string message) { if (!value) throw new Exception(message); }
@@ -78,6 +91,31 @@ class Tests
             Check(NativeWindows.HasCoveringWindow(new IntPtr(1), previousWindow, h => h.ToInt64() == 1), "nearest covering window must be detected");
             Check(!NativeWindows.HasCoveringWindow(new IntPtr(1), h => new IntPtr(1), h => false), "changing z-order cycles must terminate");
             Check(!NativeWindows.HasCoveringWindow(IntPtr.Zero, previousWindow, h => true), "empty z-order must not cover OBS");
+            Check(NativeWindows.IsInputPresentation("POWERPNT", "screenClass"), "PPT slideshow must be an input destination");
+            Check(!NativeWindows.IsInputPresentation("POWERPNT", "PPTFrameClass"), "PPT editor must never be an input destination");
+            Check(NativeWindows.IsInputPresentation("chrome", "Chrome_WidgetWin_1"), "Chrome presentation must be an input destination");
+            Check(!NativeWindows.IsInputPresentation("obs64", "Chrome_WidgetWin_1"), "other applications must not be mistaken for Chrome");
+            var focusWindows = new FakeFocusWindows(); var focusSwitcher = new Switcher(focusWindows); string focusMessage;
+            Check(focusSwitcher.Switch("toggle", out focusMessage) && focusWindows.LastFront && focusWindows.Active == focusWindows.Slide.Handle, "Tab from PPT must raise and activate OBS even with stale front state");
+            focusWindows.Slide.InFront = false;
+            Check(focusSwitcher.Switch("toggle", out focusMessage) && !focusWindows.LastFront && focusWindows.Active == focusWindows.Presentation, "Tab from OBS must lower it and activate PPT even with stale front state");
+            Check(focusSwitcher.Switch("toggle", out focusMessage) && focusWindows.Active == focusWindows.Slide.Handle, "repeated Tab must return to OBS");
+            focusWindows.Presentation = new IntPtr(789);
+            Check(focusSwitcher.Switch("slideshow", out focusMessage) && focusWindows.Active == new IntPtr(789), "return must activate the captured Chrome target too");
+            focusWindows.ActivateSuccess = false;
+            Check(!focusSwitcher.Switch("obs", out focusMessage) && focusMessage.Contains("입력 활성화에 실패"), "activation failure must not be reported as successful switching");
+            int activations = focusWindows.Activations; focusWindows.Success = false;
+            Check(!focusSwitcher.Switch("obs", out focusMessage) && focusWindows.Activations == activations, "failed window move must not activate another app");
+            focusWindows.Success = true; focusWindows.ActivateSuccess = true; focusWindows.Presentation = IntPtr.Zero;
+            Check(!focusSwitcher.Switch("slideshow", out focusMessage), "missing return application must be reported");
+            focusWindows.Presentation = new IntPtr(789); focusWindows.Active = focusWindows.Presentation;
+            activations = focusWindows.Activations;
+            using (var focusServer = new BridgeServer(focusSwitcher, delegate { }, 17987)) {
+                focusServer.Start(); string focusBody;
+                Check(Request("obs", "POST", BridgeServer.Origin, out focusBody) == 204 && focusWindows.LastFront, "voice start must raise OBS");
+                Check(Request("slideshow", "POST", BridgeServer.Origin, out focusBody) == 204 && !focusWindows.LastFront, "voice end must lower OBS");
+                Check(focusWindows.Activations == activations && focusWindows.Active == focusWindows.Presentation, "voice cues must not move input away from the recognition browser");
+            }
             var fake = new FakeWindows(); var switcher = new Switcher(fake); string message;
             Check(switcher.Switch("toggle", out message) && !fake.LastFront, "first toggle must lower a visible OBS projector");
             Check(switcher.Switch("toggle", out message) && fake.LastFront, "second toggle must raise OBS projector");
