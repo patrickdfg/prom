@@ -3,9 +3,12 @@ window.MakePptEngine=(()=>{
  'use strict';
  const B=CaptionBuilder,R=CaptionContentRules,P=CaptionPairTemplate,L=MakeTemplateLayouts;
  function policy(record){
-  if(record?.id==='builtin-sunday')return {full:false,sermonOnly:true};
+  if(record?.id==='builtin-sunday')return {full:false,sermonOnly:true,allowAnnouncements:false};
   const full=record?.options?.serviceExtras===true||R.mode(record)==='worship'||/주일\s*예배\s*(?:전체|전반)/.test(record?.name||'');
-  return {full,sermonOnly:!full&&[record?.id,record?.copiedFrom].includes('builtin-sunday')};
+  const sermonOnly=!full&&[record?.id,record?.copiedFrom].includes('builtin-sunday');
+  // Dawn sermons must preserve their paired PPT workflow without accepting worship advertisements.
+  const dawnSermon=!full&&([record?.id,record?.copiedFrom].includes('builtin-dawn')||/새벽\s*설교/.test(record?.name||''));
+  return {full,sermonOnly,allowAnnouncements:!sermonOnly&&!dawnSermon};
  }
  const slideText=s=>(s.shapes||[]).filter(sh=>sh.type==='text').flatMap(sh=>(sh.paragraphs||[]).flatMap(p=>(p.runs||[]).map(r=>r.text||''))).join('\n');
  const readingSlide=s=>s.servicePart==='responsiveReading'||/^\s*(?:교독문|성시\s*교독|인도자\s*[:：]|회중\s*[:：])/m.test(slideText(s));
@@ -153,7 +156,7 @@ window.MakePptEngine=(()=>{
   };
   // A previously open PPT must not add its project-specific master overrides to a different selected template.
   const result=await (window.CaptionMasters?.withRecords?CaptionMasters.withRecords({},run):run());
-  if(service.sermonOnly)return {...result,announcements:'',responsiveReading:''};
+  if(service.sermonOnly||!service.allowAnnouncements)return {...result,announcements:'',responsiveReading:''};
   if(service.full)return serviceExtras(result,result.record,options);
   return options.announcements?.trim()?MakeAnnouncements.replace(result,result.record,options.announcements):{...result,announcements:'',responsiveReading:''};
  }
