@@ -387,13 +387,14 @@ function adaptMakeInputs(){
  const rec=byId($('makeTemplate').value),spirit=!!rec&&(rec.id==='builtin-spirit-word'||rec.copiedFrom==='builtin-spirit-word'||R.mode(rec)==='spirit');
  const service=MakePptEngine.policy(rec);
  $('makePastePanel').open=spirit;
- $('makeAdsField').hidden=spirit||service.sermonOnly;
+ $('makeAdsField').hidden=spirit||!service.allowAnnouncements;
  $('makeReadingField').hidden=!service.full;
  $('makeResponsiveReading').disabled=!service.full;
  $('makeSpiritRevealField').hidden=!spirit;
- $('makeAdsHint').hidden=spirit||service.sermonOnly;
- $('makeAnnouncements').disabled=spirit||service.sermonOnly;
+ $('makeAdsHint').hidden=spirit||!service.allowAnnouncements;
+ $('makeAnnouncements').disabled=spirit||!service.allowAnnouncements;
  if(service.sermonOnly)$('makeScopeHint').textContent='주일설교는 말씀 원고만으로 만듭니다. 광고·교독문은 포함하지 않습니다.';
+ else if(!service.allowAnnouncements)$('makeScopeHint').textContent='새벽설교는 말씀 원고만으로 만듭니다. 광고·교독문은 입력받지 않습니다.';
  else if(service.full)$('makeScopeHint').textContent='주일예배 전체는 말씀·교독문·광고 중 입력한 자료만 만듭니다. 교독문이나 광고를 비워 두어도 계속 진행합니다.';
  $('makeFileField').querySelector('input').accept=spirit?'.hwp,.hwpx,.docx,.txt,.pdf':'.hwp,.hwpx,.docx,.txt';
  $('makeFileField').firstChild.textContent=spirit?'원고 파일 (PDF · HWP · HWPX · DOCX · TXT, 선택)':'원고 파일 (HWP · HWPX · DOCX · TXT, 여러 개 선택)';
@@ -435,7 +436,7 @@ $('makeRun').onclick=async()=>{
       }
     }
     const project={lines:rich.lines,richLines:rich.richLines,scriptName:rich.name,slides:[],links:[]};
-    const opts={title:$('makeTitle').value.trim(),date:$('makeDate').value.trim(),announcements:R.mode(rec)==='spirit'||service.sermonOnly?'':$('makeAnnouncements').value,responsiveReading:service.full?$('makeResponsiveReading').value:'',spiritReveal:$('makeSpiritReveal').checked};
+    const opts={title:$('makeTitle').value.trim(),date:$('makeDate').value.trim(),announcements:R.mode(rec)==='spirit'||!service.allowAnnouncements?'':$('makeAnnouncements').value,responsiveReading:service.full?$('makeResponsiveReading').value:'',spiritReveal:$('makeSpiritReveal').checked};
     const woven=await MakePptEngine.generate(project,rec,opts);rec=woven.record;const summary=woven.summary||'원고를 자동 인식했습니다.';
     if(rec?.worship&&!byId(rec.id)?.worship){await put(rec);$('mTemplate').value=rec.id;draft=null;dirty=false;}
     // 편집 중 장면 좌표는 유지하고, 다운로드 크기는 공통 엔진의 결과를 따른다.
