@@ -127,11 +127,15 @@ namespace PromBridge
             return window.Contains(center) && window.Width >= monitor.Width * 7 / 10 && window.Height >= monitor.Height * 7 / 10
                 && overlapArea >= monitorArea * 6 / 10;
         }
+        public static bool IsProjectorTitle(string title)
+        {
+            return !string.IsNullOrEmpty(title) && !title.StartsWith("OBS ", StringComparison.OrdinalIgnoreCase)
+                && (title.IndexOf("projector", StringComparison.OrdinalIgnoreCase) >= 0 || title.Contains("프로젝터"));
+        }
         public static bool IsFullscreenProjector(string process, string title, Rectangle window, Rectangle monitor)
         {
             if (process != "obs64" && process != "obs32" && process != "obs") return false;
-            if (title.StartsWith("OBS ", StringComparison.OrdinalIgnoreCase)) return false;
-            if (title.IndexOf("projector", StringComparison.OrdinalIgnoreCase) < 0 && !title.Contains("프로젝터")) return false;
+            if (!IsProjectorTitle(title)) return false;
             if (monitor.Width <= 0 || monitor.Height <= 0) return false;
             return Math.Abs((long)window.Left - monitor.Left) <= 2 && Math.Abs((long)window.Top - monitor.Top) <= 2
                 && Math.Abs((long)window.Right - monitor.Right) <= 2 && Math.Abs((long)window.Bottom - monitor.Bottom) <= 2;
@@ -165,6 +169,9 @@ namespace PromBridge
                 var text = new StringBuilder(512);
                 GetWindowText(hwnd, text, text.Capacity);
                 string title = text.ToString();
+                // ProcessName on .NET Framework can enumerate process metadata. Do not do this for
+                // every desktop window on every timer tick and hotkey; reject unrelated titles first.
+                if (!IsProjectorTitle(title)) return true;
                 uint pid;
                 GetWindowThreadProcessId(hwnd, out pid);
                 string process;
@@ -263,7 +270,7 @@ namespace PromBridge
             if (c.Request.HttpMethod == "OPTIONS") { r.StatusCode = 204; return; }
             if (c.Request.HttpMethod == "GET" && path == "health") {
                 PresentationWindow window = switcher.Inspect();
-                string body = "{\"ready\":true,\"app\":\"PromWindowBridge\",\"version\":\"1.4.0\",\"mode\":\"obs-projector-z-order\",\"obs\":" + (window != null ? "true" : "false") + ",\"front\":" + (window != null && window.InFront ? "true" : "false") + "}";
+                string body = "{\"ready\":true,\"app\":\"PromWindowBridge\",\"version\":\"1.4.1\",\"mode\":\"obs-projector-z-order\",\"obs\":" + (window != null ? "true" : "false") + ",\"front\":" + (window != null && window.InFront ? "true" : "false") + "}";
                 byte[] bytes = Encoding.UTF8.GetBytes(body);
                 r.ContentType = "application/json; charset=utf-8";
                 r.OutputStream.Write(bytes, 0, bytes.Length);
@@ -304,7 +311,7 @@ namespace PromBridge
         public BridgeForm(EventWaitHandle showEvent)
         {
             this.showEvent = showEvent;
-            Text = "OBS 전체화면 전환";
+            Text = "OBS 전체화면 전환 · 1.4.1";
             ClientSize = new Size(620, 520);
             MinimumSize = new Size(636, 559);
             StartPosition = FormStartPosition.CenterScreen;
@@ -344,7 +351,7 @@ namespace PromBridge
             menu.Items.Add("앞 / 뒤 전환", null, delegate { Switch("toggle", "트레이"); });
             menu.Items.Add("토글키 설정…", null, delegate { ShowStatus(); ConfigureToggleHotkey(); });
             menu.Items.Add("프로그램 종료", null, delegate { Quit(); });
-            tray.Icon = Icon; tray.Text = "OBS 전체화면 전환"; tray.ContextMenuStrip = menu;
+            tray.Icon = Icon; tray.Text = "OBS 전체화면 전환 · 1.4.1"; tray.ContextMenuStrip = menu;
             tray.DoubleClick += delegate { ShowStatus(); };
             tray.Visible = true;
             timer.Interval = 1500; timer.Tick += delegate { RefreshTarget(); };
@@ -429,7 +436,6 @@ namespace PromBridge
             bool ok = switcher.Switch(action, out message);
             Log(source + " · " + message);
             if (!ok && !Visible) { tray.BalloonTipTitle = "화면 전환 확인"; tray.BalloonTipText = message; tray.ShowBalloonTip(2500); }
-            RefreshTarget();
         }
         private void RefreshTarget()
         {

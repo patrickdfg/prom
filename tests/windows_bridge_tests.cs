@@ -59,6 +59,8 @@ class Tests
                 File.WriteAllText(settingsPath, "119,8"); Check(ToggleHotkey.Load(settingsPath) == null, "unsupported modifiers must be ignored");
             } finally { if (File.Exists(settingsPath)) File.Delete(settingsPath); if (Directory.Exists(settingsDirectory)) Directory.Delete(settingsDirectory); }
             var monitor = new Rectangle(1920, 0, 2048, 1152);
+            Check(!NativeWindows.IsProjectorTitle(null) && !NativeWindows.IsProjectorTitle("PPT 만들기 - Chrome"), "unrelated windows must be rejected before process inspection");
+            Check(!NativeWindows.IsProjectorTitle("OBS 32.0.2 - 프로젝터") && NativeWindows.IsProjectorTitle("프로젝터 - 미리보기"), "title fast path must preserve projector filtering");
             Check(NativeWindows.IsFullscreenProjector("obs64", "프로젝터 - 미리보기", monitor, monitor), "OBS 32 fullscreen preview must match");
             Check(NativeWindows.IsFullscreenProjector("obs64", "Fullscreen Projector (Program)", monitor, monitor), "fullscreen program projector must match");
             Check(!NativeWindows.IsFullscreenProjector("obs64", "OBS 32.0.2 - 프로파일: 프로젝터", monitor, monitor), "OBS editor must never match");
