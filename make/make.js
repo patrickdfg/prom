@@ -422,7 +422,7 @@ function renderGrid(slides){
     t.append(n,h,e);grid.append(t);observer.observe(h);});
   markSelected();
 }
-function markSelected(){[...$('makeGrid').children].forEach((t,i)=>t.classList.toggle('selected',i===selected));const hasSelection=selected>=0&&!!deck?.slides[selected];for(const id of ['makeSplitCaption','makeMoveBefore','makeMoveAfter'])$(id).hidden=!hasSelection;$('makeMoveBefore').disabled=!hasSelection||selected===0;$('makeMoveAfter').disabled=!hasSelection||selected===deck.slides.length-1;}
+function markSelected(){[...$('makeGrid').children].forEach((t,i)=>t.classList.toggle('selected',i===selected));const hasSelection=selected>=0&&!!deck?.slides[selected];for(const id of ['makeRevealCaption','makeMoveBefore','makeMoveAfter'])$(id).hidden=!hasSelection;$('makeMoveBefore').disabled=!hasSelection||selected===0;$('makeMoveAfter').disabled=!hasSelection||selected===deck.slides.length-1;}
 $('makeRun').onclick=async()=>{
   if(busy)return;
   busy=true;$('makeRun').disabled=true;$('makeDownload').disabled=true;status('makeStatus','원고를 읽고 PPT를 만드는 중…');
@@ -534,9 +534,9 @@ $('makeEditSelected').onclick=()=>{if(selected<0||!deck?.slides[selected]){toast
 $('makeAddCaption').onclick=()=>CaptionEditor.open(-1);
 $('makeMoveBefore').onclick=()=>moveSlide(selected,selected-1);
 $('makeMoveAfter').onclick=()=>moveSlide(selected,selected+1);
-$('makeSplitCaption').onclick=()=>{
+$('makeRevealCaption').onclick=()=>{
  if(busy||selected<0||!deck?.slides[selected])return;
- try{const result=MakeSlideSplit.split(deck,selected,CaptionCore);CaptionWorkspace.apply(result.slides,result.links,{selected,message:result.count+'장으로 한 줄씩 분리했습니다.'});}
+ try{const result=MakeSlideReveal.reveal(deck,selected,CaptionCore);CaptionWorkspace.apply(result.slides,result.links,{selected,message:result.count+'장으로 한 줄씩 누적 공개하도록 만들었습니다.'});}
  catch(e){toast(e.message||String(e));}
 };
 $('makeEditMaster').onclick=()=>{if(selected<0||!deck?.slides[selected]){toast('마스터를 편집할 슬라이드를 먼저 누르세요.');return;}CaptionEditor.open(selected,true);};
