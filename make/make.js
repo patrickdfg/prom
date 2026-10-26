@@ -53,7 +53,9 @@ async function load(){await window.PromBuiltinTemplates?.ready;records=(await st
 // Preserve prior artwork and all embedded images before overwriting a template.
 // History records have unique IDs and are hidden from template selectors.
 const HISTORY_PREFIX='__prom-template-backup__:';
+const isBuiltin=rec=>!!rec&&(rec.builtin||PromBuiltinTemplates.list.some(t=>t.id===rec.id));
 async function put(rec){
+ if(isBuiltin(rec))throw Error('사이트 기본 템플릿은 복제한 뒤 수정하세요.');
  rec=L.prepare(MakeAnnouncements.collapse(MakeAnnouncements.upgrade({...rec,updatedAt:Date.now()})),B.layouts);
  await store('readwrite',s=>{
    const previous=s.get(rec.id);
@@ -73,7 +75,7 @@ async function put(rec){
  await load();
 }
 // 드라이브에서 가져온 템플릿은 원래 id·수정 시각 그대로 넣는다(알림 없이).
-async function putSynced(rec){rec=L.prepare(MakeAnnouncements.collapse(MakeAnnouncements.upgrade(rec)),B.layouts);await store('readwrite',s=>s.put(rec));await load();}
+async function putSynced(rec){if(isBuiltin(rec)){rec={...clone(rec),id:'personal-import:'+rec.id,name:rec.name+' (가져온 복사본)',copiedFrom:rec.id,builtin:false};delete rec.builtinVersion;}rec=L.prepare(MakeAnnouncements.collapse(MakeAnnouncements.upgrade(rec)),B.layouts);await store('readwrite',s=>s.put(rec));await load();}
 const byId=id=>records.find(r=>r.id===id)||null;
 function useForMake(id){try{localStorage.setItem(LAST,id)}catch{}$('makeTemplate').value=id;$('makeTemplate').onchange();}   // 방금 만들거나 고친 템플릿을 만들기에서 바로 쓰게 한다
 
@@ -104,29 +106,29 @@ function renderList(){
     const row=document.createElement('div');row.className='tpl';
     const name=document.createElement('b');name.textContent=r.name;
     const info=document.createElement('small');const ev=r.pair?.evidence;
-    info.textContent=(r.builtin?'사이트 기본 템플릿'+(r.edited?' (고친 것)':'')+' · ':'')+(r.worship?'예배 전반 · 제목·성경본문 교체':ev?`원고-PPT 학습 · 연결 ${ev.matchedSlides}/${ev.totalSlides}장`:'기본 디자인에서 시작')+(r.fixedSlides?.length?` · 고정 슬라이드 ${r.fixedSlides.length}장`:'')+(r.announcementTemplate?` · 광고 양식 ${r.announcementTemplate.slots.length}개 (v2)`:'')+` · 레이아웃 ${L.catalog(r,B.layouts).length}개`;
+    info.textContent=(r.builtin?'사이트 기본 템플릿 · 원본 보호 (복제해서 수정)'+(r.edited?' · 이전 개인 편집 내용 보관':'')+' · ':'')+(r.worship?'예배 전반 · 제목·성경본문 교체':ev?`원고-PPT 학습 · 연결 ${ev.matchedSlides}/${ev.totalSlides}장`:'기본 디자인에서 시작')+(r.fixedSlides?.length?` · 고정 슬라이드 ${r.fixedSlides.length}장`:'')+(r.announcementTemplate?` · 광고 양식 ${r.announcementTemplate.slots.length}개 (v2)`:'')+` · 레이아웃 ${L.catalog(r,B.layouts).length}개`;
     const btn=(label,fn,cls)=>{const b=document.createElement('button');b.textContent=label;if(cls)b.className=cls;b.onclick=fn;return b;};
     row.append(name,
-      btn('마스터 편집',()=>{$('mTemplate').value=r.id;openMaster(r.id);showTab('master');}),
-      btn('지침 수정',()=>openInstructions(r.id)),
-      btn('복제 · 이름 변경',()=>duplicateTemplate(r.id)),
-      btn('이름 바꾸기',async()=>{const n=prompt('새 이름',r.name);if(!n||!n.trim()||n.trim()===r.name)return;await put({...r,name:n.trim()});toast('이름을 바꿨습니다.');}),
+      ...(!isBuiltin(r)?[btn('마스터 편집',()=>{$('mTemplate').value=r.id;openMaster(r.id);showTab('master');}),btn('지침 수정',()=>openInstructions(r.id))]:[]),
+      btn(isBuiltin(r)?'복제해서 수정':'복제 · 이름 변경',()=>duplicateTemplate(r.id)),
+      ...(!isBuiltin(r)?[
+      btn('이름 바꾸기',async()=>{const n=prompt('새 이름',r.name);if(!n||!n.trim()||n.trim()===r.name)return;await put({...r,name:n.trim()});toast('이름을 바꿨습니다.');})]:[]),
       btn('드라이브에 저장',()=>window.dispatchEvent(new CustomEvent('make-template-upload',{detail:{id:r.id}}))),
       btn('파일로 받기',()=>exportTemplate(r)),
-      btn('삭제',async()=>{if(!confirm(`"${r.name}" 템플릿을 삭제할까요? 되돌릴 수 없습니다.`))return;await store('readwrite',s=>s.delete(r.id));if(draftId===r.id){draftId='';draft=null;}await load();toast('삭제했습니다.');},'danger'),
+      ...(!isBuiltin(r)?[btn('삭제',async()=>{if(!confirm(`"${r.name}" 템플릿을 삭제할까요? 되돌릴 수 없습니다.`))return;await store('readwrite',s=>s.delete(r.id));if(draftId===r.id){draftId='';draft=null;}await load();toast('삭제했습니다.');},'danger')]:[]),
       info);
     box.append(row);
   }
   // 다른 컴퓨터로 옮긴 템플릿 파일 가져오기
   const imp=document.createElement('label');imp.className='tpl';imp.innerHTML='<b>템플릿 파일 가져오기 (.json)</b>';
   const input=document.createElement('input');input.type='file';input.accept='.json,application/json';
-  input.onchange=async()=>{const f=input.files[0];if(!f)return;try{const rec=JSON.parse(await f.text());if(rec?.version!==1||!rec.design?.layouts)throw Error('템플릿 파일이 아닙니다.');rec.id=crypto.randomUUID();if(records.some(r=>r.name===rec.name))rec.name+=' (가져옴)';await put(rec);toast(`"${rec.name}" 템플릿을 가져왔습니다.`);}catch(e){toast(e.message,6000);}input.value='';};
+  input.onchange=async()=>{const f=input.files[0];if(!f)return;try{const rec=JSON.parse(await f.text());if(rec?.version!==1||!rec.design?.layouts)throw Error('템플릿 파일이 아닙니다.');rec.copiedFrom=rec.id;rec.id=crypto.randomUUID();delete rec.builtin;delete rec.builtinVersion;delete rec.edited;if(records.some(r=>r.name===rec.name))rec.name+=' (가져옴)';await put(rec);toast(`"${rec.name}" 템플릿을 가져왔습니다.`);}catch(e){toast(e.message,6000);}input.value='';};
   imp.append(input);box.append(imp);
 }
 let copyTemplateId='';
 function duplicateTemplate(id){const original=byId(id);if(!original)return;copyTemplateId=id;
  const base=original.name+' 복사본';let suggested=base,n=2;while(records.some(r=>r.name===suggested))suggested=base+' '+n++;
- $('copyTemplateSource').textContent='원본: '+original.name+' · 원본과 별개로 저장합니다.';$('copyTemplateName').value=suggested;$('copyTemplateStatus').textContent='';$('copyTemplateDialog').showModal();$('copyTemplateName').focus();$('copyTemplateName').select();
+ $('copyTemplateSource').textContent='원본: '+original.name+' · 원본과 별개로 저장합니다.';$('copyTemplateName').value=suggested;$('copyTemplateStatus').textContent='';if(!$('copyTemplateDialog').open)$('copyTemplateDialog').showModal();$('copyTemplateName').focus();$('copyTemplateName').select();
 }
 $('copyTemplateClose').onclick=()=>$('copyTemplateDialog').close();
 $('copyTemplateRun').onclick=async()=>{const original=byId(copyTemplateId),name=$('copyTemplateName').value.trim();if(!original)return;
@@ -198,6 +200,7 @@ function fillLayouts(keep){
  sel.disabled=$('mLayoutName').disabled=!draftCatalog.length;
 }
 async function openMaster(id){
+  if(isBuiltin(byId(id))){duplicateTemplate(id);$('mTemplate').value=draftId;return;}
   if(dirty&&draft&&!confirm('저장하지 않은 변경이 있습니다. 버리고 다른 템플릿을 열까요?')){$('mTemplate').value=draftId;return;}
   const keep=draftId===id?layoutKey:'';
   draftId=id||'';const rec=byId(draftId);undoStack=[];redoStack=[];paintHistory();
@@ -508,6 +511,7 @@ let instrId='';
 function instrCount(){const n=$('instrText').value.length;$('instrCount').textContent=n.toLocaleString('ko-KR')+'자';}
 function openInstructions(id){
   const rec=byId(id);if(!rec){toast('지침을 고칠 템플릿을 고르세요.');return;}
+  if(isBuiltin(rec)){duplicateTemplate(id);return;}
   instrId=id;$('instrTitle').textContent=`"${rec.name}" 지침 수정`;$('instrText').value=rec.instructions||'';$('instrBuiltinNote').hidden=!rec.builtin;instrCount();
   if(!$('instructionsDialog').open)$('instructionsDialog').showModal();$('instrText').focus();
 }

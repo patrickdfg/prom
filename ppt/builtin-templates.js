@@ -5,7 +5,7 @@ window.PromBuiltinTemplates=(()=>{
 const LIST=[
   {id:'builtin-sunday',file:'sunday.json',version:1},
   {id:'builtin-sunday-worship',file:'sunday.json',version:1,transform:'sunday-worship'},
-  {id:'builtin-dawn',file:'dawn.json',version:4},
+  {id:'builtin-dawn',file:'dawn.json',version:5},
   {id:'builtin-spirit-word',file:'spirit-word.json',version:7},
 ];
 const KEY='promBuiltinTemplates',DB='prom-ppt-generation-templates';
@@ -97,6 +97,27 @@ async function seed(){
             have=next;
           }
         }
+      }
+      // Update only byte-identical shipped role layouts. Personal artwork and master overrides win.
+      if(have&&t.id==='builtin-dawn'&&!have.dawnRolesVersion){
+        const res=await fetch(new URL(t.file+'?v='+t.version,base));
+        if(!res.ok)throw Error('dawn role update unavailable');
+        const published=await res.json(),next=structuredClone(have),hashes={"word":"24c120925fa7dffe45744e9299d90e93d8a0aaaf27222442c2aebbc589681589","wordGod":"442e1f5b358ac30f28b3e874f5c220e9aada6b0315050f89c7fce5241014b566","wordSon":"becbae1d51c5ebe2acf16b74719224a4a31c92e07651ac5285f85680a80ce4e5"};
+        for(const [key,expected] of Object.entries(hashes)){
+          const layout=next.design?.layouts?.[key];
+          if(!layout||next.design.layoutMasters?.[key]||next.design.layoutMasters?.['generated:'+key])continue;
+          const plain=structuredClone(layout);delete plain.layoutName;
+          const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(plain)));
+          const hash=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
+          if(hash===expected)next.design.layouts[key]=structuredClone(published.design.layouts[key]);
+        }
+        next.design.speakerInference='explicit';next.dawnRolesVersion=1;next.builtinVersion=t.version;
+        await new Promise((ok,no)=>{
+          const tx=d.transaction('templates','readwrite'),store=tx.objectStore('templates'),backup=structuredClone(have);
+          backup.id='__prom-template-backup__:builtin-dawn:roles-v5:'+crypto.randomUUID();backup.backupOf=have.id;backup.backupAt=Date.now();
+          store.put(backup);store.put(next);tx.oncomplete=ok;tx.onerror=()=>no(tx.error);tx.onabort=()=>no(tx.error);
+        });
+        have=next;
       }
       // Never replace an existing browser template, even after a built-in version bump.
       // Custom artwork may have been saved without the edited flag.

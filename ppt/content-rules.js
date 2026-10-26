@@ -17,9 +17,10 @@ function speakerCues(value){
  return [...String(value||'').matchAll(pattern)].map(m=>({index:m.index,end:m.index+m[0].length,layout:speakerKey(m[1])}));
 }
 function contextSpeaker(value){const text=String(value||'').trim(),label=text.match(new RegExp('^[<〈\\[【(（]?\\s*('+speakerName+')(?:께서(?:는)?|은|는|이|가)?\\s*[>〉\\]】)）:：.。]*$'));if(label)return speakerKey(label[1]);const tail=text.match(new RegExp('('+speakerName+')(?:께서(?:는)?|은|는)\\s*[:：“‘\"\']*$'));if(tail)return speakerKey(tail[1]);const cues=speakerCues(text),last=cues.at(-1);return last&&/^[\s.。:：<>〈〉\[\]【】()（）“”‘’"']*$/.test(text.slice(last.end))?last.layout:'';}
-function speakerLayout(value,fallback='word',context=''){
+function speakerLayout(value,fallback='word',context='',options={}){
  const text=String(value||'').replace(/<\/?[rb]>/g,''),cue=speakerCues(text)[0];if(cue)return cue.layout;
  if(context)return context;
+ if(options.mentionFallback===false)return fallback;
  const head=text.split(/\r?\n/).filter(s=>s.trim()).slice(0,2).join('\n'),names=new Set([...head.matchAll(new RegExp(speakerName,'g'))].map(m=>speakerKey(m[0])));
  if(!names.size)return fallback;
  const coordinated=new RegExp('('+speakerName+')\\s*(?:과|와|,|·|및)\\s*('+speakerName+')').test(head);

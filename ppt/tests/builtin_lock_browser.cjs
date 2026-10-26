@@ -1,0 +1,22 @@
+const {chromium}=require('playwright'),assert=require('node:assert/strict');
+(async()=>{const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH,headless:true});try{
+ const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.route('https://accounts.google.com/**',r=>r.abort());const base=process.env.PROM_BASE||'http://127.0.0.1:8765/';await page.goto(base+'make/');await page.waitForFunction(()=>PromMake.get('builtin-dawn'));
+ const original=await page.evaluate(()=>PromMake.get('builtin-dawn'));
+ await page.click('[data-tab="templates"]');
+ for(const name of ['기본 새벽설교 템플릿','기본 주일설교 템플릿','기본 주일예배 전체 템플릿','기본 성령말씀 템플릿']){
+  const row=page.locator('#tplList > .tpl').filter({has:page.locator('b',{hasText:name})});
+  assert.equal(await row.getByRole('button',{name:'마스터 편집',exact:true}).count(),0);assert.equal(await row.getByRole('button',{name:'지침 수정',exact:true}).count(),0);assert.equal(await row.getByRole('button',{name:'삭제',exact:true}).count(),0);assert.equal(await row.getByRole('button',{name:'이름 바꾸기',exact:true}).count(),0);assert.equal(await row.getByRole('button',{name:'복제해서 수정',exact:true}).count(),1);
+ }
+ await page.evaluate(()=>PromMake.openMaster('builtin-dawn'));await page.waitForFunction(()=>document.querySelector('#copyTemplateDialog').open);await page.fill('#copyTemplateName','새벽 내 복사본');await page.click('#copyTemplateRun');await page.waitForFunction(()=>PromMake.records().some(r=>r.name==='새벽 내 복사본')&&PromMake.draft);
+ const id=await page.evaluate(()=>PromMake.records().find(r=>r.name==='새벽 내 복사본').id);assert.notEqual(id,original.id);await page.fill('#mLayoutName','내가 고친 레이아웃');await page.click('#mSave');await page.waitForFunction(()=>document.querySelector('#mStatus').textContent.includes('저장했습니다'));
+ const copy=await page.evaluate(id=>PromMake.get(id),id);assert(!copy.builtin);assert.equal(copy.copiedFrom,original.id);assert(copy.layoutCatalog.some(r=>r.name==='내가 고친 레이아웃'));assert.deepEqual(await page.evaluate(()=>PromMake.get('builtin-dawn')),original);
+ await page.reload();await page.waitForFunction(()=>PromMake.records().some(r=>r.name==='새벽 내 복사본'));await page.evaluate(id=>PromMake.openMaster(id),id);assert.equal(await page.inputValue('#mLayoutName'),'내가 고친 레이아웃');
+ // Drive imports of an old built-in become personal copies, never overwrite the default.
+ await page.evaluate(async original=>{original.name='이전 PC 기본 새벽';original.design.layouts.word.background='#abcdef';await PromMake.putSynced(original)},original);assert.deepEqual(await page.evaluate(()=>PromMake.get('builtin-dawn')),original);assert.equal(await page.evaluate(()=>PromMake.get('personal-import:builtin-dawn').builtin),false);
+ await page.goto(base+'ppt/');await page.waitForFunction(()=>window.CaptionRecipes&&window.PromBuiltinTemplates);await page.evaluate(async()=>{await PromBuiltinTemplates.ready;await CaptionRecipes.open();document.querySelector("#generateDialog").showModal()});
+ await page.selectOption('#generationTemplate','builtin-dawn');await page.waitForFunction(()=>document.querySelector('#generationTemplateName').value==='기본 새벽설교 템플릿');
+ await page.click('#renameGenerationTemplate');assert.match(await page.textContent('#generationTemplateStatus'),/바꿀 수 없습니다/);await page.click('#deleteGenerationTemplate');assert.match(await page.textContent('#generationTemplateStatus'),/삭제할 수 없습니다/);
+ await page.click('#saveGenerationTemplate');await page.waitForFunction(()=>document.querySelector('#generationTemplateStatus').textContent==='템플릿을 저장했습니다. 다음 제작에서도 선택할 수 있습니다.');assert.equal(await page.inputValue('#generationTemplateName'),'기본 새벽설교 템플릿 복사본');assert.notEqual(await page.inputValue('#generationTemplate'),'builtin-dawn');
+ const raw=await page.evaluate(async()=>{const d=await new Promise(ok=>{const r=indexedDB.open('prom-ppt-generation-templates',1);r.onsuccess=()=>ok(r.result)});return new Promise(ok=>{const r=d.transaction('templates').objectStore('templates').get('builtin-dawn');r.onsuccess=()=>{d.close();ok(r.result)}})});assert.equal(raw.name,original.name);assert.deepEqual(raw.fixedSlides,original.fixedSlides);
+ assert.deepEqual(errors,[]);console.log('PASS default actions protected in Make/PPT, master entry copies, personal edit/save/reopen, default unchanged, Drive import isolation and no browser errors');
+}finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});
