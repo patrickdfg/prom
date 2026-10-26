@@ -17,6 +17,7 @@ const when=t=>new Date(t).toLocaleString('ko-KR',{month:'numeric',day:'numeric',
 function note(msg){const n=$('tplDriveState');if(n)n.textContent=msg||'';}
 function paint(){
   const on=!!L()?.loggedIn();
+  if($('tplDriveCard'))$('tplDriveCard').hidden=!on;
   for(const id of ['tplDriveSync','tplDriveList'])if($(id))$(id).disabled=!on||busy;
   if(!on){note('구글 로그인하면 템플릿을 내 드라이브에 저장하고 불러올 수 있습니다.');const box=$('tplDriveFiles');if(box){box.replaceChildren();box.hidden=true;}}
 }
@@ -65,7 +66,7 @@ async function upload(rec,existing){
 // 템플릿 줄의 「드라이브에 저장」
 async function saveOne(id){
   const rec=M()?.get(id);if(!rec)return;
-  if(rec.builtin&&!rec.edited){note('사이트 기본 템플릿은 고치기 전에는 올리지 않아도 누구나 쓸 수 있습니다. 고친 뒤에 저장하세요.');return;}
+  if(rec.builtin){note('사이트 기본 템플릿은 복제본을 만든 뒤 저장하세요.');return;}
   if(!L()?.loggedIn()){note('상단에서 구글 로그인해 주세요.');M()?.toast?.('상단에서 구글 로그인해 주세요.');return;}
   busy=true;paint();note('드라이브에 저장 중… · '+rec.name);
   try{await upload(rec,await findRemote(rec.id));note('드라이브에 저장했습니다 · '+rec.name+' · '+when(Date.now()));M()?.toast?.(`"${rec.name}" 템플릿을 드라이브에 저장했습니다.`);}
@@ -80,7 +81,7 @@ async function syncAll(){
     const files=await listRemote(),byTid=new Map(files.map(f=>[f.appProperties?.tid,f]));
     let up=0;
     for(const rec of M().records()){
-      if(rec.builtin&&!rec.edited)continue;   // 고치지 않은 사이트 기본 템플릿은 누구나 쓰므로 올리지 않는다
+      if(rec.builtin)continue;   // 고치지 않은 사이트 기본 템플릿은 누구나 쓰므로 올리지 않는다
       const f=byTid.get(rec.id);
       if(!f||(rec.updatedAt||0)>(Number(f.appProperties?.updatedAt)||0)){note('드라이브에 저장 중… · '+rec.name);await upload(rec,f||null);up++;}
     }
@@ -106,7 +107,8 @@ function renderRemote(){
     const d=document.createElement('button');d.type='button';d.className='danger';d.textContent='드라이브에서 삭제';d.onclick=()=>trashRemote(f);
     row.append(name,b,d,small);box.append(row);
   }
-  box.hidden=!remote.length;
+  if(!remote.length){const p=document.createElement('p');p.className='hint';p.textContent='드라이브에 저장된 템플릿이 없습니다.';box.append(p);}
+  box.hidden=false;
 }
 async function importRemote(f){
   if(busy)return;
@@ -132,8 +134,8 @@ async function trashRemote(f){
 }
 
 window.addEventListener('make-template-upload',e=>enqueue(()=>saveOne(e.detail.id)));
-window.addEventListener('make-login',e=>{if(e.detail.accountChanged){remote=[];$('tplDriveFiles')?.replaceChildren();if($('tplDriveFiles'))$('tplDriveFiles').hidden=true;}if(e.detail.loggedIn){paint();note('로그인했습니다. 「드라이브에 저장」을 누르면 내 드라이브에 올라갑니다.');}else{remote=[];paint();}});
+window.addEventListener('make-login',e=>{if(e.detail.accountChanged){remote=[];$('tplDriveFiles')?.replaceChildren();if($('tplDriveFiles'))$('tplDriveFiles').hidden=true;}if(e.detail.loggedIn){paint();enqueue(refreshRemote);}else{remote=[];paint();}});
 $('tplDriveSync')&&($('tplDriveSync').onclick=()=>enqueue(syncAll));
 $('tplDriveList')&&($('tplDriveList').onclick=()=>enqueue(refreshRemote));
-paint();
+paint();if(L()?.loggedIn())enqueue(refreshRemote);
 })();

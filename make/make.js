@@ -48,7 +48,7 @@ async function combinedSource(rich,files){if(files.length===1&&rich.names.length
 let dbp;
 function db(){return dbp||(dbp=new Promise((ok,no)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('templates',{keyPath:'id'});r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error);}));}
 async function store(mode,fn){const d=await db();return new Promise((ok,no)=>{const tx=d.transaction('templates',mode),req=fn(tx.objectStore('templates'));tx.oncomplete=()=>ok(req?.result);tx.onerror=()=>no(tx.error);});}
-async function load(){await window.PromBuiltinTemplates?.ready;records=(await store('readonly',s=>s.getAll())||[]).filter(r=>!String(r.id||'').startsWith('__prom-template-backup__:')).map(r=>L.prepare({...MakeAnnouncements.upgrade(r),options:{...r.options,allText:false,sourceMode:R.mode(r),...(R.mode(r)==='worship'?{worshipOmit:R.worshipOmit(r)}:{})},instructions:R.instructions(r.instructions,R.mode(r))},B.layouts)).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));fillSelects();renderList();}
+async function load(){await window.PromBuiltinTemplates?.ready;records=(await store('readonly',s=>s.getAll())||[]).filter(r=>!String(r.id||'').startsWith('__prom-template-backup__:')).map(r=>L.prepare({...MakeAnnouncements.upgrade(r),options:{...r.options,allText:false,sourceMode:R.mode(r),...(R.mode(r)==='worship'?{worshipOmit:R.worshipOmit(r)}:{})},instructions:R.instructions(r.instructions,R.mode(r))},B.layouts)).sort((a,b)=>Number(isBuiltin(b))-Number(isBuiltin(a))||String(a.name).localeCompare(String(b.name),'ko'));fillSelects();renderList();}
 // 저장할 때마다 수정 시각을 남긴다(드라이브에 올릴 때 어느 쪽이 더 새로운지 비교하는 데 쓴다). 드라이브 업로드는 사용자가 버튼을 눌렀을 때만 한다.
 // Preserve prior artwork and all embedded images before overwriting a template.
 // History records have unique IDs and are hidden from template selectors.
@@ -102,7 +102,9 @@ function fillSelects(){
 function renderList(){
   const box=$('tplList');box.replaceChildren();
   if(!records.length){const p=document.createElement('p');p.className='hint';p.textContent='아직 템플릿이 없습니다. 아래에서 만들어 주세요.';box.append(p);}
+  let group='';
   for(const r of records){
+    const next=isBuiltin(r)?'기본 템플릿':'이 PC의 개인 템플릿';if(next!==group){const heading=document.createElement('h3');heading.textContent=next;box.append(heading);group=next;}
     const row=document.createElement('div');row.className='tpl';
     const name=document.createElement('b');name.textContent=r.name;
     const info=document.createElement('small');const ev=r.pair?.evidence;
@@ -110,7 +112,7 @@ function renderList(){
     const btn=(label,fn,cls)=>{const b=document.createElement('button');b.textContent=label;if(cls)b.className=cls;b.onclick=fn;return b;};
     row.append(name,
       ...(!isBuiltin(r)?[btn('마스터 편집',()=>{$('mTemplate').value=r.id;openMaster(r.id);showTab('master');}),btn('지침 수정',()=>openInstructions(r.id))]:[]),
-      btn(isBuiltin(r)?'복제해서 수정':'복제 · 이름 변경',()=>duplicateTemplate(r.id)),
+      btn('복제',()=>duplicateTemplate(r.id)),
       ...(!isBuiltin(r)?[
       btn('이름 바꾸기',async()=>{const n=prompt('새 이름',r.name);if(!n||!n.trim()||n.trim()===r.name)return;await put({...r,name:n.trim()});toast('이름을 바꿨습니다.');})]:[]),
       ...(!isBuiltin(r)?[btn('드라이브에 저장',()=>window.dispatchEvent(new CustomEvent('make-template-upload',{detail:{id:r.id}}))),btn('파일로 받기',()=>exportTemplate(r))]:[]),
@@ -118,6 +120,7 @@ function renderList(){
       info);
     box.append(row);
   }
+  if(!records.some(r=>!isBuiltin(r))){const h=document.createElement('h3');h.textContent='이 PC의 개인 템플릿';const p=document.createElement('p');p.className='hint';p.textContent='아직 개인 템플릿이 없습니다. 기본 템플릿을 복제하거나 새로 만들어 주세요.';box.append(h,p);}
   // 다른 컴퓨터로 옮긴 템플릿 파일 가져오기
   const imp=document.createElement('label');imp.className='tpl';imp.innerHTML='<b>템플릿 파일 가져오기 (.json)</b>';
   const input=document.createElement('input');input.type='file';input.accept='.json,application/json';
