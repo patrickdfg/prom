@@ -9,3 +9,31 @@ for(const s of ['1.5배 줄간격','2026.10.21 수요말씀','요한복음 3장 
 const mixed=project([...numbered.richLines,...marked.richLines.map(r=>({...r,source:1})),...plain.richLines.map(r=>({...r,source:2}))]),m=R.automatic(mixed);assert.equal(m.kind,'mixed');assert.equal(m.blocks.length,7);check(mixed,m);
 assert.equal(R.automatic({lines:[]}).blocks.length,0);assert.equal(R.instructions(R.instructions('내 메모','numbered'),'numbered'),R.instructions('내 메모','numbered'));
 console.log('PASS automatic numbered/color routing with unmarked sources skipped, full item grouping, header/cue/ad exclusions, numbering variants, exact original offsets, legacy recipe migration');
+// HWP may store a connective first line and the rest of one item in adjacent paragraphs.
+const continued=project([
+ ...Array.from({length:6},(_,i)=>row(`${i+1}. 앞선 완결 항목입니다.`,i)),
+ row('7. 일곱째 항목을 보면',6),row('같은 문단의 두 번째 줄입니다.',6),row('같은 문단의 마지막 줄입니다.',6),
+ row('8. 여덟째 항목을 제시간에 시작하여',7),
+ row('앞선 일을 이어받아 진행합니다.',8),row('다음 줄도 같은 항목입니다.',8),row('마지막 문장까지 포함합니다.',8),
+ row('번호가 없는 일반 설교 설명입니다.',9)
+]);
+const original=JSON.stringify(continued),joined=R.automatic(continued);
+assert.equal(joined.blocks.length,8);assert.match(chars(joined.blocks[6]),/같은 문단의 마지막 줄/);
+assert.match(chars(joined.blocks[7]),/마지막 문장까지 포함합니다/);assert(!chars(joined.blocks[7]).includes('일반 설교'));
+assert.equal(JSON.stringify(continued),original,'original manuscript metadata and text stay unchanged');check(continued,joined);
+for(const [label,head,tail] of [
+ ['complete sentence',row('2. 두 번째 항목입니다.',1),row('일반 설명입니다.',2)],
+ ['blank paragraph',row('2. 두 번째 일을 시작하여',1),row('빈 문단 뒤의 설명입니다.',3)],
+ ['another source',row('2. 두 번째 일을 시작하여',1),row('다른 원고의 설명입니다.',2,'000000',1)],
+ ['blue caption',row('2. 두 번째 일을 시작하여',1),row('별도 하단 자막입니다.',2,'0000FF')],
+ ['green caption',row('2. 두 번째 일을 시작하여',1),row('별도 말씀 자막입니다.',2,'008000')],
+ ['media cue',row('2. 두 번째 일을 시작하여',1),row('<영상 1>',2)],
+ ['closing cue',row('2. 두 번째 일을 시작하여',1),row('아멘.',2)],
+ ['advertisements',row('2. 두 번째 일을 시작하여',1),row('교회 광고',2)]
+]){
+ const p=project([row('1. 첫 번째 항목입니다.',0),head,tail]),items=R.numbered(p);
+ assert(!chars(items.at(-1)).includes(tail.text),label+' remains outside numbered text');
+}
+const red=project([row('1. 첫 번째 항목입니다.',0),row('2. 다음 일을 시작하여',1),row('강조도 그대로 이어집니다.',2,'FF0000')]);
+const redResult=R.automatic(red);assert(redResult.blocks.at(-1).chars.some(c=>c.red));check(red,redResult);
+console.log('PASS adjacent unfinished numbered paragraphs, complete item 7/8, source offsets/red emphasis, complete/blank/source/color/media/closing/ad boundaries and manuscript immutability');
