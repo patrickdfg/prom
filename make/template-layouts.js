@@ -37,7 +37,11 @@ function prepare(record,defaults={}){
  const entries=catalog(record,defaults);
  if(addProverb&&!entries.some(e=>e.key==='proverb'))entries.push({key:'proverb',name:defaults.proverb||'잠언 항목'});
  const names=new Map(entries.map(e=>[e.key,e]));
- const layouts=Object.fromEntries(Object.entries(bank).map(([key,scene])=>[key,{...scene,layoutName:label(record,names.get(key)||{name:defaults[key]||key})}]));
+ const layouts=Object.fromEntries(Object.entries(bank).map(([key,scene])=>{
+  const next={...scene,layoutName:label(record,names.get(key)||{name:defaults[key]||key})};
+  if(key==='passage'){next.background='#FFFFFF';delete next.backgroundFill;}
+  return [key,next];
+ }));
  return {...record,layoutCatalog:entries,design:{...record.design,layouts}};
 }
 const api={catalog,label,prepare};if(typeof module==='object'&&module.exports)module.exports=api;else root.MakeTemplateLayouts=api;

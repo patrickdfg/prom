@@ -4,6 +4,11 @@
 (function(root){
 'use strict';
 const DEFAULT_W=1920,DEFAULT_H=1080;
+// The scripture passage always has an opaque white base below artwork and text.
+function scriptureBase(slide,key=slide?.editor?.layout){
+ if(slide&&(key==='passage'||(!key&&/본문 성구$/.test(slide.layoutName||'')))){slide.background='#FFFFFF';delete slide.backgroundFill;}
+ return slide;
+}
 const mul=(o,k,keys)=>{for(const key of keys)if(typeof o[key]==='number')o[key]*=k;};
 const px=(v,k)=>{if(v&&typeof v==='object'&&v.unit==='px'&&typeof v.value==='number')v.value*=k;};
 // 전체 배경만 늘린다. 하단 자막판·인물·로고와 직접 위치를 고친 그림은 유지한다.
@@ -18,6 +23,7 @@ function fullBleed(s,slide){
 function backgroundBox(s,slide){return fullBleed(s,slide)?{x:0,y:0,w:slide.width,h:slide.height}:{};}
 // 한 슬라이드를 W×H로 맞춘다(비율이 다르면 작은 쪽에 맞춰 가운데에 둔다). 새 객체를 돌려주지 않고 그 자리에서 고친다.
 function fit(slide,W=DEFAULT_W,H=DEFAULT_H){
+  scriptureBase(slide);
   const sw=slide.width,sh=slide.height;
   const backgrounds=(slide.shapes||[]).filter(s=>fullBleed(s,slide));
   const fill=()=>{for(const s of backgrounds)Object.assign(s,{x:0,y:0,w:W,h:H});};
@@ -45,6 +51,6 @@ function fit(slide,W=DEFAULT_W,H=DEFAULT_H){
 function unify(slides,W=DEFAULT_W,H=DEFAULT_H){for(const s of slides||[])fit(s,W,H);return slides;}
 // 내보내기 보호: 덱의 첫 슬라이드 크기에 나머지를 맞춘다.
 function toFirst(slides){if(!slides?.length)return slides;return unify(slides,slides[0].width,slides[0].height);}
-const api={fit,unify,toFirst,fullBleed,backgroundBox,DEFAULT_W,DEFAULT_H};
+const api={fit,unify,toFirst,fullBleed,backgroundBox,scriptureBase,DEFAULT_W,DEFAULT_H};
 if(typeof module==='object'&&module.exports)module.exports=api;else root.CaptionSize=api;
 })(typeof window==='object'?window:globalThis);

@@ -5,6 +5,7 @@ function face(run){const font=String(run.font||'Malgun Gothic').replace(/[%"\\]/
 const lineMetrics=new Map();
 function normalHeight(run,size){const font=face(run),key=font.family+font.weight+size;if(!lineMetrics.has(key)){const probe=document.createElement('div');Object.assign(probe.style,{position:'fixed',left:'-10000px',top:'0',fontFamily:font.family,fontWeight:String(font.weight),fontSize:size+'px',lineHeight:'normal',padding:'0',margin:'0',border:'0',whiteSpace:'pre'});probe.textContent='가Ag';document.body.append(probe);lineMetrics.set(key,probe.getBoundingClientRect().height||size*1.2);probe.remove();}return lineMetrics.get(key);}
 function show(host,slide,green='#00ff00'){
+ window.CaptionSize?.scriptureBase?.(slide);
  const old=instances.get(host);old?.disconnect();host.replaceChildren();host.style.background=fillCss(slide?.backgroundFill)||slide?.background||green;
  if(!slide)return;const textFits=[],canvas=document.createElement('div');canvas.className='slide-canvas';canvas.style.width=slide.width+'px';canvas.style.height=slide.height+'px';canvas.style.background=fillCss(slide.backgroundFill)||slide.background||green;host.appendChild(canvas);
  for(const shape of slide.shapes||[]){const el=document.createElement('div');el.className='slide-object';Object.assign(el.style,{left:shape.x+'px',top:shape.y+'px',width:shape.w+'px',height:shape.h+'px',transform:(shape.rotate?`rotate(${shape.rotate}deg) `:'')+(shape.flipH||shape.flipV?`scale(${shape.flipH?-1:1},${shape.flipV?-1:1})`:''),opacity:String(shape.opacity??1)});

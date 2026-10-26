@@ -113,8 +113,7 @@ function renderList(){
       btn(isBuiltin(r)?'복제해서 수정':'복제 · 이름 변경',()=>duplicateTemplate(r.id)),
       ...(!isBuiltin(r)?[
       btn('이름 바꾸기',async()=>{const n=prompt('새 이름',r.name);if(!n||!n.trim()||n.trim()===r.name)return;await put({...r,name:n.trim()});toast('이름을 바꿨습니다.');})]:[]),
-      btn('드라이브에 저장',()=>window.dispatchEvent(new CustomEvent('make-template-upload',{detail:{id:r.id}}))),
-      btn('파일로 받기',()=>exportTemplate(r)),
+      ...(!isBuiltin(r)?[btn('드라이브에 저장',()=>window.dispatchEvent(new CustomEvent('make-template-upload',{detail:{id:r.id}}))),btn('파일로 받기',()=>exportTemplate(r))]:[]),
       ...(!isBuiltin(r)?[btn('삭제',async()=>{if(!confirm(`"${r.name}" 템플릿을 삭제할까요? 되돌릴 수 없습니다.`))return;await store('readwrite',s=>s.delete(r.id));if(draftId===r.id){draftId='';draft=null;}await load();toast('삭제했습니다.');},'danger')]:[]),
       info);
     box.append(row);
