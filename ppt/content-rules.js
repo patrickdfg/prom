@@ -44,7 +44,7 @@ function speakerBlocks(block){
 function numberedContinuation(current,row){
  if(!current||!Number.isInteger(current.paragraph)||row.paragraph!==current.paragraph+1||row.source!==current.source)return false;
  const previous=current.chars.map(c=>c.ch).join('').trimEnd();
- if(!/(?:하여|하며|하고|되어|되며|되고|이어|이어서|받아|주어|해서|하면서|하니|하므로|때문에|위하여|따라|통해|보면|그러므로|그러나|그리고|또는|즉|[,，:：])$/.test(previous))return false;
+ if(!/(?:하여|하며|하고|되어|되며|되고|이어|이어서|받아|주어|해서|하면서|하니|하므로|[가-힣]+(?:으니|르니|는데|지만|면서|으므로)|때문에|위하여|따라|통해|보면|그러므로|그러나|그리고|또는|즉|[,，:：])$/.test(previous))return false;
  if(/^\s*(?:[<〈\[【]|(?:20\d{2}).*(?:말씀|예배)|(?:제목|주제|본문)\s*[:：])/.test(row.text||''))return false;
  return !(row.runs||[]).some(r=>{const h=String(r.hex||'').replace('#','');if(!/^[a-f\d]{6}$/i.test(h))return false;const [red,green,blue]=[0,2,4].map(i=>parseInt(h.slice(i,i+2),16));return blue>90&&blue>red*1.3&&blue>green*1.15||green>65&&green>red*1.25&&green>blue*1.15;});
 }

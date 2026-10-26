@@ -37,3 +37,8 @@ for(const [label,head,tail] of [
 const red=project([row('1. 첫 번째 항목입니다.',0),row('2. 다음 일을 시작하여',1),row('강조도 그대로 이어집니다.',2,'FF0000')]);
 const redResult=R.automatic(red);assert(redResult.blocks.at(-1).chars.some(c=>c.red));check(red,redResult);
 console.log('PASS adjacent unfinished numbered paragraphs, complete item 7/8, source offsets/red emphasis, complete/blank/source/color/media/closing/ad boundaries and manuscript immutability');
+for(const ending of ['모르니','않으니','있으니','없으니','했는데','했지만','하면서','했으므로']){
+ const p=project([row('1. 첫 항목입니다.',0),row('2. 앞 문장은 끝났다. 다음 내용을 '+ending,1),row('이어지는 결론까지 포함합니다.',2),row('완결 후의 일반 설명은 제외합니다.',3)]);
+ const result=R.automatic(p);assert.match(chars(result.blocks.at(-1)),/이어지는 결론까지/);assert(!chars(result.blocks.at(-1)).includes('일반 설명'));check(p,result);
+}
+console.log('PASS connective endings -르니/-으니/-는데/-지만/-면서/-으므로 across adjacent paragraphs, completed conclusion boundary and exact offsets');
