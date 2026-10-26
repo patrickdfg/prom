@@ -401,16 +401,28 @@ function adaptMakeInputs(){
 }
 $('makeTemplate').onchange=()=>{const rec=byId($('makeTemplate').value);try{localStorage.setItem(LAST,$('makeTemplate').value)}catch{}$('makeScope').value=R.mode(rec);scopeHint();adaptMakeInputs();};
 $('makeScope').onchange=async()=>{scopeHint();const rec=byId($('makeTemplate').value);if(rec)await put({...rec,options:{...rec.options,sourceMode:$('makeScope').value,allText:false},instructions:R.instructions(rec.instructions,$('makeScope').value)});};
-let observer=null;
+let observer=null,draggedSlide=-1;
+function moveSlide(from,to){
+ if(busy||!deck||from===to||from<0||to<0||from>=deck.slides.length||to>=deck.slides.length)return;
+ const slides=deck.slides.slice(),links=deck.links.slice();slides.splice(to,0,slides.splice(from,1)[0]);links.splice(to,0,links.splice(from,1)[0]);
+ CaptionWorkspace.apply(slides,links,{selected:to,message:(to+1)+'번으로 이동했습니다.'});
+}
 function renderGrid(slides){
   const grid=$('makeGrid');observer?.disconnect();for(const h of grid.querySelectorAll('.host'))CaptionRender.release?.(h);grid.replaceChildren();
   observer=new IntersectionObserver(entries=>{for(const en of entries)if(en.isIntersecting){const h=en.target;observer.unobserve(h);CaptionRender.show(h,slides[+h.dataset.i]);}},{rootMargin:'300px'});
   slides.forEach((s,i)=>{const t=document.createElement('div');t.className='thumb'+(i===selected?' selected':'');const n=document.createElement('small');n.textContent=i+1;const h=document.createElement('div');h.className='host';h.dataset.i=i;
     const e=document.createElement('button');e.type='button';e.className='thumb-edit';e.textContent='편집';e.onclick=ev=>{ev.stopPropagation();selected=i;markSelected();CaptionEditor.open(i);};
     t.onclick=()=>{selected=i;markSelected();};t.ondblclick=()=>CaptionEditor.open(i);
+    t.draggable=true;t.title='끌어서 슬라이드 순서 변경';
+    t.ondragstart=ev=>{draggedSlide=i;selected=i;markSelected();ev.dataTransfer.effectAllowed='move';ev.dataTransfer.setData('text/plain',String(i));};
+    t.ondragover=ev=>{if(draggedSlide<0)return;ev.preventDefault();ev.dataTransfer.dropEffect='move';t.classList.add('drag-over');};
+    t.ondragleave=()=>t.classList.remove('drag-over');
+    t.ondrop=ev=>{ev.preventDefault();t.classList.remove('drag-over');const from=draggedSlide;draggedSlide=-1;moveSlide(from,i);};
+    t.ondragend=()=>{draggedSlide=-1;for(const item of grid.children)item.classList.remove('drag-over');};
     t.append(n,h,e);grid.append(t);observer.observe(h);});
+  markSelected();
 }
-function markSelected(){[...$('makeGrid').children].forEach((t,i)=>t.classList.toggle('selected',i===selected));}
+function markSelected(){[...$('makeGrid').children].forEach((t,i)=>t.classList.toggle('selected',i===selected));const hasSelection=selected>=0&&!!deck?.slides[selected];for(const id of ['makeSplitCaption','makeMoveBefore','makeMoveAfter'])$(id).hidden=!hasSelection;$('makeMoveBefore').disabled=!hasSelection||selected===0;$('makeMoveAfter').disabled=!hasSelection||selected===deck.slides.length-1;}
 $('makeRun').onclick=async()=>{
   if(busy)return;
   busy=true;$('makeRun').disabled=true;$('makeDownload').disabled=true;status('makeStatus','원고를 읽고 PPT를 만드는 중…');
@@ -510,6 +522,7 @@ window.CaptionWorkspace={
   snapshot(){if(!deck)throw Error('먼저 PPT를 만드세요.');return structuredClone(deck);},
   apply(slides,links,opts={}){deck={...deck,slides,links,...(opts.layoutMasters?{layoutMasters:structuredClone(opts.layoutMasters)}:{}),...(opts.deckName?{deckName:opts.deckName}:{})};if(Number.isInteger(opts.selected))selected=Math.max(-1,Math.min(opts.selected,slides.length-1));renderGrid(deck.slides);if(opts.message)toast(opts.message,5000);},
   selected:()=>selected,
+  insertionIndex:()=>selected>=0&&deck?.slides[selected]?selected+1:deck?.slides.length||0,
   layoutMasters:()=>structuredClone(deck?.layoutMasters||{}),
   message:text=>toast(String(text).replace(/\s*복제한 자막의 원고 연결 구간을 지정하세요\./,''),5000),   // 방송용 PPT 전용 안내(원고 연결 구간)는 이 화면에 없다
   prepareEdit(){},rememberRich(){},
@@ -519,6 +532,13 @@ window.CaptionWorkspace={
 window.CaptionRecipes={sync:async()=>{await B.useTemplate(deckTemplate);},setMode(){},open:async()=>{},remember:async()=>{},withFixed:r=>r};
 $('makeEditSelected').onclick=()=>{if(selected<0||!deck?.slides[selected]){toast('편집할 슬라이드를 먼저 누르세요.');return;}CaptionEditor.open(selected);};
 $('makeAddCaption').onclick=()=>CaptionEditor.open(-1);
+$('makeMoveBefore').onclick=()=>moveSlide(selected,selected-1);
+$('makeMoveAfter').onclick=()=>moveSlide(selected,selected+1);
+$('makeSplitCaption').onclick=()=>{
+ if(busy||selected<0||!deck?.slides[selected])return;
+ try{const result=MakeSlideSplit.split(deck,selected,CaptionCore);CaptionWorkspace.apply(result.slides,result.links,{selected,message:result.count+'장으로 한 줄씩 분리했습니다.'});}
+ catch(e){toast(e.message||String(e));}
+};
 $('makeEditMaster').onclick=()=>{if(selected<0||!deck?.slides[selected]){toast('마스터를 편집할 슬라이드를 먼저 누르세요.');return;}CaptionEditor.open(selected,true);};
 
 /* ---------- 시작 ---------- */

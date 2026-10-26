@@ -26,6 +26,7 @@ button{font:inherit;color:var(--text);background:#21262d;border:1px solid var(--
 button:disabled{opacity:.45;cursor:default}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
 button.danger{color:var(--danger)}
+.thumb.drag-over{outline:3px solid var(--accent2);outline-offset:2px}
 .row{display:flex;gap:8px;align-items:flex-end;margin-top:6px}.row.wrap{flex-wrap:wrap}.grow{flex:1 1 220px}
 .status{min-height:1.5em;margin:10px 0 0;color:var(--dim);font-size:14px;white-space:pre-line}
 .status.error{color:var(--danger)}
