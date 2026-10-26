@@ -387,6 +387,7 @@ function adaptMakeInputs(){
  const rec=byId($('makeTemplate').value),spirit=!!rec&&(rec.id==='builtin-spirit-word'||rec.copiedFrom==='builtin-spirit-word'||R.mode(rec)==='spirit');
  const service=MakePptEngine.policy(rec);
  $('makePastePanel').open=spirit;
+ $('makeColorGuide').hidden=spirit||R.mode(rec)==='worship';
  $('makeAdsField').hidden=spirit||!service.allowAnnouncements;
  $('makeReadingField').hidden=!service.full;
  $('makeResponsiveReading').disabled=!service.full;

@@ -30,6 +30,10 @@ button.danger{color:var(--danger)}
 .row{display:flex;gap:8px;align-items:flex-end;margin-top:6px}.row.wrap{flex-wrap:wrap}.grow{flex:1 1 220px}
 .status{min-height:1.5em;margin:10px 0 0;color:var(--dim);font-size:14px;white-space:pre-line}
 .status.error{color:var(--danger)}
+.manuscript-guide{margin:4px 0 18px;padding:14px 16px;border:1px solid var(--accent2);border-radius:10px;background:var(--card)}
+.manuscript-guide-types{display:flex;flex-wrap:wrap;gap:8px 20px;margin:8px 0;font-size:16px;font-weight:700}
+.guide-blue{color:#60a5fa}.guide-green{color:#4ade80}
+.manuscript-guide p{margin:6px 0 0}
 .hint{color:var(--dim);font-size:13px;margin:0 0 10px}
 details.more{margin:4px 0 10px}details.more summary{cursor:pointer;color:var(--accent2);margin-bottom:10px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px}

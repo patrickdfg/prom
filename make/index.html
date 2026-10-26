@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PPT 만들기</title>
 <script src="../ui-theme.js?v=20261023-ppt-name1"></script>
-<link rel="stylesheet" href="make.css?v=20261026-slide-order1">
+<link rel="stylesheet" href="make.css?v=20261026-color-guide1">
 <link rel="stylesheet" href="../ppt/editor.css?v=20261024-editor-tools2"></head>
 <body>
 <header class="top">
@@ -29,6 +29,12 @@
         <select id="makeTemplate"></select>
       </label>
 
+      <aside id="makeColorGuide" class="manuscript-guide" aria-label="처음 사용자를 위한 원고 준비 안내">
+        <strong>원고 글자색으로 자막 모양을 정하세요</strong>
+        <div class="manuscript-guide-types"><span class="guide-blue">파란 글씨 → 하단 2줄 자막</span><span class="guide-green">녹색 글씨 → 전체 화면</span></div>
+        <p>한글·워드 파일에서 자막으로 만들 부분의 글자색을 지정해 주세요. 번호 항목(1. 2. 3. …)은 색상 없이도 전체 화면으로 만듭니다.</p>
+        <p class="hint">일반 검정 본문은 설교 전문에만 사용합니다. 복사·붙여넣기는 글자색이 유지되지 않으므로 번호 항목으로 작성해 주세요.</p>
+      </aside>
       <label class="field" id="makeFileField">원고 파일 (HWP · HWPX · DOCX · TXT · PDF, 여러 개 선택)
         <input id="makeScript" type="file" accept=".hwp,.hwpx,.docx,.txt,.pdf" multiple>
       </label>
@@ -200,12 +206,12 @@
 <script src="../ppt/core.js?v=20261022-speech-frequency1"></script>
 <script src="../ppt/importers.js?v=20261024-image-edit1"></script>
 <script src="../ppt/slide-size.js?v=20261021-fidelity3"></script><script src="../ppt/render.js?v=20261021-reproduce1"></script>
-<script src="../ppt/builtin-templates.js?v=20261024-optional-service1"></script>
+<script src="../ppt/builtin-templates.js?v=20261026-dawn-opening1"></script>
 <script src="../ppt/layout-masters.js?v=20261024-image-edit1"></script>
 <script src="../ppt/content-rules.js?v=20261026-number-continuation2"></script><script src="../ppt/builder.js?v=20261024-speaker-layouts1"></script>
 <script src="../ppt/pptx-export.js?v=20261024-image-edit1"></script>
 <script src="../ppt/pair-template.js?v=20261024-speaker-layouts1"></script>
-<script src="../ppt/image-library.js?v=20261026-backgrounds1"></script><script src="manuscripts.js?v=20261021-scope1"></script><script src="template-layouts.js?v=20261024-speaker-layouts1"></script><script src="announcements.js?v=20261024-optional-service1"></script><script src="engine.js?v=20261025-dawn-noads1"></script><script src="slide-reveal.js?v=20261026-reveal1"></script><script src="make.js?v=20261026-reveal1"></script>
+<script src="../ppt/image-library.js?v=20261026-backgrounds1"></script><script src="manuscripts.js?v=20261021-scope1"></script><script src="template-layouts.js?v=20261024-speaker-layouts1"></script><script src="announcements.js?v=20261024-optional-service1"></script><script src="engine.js?v=20261025-dawn-noads1"></script><script src="slide-reveal.js?v=20261026-reveal1"></script><script src="make.js?v=20261026-color-guide1"></script>
 <script src="../ppt/font-picker.js?v=20261017-font1"></script>
 <script src="../ppt/editor-media.js?v=20261024-image-edit1"></script><script src="../ppt/editor-history.js?v=20261024-editor-tools2"></script><script src="../ppt/editor.js?v=20261026-insert-caption1"></script>
 <script src="../ppt/drive-config.js?v=20261020-sync1"></script><script src="../google-session.js?v=20261021-session1"></script>

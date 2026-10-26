@@ -5,7 +5,7 @@ window.PromBuiltinTemplates=(()=>{
 const LIST=[
   {id:'builtin-sunday',file:'sunday.json',version:1},
   {id:'builtin-sunday-worship',file:'sunday.json',version:1,transform:'sunday-worship'},
-  {id:'builtin-dawn',file:'dawn.json',version:2},
+  {id:'builtin-dawn',file:'dawn.json',version:3},
   {id:'builtin-spirit-word',file:'spirit-word.json',version:7},
 ];
 const KEY='promBuiltinTemplates',DB='prom-ppt-generation-templates';
@@ -57,6 +57,27 @@ async function seed(){
       if(t.id==='builtin-spirit-word'&&have?.name==='성령말씀'){
         have.name='기본 성령말씀 템플릿';
         await req(d,'readwrite',s=>s.put(have));
+      }
+      // Fill only the original empty dawn opening placeholders; preserve customized artwork and body layouts.
+      // Keep a full recovery copy, including records whose artwork changed without an edited flag.
+      if(have&&t.id==='builtin-dawn'&&!have.dawnOpeningVersion){
+        const next=structuredClone(have),opening=next.fixedSlides?.find(f=>f.before===0)?.slide;
+        const title=opening?.shapes?.[12],footer=opening?.shapes?.[11];
+        const blank=shape=>shape?.type==='text'&&!(shape.paragraphs||[]).some(p=>(p.runs||[]).some(r=>String(r.text||'').trim()));
+        const originalSlots=opening?.width===1280&&opening?.height===720&&Math.abs((title?.x||0)-369.609)<1&&Math.abs((footer?.x||0)-384)<1;
+        if(originalSlots&&blank(title)&&blank(footer)){
+          for(const [shape,value,size] of [[title,'새벽예배',92],[footer,'기도로 준비하겠습니다.',32]]){
+            const p=shape.paragraphs[0],base=p.runs?.[0]||{};
+            p.runs=[{...base,text:value,size,font:'마루 부리OTF 굵은'}];p.defaultSize=size;
+          }
+          next.fixedSlides.find(f=>f.before===0).label='새벽예배 표지';
+          next.dawnOpeningVersion=1;next.builtinVersion=t.version;
+          await new Promise((ok,no)=>{
+            const tx=d.transaction('templates','readwrite'),store=tx.objectStore('templates');
+            const backup=structuredClone(have);backup.id='__prom-template-backup__:builtin-dawn:opening-v3:'+crypto.randomUUID();backup.backupOf=have.id;backup.backupAt=Date.now();store.put(backup);store.put(next);
+            tx.oncomplete=ok;tx.onerror=()=>no(tx.error);tx.onabort=()=>no(tx.error);
+          });
+        }
       }
       // Never replace an existing browser template, even after a built-in version bump.
       // Custom artwork may have been saved without the edited flag.
