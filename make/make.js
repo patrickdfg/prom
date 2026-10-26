@@ -519,6 +519,7 @@ window.CaptionWorkspace={
 window.CaptionRecipes={sync:async()=>{await B.useTemplate(deckTemplate);},setMode(){},open:async()=>{},remember:async()=>{},withFixed:r=>r};
 $('makeEditSelected').onclick=()=>{if(selected<0||!deck?.slides[selected]){toast('편집할 슬라이드를 먼저 누르세요.');return;}CaptionEditor.open(selected);};
 $('makeAddCaption').onclick=()=>CaptionEditor.open(-1);
+$('makeEditMaster').onclick=()=>{if(selected<0||!deck?.slides[selected]){toast('마스터를 편집할 슬라이드를 먼저 누르세요.');return;}CaptionEditor.open(selected,true);};
 
 /* ---------- 시작 ---------- */
 load().then(()=>$('makeTemplate').onchange()).catch(e=>toast('템플릿 보관함을 열지 못했습니다: '+e.message,6000));
