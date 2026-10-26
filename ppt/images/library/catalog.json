@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 7,
   "items": [
     {
       "id": "trinity-background-v1",
@@ -152,6 +152,54 @@
       "file": "v3/blue-purple-large-box.png",
       "width": 1920,
       "height": 1080
+    },
+    {
+      "id": "pure-white-gold-art-nouveau-border-background-v4",
+      "kind": "background",
+      "label": "순백 골드 아르누보 테두리",
+      "file": "v4/pure-white-gold-art-nouveau-border.png",
+      "width": 1672,
+      "height": 941
+    },
+    {
+      "id": "ivory-rose-gold-filigree-background-v4",
+      "kind": "background",
+      "label": "아이보리 로즈 골드 필리그리",
+      "file": "v4/ivory-rose-gold-filigree.png",
+      "width": 1672,
+      "height": 941
+    },
+    {
+      "id": "proverbs-gold-border-background-v4",
+      "kind": "background",
+      "label": "잠언 골드 테두리",
+      "file": "v4/proverbs-gold-border.jpg",
+      "width": 1244,
+      "height": 699
+    },
+    {
+      "id": "antique-gold-eagle-frame-background-v5",
+      "kind": "background",
+      "label": "금빛 독수리 앤티크 프레임",
+      "file": "v5/antique-gold-eagle-frame.png",
+      "width": 1672,
+      "height": 941
+    },
+    {
+      "id": "ivory-delicate-gold-frame-background-v5",
+      "kind": "background",
+      "label": "아이보리 섬세한 금장 프레임",
+      "file": "v5/ivory-delicate-gold-frame.png",
+      "width": 1672,
+      "height": 941
+    },
+    {
+      "id": "ivory-navy-gold-art-deco-frame-background-v5",
+      "kind": "background",
+      "label": "아이보리 네이비·골드 아르데코 프레임",
+      "file": "v5/ivory-navy-gold-art-deco-frame.png",
+      "width": 1672,
+      "height": 941
     }
   ]
 }
