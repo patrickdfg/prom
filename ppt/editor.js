@@ -49,30 +49,31 @@ $('editAddShape').onclick=async()=>{try{changed=true;await update();if(draft.sha
 // 파일과 Ctrl+V는 같은 경로로 넣고, 그림은 원고·본문과 독립된 요소로 보관한다.
 async function addImage(file,asBackground=false,replace=false){if(!draft)return;const ticket=++mediaSequence,uid=draft.uid,selected=draft.shapes[target];
  try{const image=file?.src?{src:file.src,width:file.shape.w,height:file.shape.h}:await CaptionMedia.decode(file);if(ticket!==mediaSequence||!$('editorDialog').open||draft.uid!==uid)return;await update();if(ticket!==mediaSequence||!$('editorDialog').open||draft.uid!==uid)return;
-  if(draft.shapes.length>=200)throw Error('한 장에는 요소를 200개까지 추가할 수 있습니다.');changed=true;sequence++;
-  if(replace){if(draft.shapes[target]!==selected||selected?.type!=='image')return;selected.src=image.src;selected.manualGeometry=true;if(!masterEditing)draft.imageEdited=true;}
+  if(!replace&&!asBackground&&draft.shapes.length>=200)throw Error('한 장에는 요소를 200개까지 추가할 수 있습니다.');changed=true;sequence++;
+  if(replace){if(draft.shapes[target]!==selected||selected?.type!=='image')return;selected.src=image.src;selected.crop=null;selected.manualGeometry=true;if(!masterEditing)draft.imageEdited=true;}
   else if(asBackground){const selected=draft.shapes[target];CaptionMedia.background(draft,[{type:'image',src:image.src}],draft.background);target=draft.shapes.indexOf(selected);if(target<0)target=bodyIndex(draft);}
   else{const scale=Math.min(1,draft.width*.6/image.width,draft.height*.6/image.height),w=image.width*scale,h=image.height*scale;draft.shapes.push({type:'image',extraImage:true,manualGeometry:true,src:image.src,x:(draft.width-w)/2,y:(draft.height-h)/2,w,h});target=draft.shapes.length-1;}
-  refreshShapes();controls(draft);show();$('editorHint').textContent=asBackground?'배경그림을 화면 전체에 넣었습니다. 적용 · 저장을 눌러 보관하세요.':'그림을 추가했습니다. 미리보기에서 끌어 옮기고 아래 위치·크기로 조절하세요.';$('editorPreview').focus();
+  refreshShapes();controls(draft);show();$('editorHint').textContent=replace?'선택한 그림을 기존 위치·크기 그대로 교체했습니다. 적용 · 저장을 눌러 보관하세요.':asBackground?'배경그림을 화면 전체에 넣었습니다. 적용 · 저장을 눌러 보관하세요.':'그림을 추가했습니다. 미리보기에서 끌어 옮기고 아래 위치·크기로 조절하세요.';$('editorPreview').focus();
  }catch(e){$('editorHint').textContent=e.message||'그림을 넣지 못했습니다.';}
 }
-async function imageLibrary(kind){
+async function imageLibrary(kind,replace=false){
  if(!draft)return;const ticket=++mediaSequence,uid=draft.uid,dialog=$('editLibraryDialog'),grid=$('editLibraryGrid'),status=$('editLibraryStatus');
- const bg=kind==='background';grid.replaceChildren();$('editLibraryTitle').textContent=bg?'배경그림 가져오기':'그림 가져오기';status.textContent='그림을 불러오는 중…';dialog.showModal();
+ const selected=replace?draft.shapes[target]:null;if(replace&&selected?.type!=='image')return;
+ const bg=kind==='background'&&!replace;grid.replaceChildren();$('editLibraryTitle').textContent=replace?'선택 그림 교체':bg?'배경그림 가져오기':'그림 가져오기';status.textContent='그림을 불러오는 중…';dialog.showModal();
  try{
   const records=await CaptionImageLibrary.records();
   if(ticket!==mediaSequence||!dialog.open||!$('editorDialog').open||draft.uid!==uid)return;
-  const items=CaptionImageLibrary.collect(records,kind);
-  status.textContent=items.length?'등록된 그림과 기본·저장된 템플릿에서 골라 현재 자막에 복사합니다. 적용 · 저장을 눌러 보관하세요.':'등록된 그림이 없습니다. 기존 그림 추가 또는 배경그림 넣기로 파일을 선택하세요.';
+  const seen=new Set(),items=(replace?['artwork','background']:[kind]).flatMap(k=>CaptionImageLibrary.collect(records,k)).filter(item=>{if(seen.has(item.src))return false;seen.add(item.src);return true;});
+  status.textContent=items.length?(replace?'그림을 고르면 선택한 그림의 위치와 가로·세로 크기를 그대로 유지하며 교체합니다.':'등록된 그림과 기본·저장된 템플릿에서 골라 현재 자막에 복사합니다. 적용 · 저장을 눌러 보관하세요.'): '등록된 그림이 없습니다. 기존 그림 추가 또는 배경그림 넣기로 파일을 선택하세요.';
   for(const item of items){
    const button=document.createElement('button'),img=document.createElement('img'),label=document.createElement('span');button.type='button';img.src=item.src;img.alt='';label.textContent=item.label;button.append(img,label);
-   button.onclick=()=>{if(ticket!==mediaSequence||!$('editorDialog').open||draft.uid!==uid)return;dialog.close();return addImage(item,bg);};grid.append(button);
+   button.onclick=()=>{if(ticket!==mediaSequence||!$('editorDialog').open||draft.uid!==uid||replace&&draft.shapes[target]!==selected)return;dialog.close();return addImage(item,bg,replace);};grid.append(button);
   }
  }catch(e){if(ticket===mediaSequence&&dialog.open)status.textContent=e.message||'그림 보관함을 읽지 못했습니다.';}
 }
 $o('editArtLibrary').onclick=()=>imageLibrary('artwork');$o('editBgLibrary').onclick=()=>imageLibrary('background');
 $o('editLibraryClose').onclick=()=>$('editLibraryDialog').close();
-$o('editReplaceImage').onclick=()=>$('editReplaceFile').click();
+$o('editReplaceImage').onclick=()=>imageLibrary('artwork',true);
 $o('editReplaceFile').onchange=()=>{const file=$('editReplaceFile').files[0];$('editReplaceFile').value='';if(file)return addImage(file,false,true);};
 $o('editAddImage').onclick=()=>$('editImageFile').click();
 $o('editBackgroundImage').onclick=()=>$('editBackgroundFile').click();

@@ -5,7 +5,7 @@ window.PromBuiltinTemplates=(()=>{
 const LIST=[
   {id:'builtin-sunday',file:'sunday.json',version:1},
   {id:'builtin-sunday-worship',file:'sunday.json',version:1,transform:'sunday-worship'},
-  {id:'builtin-dawn',file:'dawn.json',version:3},
+  {id:'builtin-dawn',file:'dawn.json',version:4},
   {id:'builtin-spirit-word',file:'spirit-word.json',version:7},
 ];
 const KEY='promBuiltinTemplates',DB='prom-ppt-generation-templates';
@@ -52,7 +52,7 @@ async function seed(){
   const d=await db();let added=0;
   for(const t of todo){
     try{
-      const have=await req(d,'readonly',s=>s.get(t.id));
+      let have=await req(d,'readonly',s=>s.get(t.id));
       // Rename the existing public spirit preset without replacing locally edited artwork.
       if(t.id==='builtin-spirit-word'&&have?.name==='성령말씀'){
         have.name='기본 성령말씀 템플릿';
@@ -77,6 +77,25 @@ async function seed(){
             const backup=structuredClone(have);backup.id='__prom-template-backup__:builtin-dawn:opening-v3:'+crypto.randomUUID();backup.backupOf=have.id;backup.backupAt=Date.now();store.put(backup);store.put(next);
             tx.oncomplete=ok;tx.onerror=()=>no(tx.error);tx.onabort=()=>no(tx.error);
           });
+          have=next;
+        }
+      }
+      if(have&&t.id==='builtin-dawn'&&!have.dawnFullBleedVersion){
+        const next=structuredClone(have),opening=next.fixedSlides?.find(f=>f.before===0)?.slide,bg=opening?.shapes?.[0];
+        if(bg?.type==='image'&&!bg.manualGeometry&&!opening.preserveGeometry&&!bg.crop&&[1280,1920].includes(opening.width)&&opening.height===opening.width*9/16&&bg.src?.startsWith('data:image/png;base64,')){
+          const bytes=Uint8Array.from(atob(bg.src.split(',')[1]),c=>c.charCodeAt(0));
+          const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');
+          if(hash==='9c9d2f00aff8a78a285a590ae0d71eb2225d38303be7800128e548e403f31881'){
+            bg.crop={l:16/1952,r:16/1952,t:1/1082,b:1/1082};bg.background=true;
+            if(String(opening.background).toLowerCase()==='#00ff00')opening.background='#3E6FA9';
+            CaptionSize.fit(opening,1920,1080);next.dawnFullBleedVersion=1;next.builtinVersion=t.version;
+            await new Promise((ok,no)=>{
+              const tx=d.transaction('templates','readwrite'),store=tx.objectStore('templates'),backup=structuredClone(have);
+              backup.id='__prom-template-backup__:builtin-dawn:fullbleed-v4:'+crypto.randomUUID();backup.backupOf=have.id;backup.backupAt=Date.now();
+              store.put(backup);store.put(next);tx.oncomplete=ok;tx.onerror=()=>no(tx.error);tx.onabort=()=>no(tx.error);
+            });
+            have=next;
+          }
         }
       }
       // Never replace an existing browser template, even after a built-in version bump.
