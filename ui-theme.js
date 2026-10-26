@@ -5,11 +5,58 @@
 const SRC=document.currentScript&&document.currentScript.src;
 const KEY='promUiTheme',root=document.documentElement;
 const get=()=>{try{return localStorage.getItem(KEY)==='light'?'light':'dark'}catch(_){return 'dark'}};
-// 밝게: 조작 화면 전체를 반전하고, 원고·슬라이드·그림처럼 실제 색이 중요한 곳은 다시 반전해 원래 색으로 둔다.
+// 밝게: 조작 화면의 색만 바꾼다. 페이지/미디어 반전은 원색 손실과 native dialog의 색 반전을 일으키므로 사용하지 않는다.
 const style=document.createElement('style');
-style.textContent=`html[data-ui="light"]{filter:invert(1) hue-rotate(180deg);background:#000}
-html[data-ui="light"] :is(#page,#localScroll,.mini-paper,img,video,canvas,picture,svg image,.slide-canvas,iframe){filter:invert(1) hue-rotate(180deg)}
-html[data-ui="light"] :is(#page,#localScroll,.slide-canvas) :is(img,video,canvas,.slide-canvas){filter:none}
+style.textContent=`html[data-ui="light"]{
+ --bg:#f3f5f8;--panel:#ffffff;--card:#ffffff;--line:#c8d2df;--text:#172333;--muted:#52657b;--dim:#52657b;
+ --accent:#1765ba;--accent2:#1765ba;--ok:#16824f;--warn:#895900;--bad:#bd2738;--danger:#bd2738;
+ background:#f3f5f8;color:#172333;color-scheme:light;
+}
+html[data-ui="light"] body{background:var(--bg);color:var(--text)}
+/* Only UI surfaces are themed. Never target slide objects, media, or reading-page content. */
+html[data-ui="light"] :is(.top,header.brandrow,#statusbar,#bar,#fontPanel,#ttsPanel,#setpanel,.control-pane,.manuscript-pane,.slides-pane,.imports,.transport,.mapping,.heard,.drive-bar,.drive-status,.caption-navigation,.overview-toolbar,.pane-heading,footer,#help,#status,.editor-bottom,.family-panel,dialog,.ce-head,.ce-card,.setup-card,.input-tabs,#drop,#resumeCard,#ceState,#toast,.toast){
+ background:#ffffff!important;color:#172333!important;border-color:#c8d2df!important;
+}
+html[data-ui="light"] :where(button,.file-button,.btnlike,select,textarea,input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"])):not(:where(.slide-canvas *,#page *,#localScroll *,.mini-paper *)){
+ background:#edf2f8!important;color:#172333!important;border-color:#bbc9d9!important;
+}
+html[data-ui="light"] :where(button,.file-button,.btnlike):hover:not(:where(.slide-canvas *,#page *,#localScroll *,.mini-paper *)){background:#dce7f4!important}
+html[data-ui="light"] :is(input,select,textarea){accent-color:#147b58}
+html[data-ui="light"] :is(button.primary,.btn:not(.ghost),#ceDone){background:#1765ba!important;border-color:#1765ba!important;color:#ffffff!important}
+html[data-ui="light"] :is(button.primary,.btn:not(.ghost),#ceDone):hover{background:#104c91!important}
+html[data-ui="light"] :is(.brand,.brand b,.brand span,.family-title,.editor-heading,.preview-title,.card-info,.card-text,.mapping-fields label,.editor-fields label,.editor-small,#editorHint,.editor-bottom span,.ce-help,.ce-card-head,.ce-break,.file-button small,.drive-bar span,.heard p,.heard span,.pane-heading h2 span,.brandmark,.empty strong,#connection,#liveLabel){
+ color:#3c536d!important;
+}
+html[data-ui="light"] :is(.family-btn,.family-panel a){background:#edf2f8!important;color:#172333!important;border-color:#bbc9d9!important}
+html[data-ui="light"] .family-panel a:hover{background:#dce7f4!important}
+html[data-ui="light"] :is(.family-panel a[aria-current="page"],.family-panel a small){color:#1765ba!important}
+html[data-ui="light"] :is(.hint,.field,.back,.status,.login-account,.login-note,.tpl small,.empty){color:#52657b}
+html[data-ui="light"] :is(.editor-fields legend,#editorDialog legend){color:#3c536d!important}
+html[data-ui="light"] :is(.editor-fields fieldset,#editorDialog fieldset,.preview-trio section){border-color:#bbc9d9!important}
+html[data-ui="light"] :is(.slide-card,.bg-library-item){background:#ffffff!important;border-color:#bbc9d9!important}
+html[data-ui="light"] .slide-card.selected{background:#deedf9!important;border-color:#1765ba!important}
+html[data-ui="light"] .slide-card.live{border-color:#b96512!important}
+html[data-ui="light"] :is(.input-tabs button,.tabs button)[aria-selected="true"]{background:#d2e7fa!important;border-color:#1765ba!important;color:#154f83!important}
+html[data-ui="light"] :is(.view-buttons,.view-switch) [aria-pressed="true"]{background:#d2e7fa!important;border-color:#1765ba!important;color:#154f83!important}
+html[data-ui="light"] :is(.card-info .exact,.card-info .manual,#mode,.transport #showStandby){color:#08744d!important}
+html[data-ui="light"] :is(.card-info .review,.status.error){color:#925113!important}
+html[data-ui="light"] :is(.danger,#editorDialog .danger){color:#a91c30!important;border-color:#bd7180!important}
+html[data-ui="light"] :is(#mic.active,#mic.on){color:#a91c30!important;background:#ffe5e9!important;border-color:#bd7180!important}
+html[data-ui="light"] :is(#tts.on,#tPP,#tClose,#fontPanel #fClose){color:#513900!important;background:#ffe5a3!important}
+html[data-ui="light"] .guide-blue{color:#155cba}
+html[data-ui="light"] .guide-green{color:#137344}
+html[data-ui="light"] #divider{background:#c8d2df}
+html[data-ui="light"] .script-line{color:#263c54!important;background:transparent!important}
+html[data-ui="light"] .script-line:hover{background:#e9f0f8!important}
+html[data-ui="light"] .script-line.linked{color:#684400!important;background:#fff1ca!important}
+html[data-ui="light"] .script-line.current{color:#0e513e!important;background:#d2f1e5!important}
+html[data-ui="light"] .script-line.linked.current{color:#543600!important;background:#ffe1a0!important}
+html[data-ui="light"] .script-line.past{color:#64758a!important}
+html[data-ui="light"] .script-line .number{color:#596e86!important}
+html[data-ui="light"] #continuousEditor .ce-lines{color:#172333;caret-color:#1765ba}
+html[data-ui="light"] #continuousEditor .ce-lines .b{color:#155cba}
+html[data-ui="light"] #continuousEditor .ce-lines .r{color:#bd2738}
+html[data-ui="light"] #continuousEditor .ce-lines .n{color:#1765ba}
 .ui-theme-toggle{flex-shrink:0;white-space:nowrap;width:32px;height:32px;min-width:0!important;padding:0!important;display:inline-flex;align-items:center;justify-content:center;font-size:16px;line-height:1;border-radius:50%!important}
 header.brandrow .app-switch{margin-left:auto}header.brandrow .ui-theme-toggle{margin-left:8px}
 .family-btn{flex-shrink:0;white-space:nowrap;height:32px;min-width:0!important;margin-left:8px;padding:0 10px!important;display:inline-flex;align-items:center;gap:4px;font:13px/1 system-ui,'Malgun Gothic','Apple SD Gothic Neo',sans-serif!important;color:#e6edf3!important;background:#161b22!important;border:1px solid #30363d!important;border-radius:8px!important;cursor:pointer}

@@ -2,6 +2,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');
 const base=process.env.PROM_BASE||'http://localhost:8765/';
 (async()=>{const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/opt/pw-browsers/chromium'});try{
  const context=await browser.newContext({viewport:{width:1500,height:1000}}),page=await context.newPage(),errors=[];
+ if(process.env.PROM_UI_THEME)await context.addInitScript(theme=>localStorage.setItem('promUiTheme',theme),process.env.PROM_UI_THEME);
  page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
  await context.route('https://accounts.google.com/**',r=>r.abort());
  for(const app of ['ppt/','make/']){

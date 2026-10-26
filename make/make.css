@@ -1,4 +1,4 @@
-/* PPT 자동 제작 화면 스타일 (어두운 기본, 밝게는 ui-theme.js가 반전) */
+/* PPT 자동 제작 화면 스타일 (어두운 기본, 밝게는 ui-theme.js가 조작 UI 색상만 변경) */
 @font-face{font-family:'PROM MaruBuri';src:url('https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Regular.woff2') format('woff2');font-weight:400;font-style:normal;font-display:block}
 @font-face{font-family:'PROM MaruBuri';src:url('https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Bold.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
 :root{--bg:#0d1117;--card:#151b24;--line:#2a3442;--text:#e6edf3;--dim:#8b98a8;--accent:#2ea043;--accent2:#58a6ff;--danger:#f85149}

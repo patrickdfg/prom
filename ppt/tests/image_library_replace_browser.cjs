@@ -1,6 +1,7 @@
 const {chromium}=require('playwright'),assert=require('node:assert/strict');
 (async()=>{const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH,headless:true});try{
  const page=await browser.newPage({viewport:{width:1500,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.route('https://accounts.google.com/**',r=>r.abort());let fileChoosers=0;page.on('filechooser',()=>fileChoosers++);
+ if(process.env.PROM_UI_THEME)await page.addInitScript(theme=>localStorage.setItem('promUiTheme',theme),process.env.PROM_UI_THEME);
  for(const [app,master] of [['make/',false],['ppt/',false],['make/',true]]){
   await page.goto((process.env.PROM_BASE||'http://127.0.0.1:8765/')+app);await page.waitForFunction(()=>window.CaptionWorkspace&&window.CaptionEditor);
   if(app==='make/'){await page.waitForFunction(()=>document.querySelector('#makeTemplate option[value="builtin-sunday"]'));await page.selectOption('#makeTemplate','builtin-sunday');await page.click('details.manuscript-paste summary');await page.fill('#makePasteList textarea','1. 첫째 말씀입니다.\n2. 둘째 말씀입니다.');await page.click('#makeRun');await page.waitForFunction(()=>!document.querySelector('#makeRun').disabled);}
