@@ -1707,7 +1707,7 @@ function toast(msg,ms=3000){const t=$('toast');t.textContent=msg;t.style.display
 function setDot(cls){$('dot').className=cls||''; notifyUI('mic',cls)}
 // 화면 왼쪽 위에 지금 어디까지 되고 있는지 보여 준다 (소리가 들어오는지, 글자로 바뀌는지, 원고에서 찾았는지)
 // 음성 인식 기록. 들은 글자·위치 판정·원고 위치를 남겨 따라오지 못한 이유를 나중에 분석한다.
-const VLOG_KEY='prompterVoiceLog',VLOG_MAX=60000,VLOG_DB='prompterVoiceLogDB',VLOG_KEEP_MS=12*3600*1000;let vlog=[],vlogStart=Date.now(),lastCap='',vlogDirty=false;
+const VLOG_KEY='prompterVoiceLog',VLOG_MAX=60000,VLOG_DB='prompterVoiceLogDB',VLOG_KEEP_MS=30*24*3600*1000;let vlog=[],vlogStart=Date.now(),lastCap='',vlogDirty=false;
 let vlogLegacy=null;try{const o=JSON.parse(localStorage.getItem(VLOG_KEY)||'null');if(o&&!Array.isArray(o)&&Array.isArray(o.events))vlogLegacy=o}catch(_){}
 // 세션: 같은 원고를 읽는 동안의 기록. 설교 한 편(수천 건)이 통째로 남도록 메모리 60,000건까지 보관하고 IndexedDB에 조각으로 나눠 저장한다.
 // 넘치면 오래된 것부터 버리되 버린 수를 dropped에 남겨 내보낸 파일에서 알 수 있게 한다.
@@ -1717,7 +1717,7 @@ function vdbOpen(){return new Promise(res=>{try{const q=indexedDB.open(VLOG_DB,1
 function vlogFail(e){vlogSess.error=String(e&&e.message||e||'저장 실패');if(!vlogWarned){vlogWarned=true;try{toast('인식 기록을 기기에 저장하지 못했습니다. 설교 뒤 「인식 기록 저장」으로 파일을 꼭 받아 두세요.',8000)}catch(_){}}}
 function vdbClear(id){if(!vlogDb)return;try{const tx=vlogDb.transaction(['chunks','meta'],'readwrite');tx.objectStore('chunks').delete(IDBKeyRange.bound([id,0],[id,Infinity]));tx.objectStore('meta').delete('current')}catch(_){}}
 function vlogNewSession(key){const old=vlogSess.id;vlogSess={id:'s'+Date.now().toString(36),key,startedAt:Date.now(),dropped:0,error:''};vlog=[];vlogFlushed=0;vlogRestored=true;vlogDirty=true;vdbClear(old)}
-// 새로고침 뒤 같은 원고(12시간 안)이면 저장해 둔 앞부분을 이어 붙인다. 다른 원고의 기록은 현재 원고와 섞이지 않게 버린다.
+// 새로고침 뒤 같은 원고(30일 안)이면 저장해 둔 앞부분을 이어 붙인다. 다른 원고의 기록은 현재 원고와 섞이지 않게 버린다.
 function vlogUseLegacy(key){const o=vlogLegacy;vlogLegacy=null;if(!o||o.key!==key||!o.events.length)return;if(Date.now()-o.events[o.events.length-1].t>VLOG_KEEP_MS)return;vlog=o.events.filter(e=>!vlog.length||e.t<vlog[0].t).concat(vlog)}
 async function vdbRestore(key){
   vlogRestored=true;
