@@ -207,7 +207,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <span id="autosaveState" role="status">기기에 저장됨</span>
     <div id="moreTools" hidden>
       <button id="set">마이크 설정</button>
-      <button id="saveVoiceLog" type="button" title="들은 글자와 위치 판정 기록을 파일로 저장합니다. 따라오지 못한 때 원인을 분석하는 데 씁니다.">인식 기록 저장</button>
+      <button id="saveVoiceLog" type="button" title="들은 글자와 위치 판정 기록을 파일로 저장합니다. 따라오지 못한 때 원인을 분석하는 데 씁니다.">인식 기록 저장</button> <span id="promDiagStatus" role="status" style="font-size:12px;opacity:.8">관리자 진단 저장 대기</span>
       <button id="obsFullscreenSetup" type="button" title="OBS 전체화면 전환 용도·사용법·다운로드">OBS풀스크린설명</button>
       <label>넘김 <select id="lead"><option value="6">빠르게</option><option value="3" selected>보통</option><option value="1">늦게</option></select></label>
       <label>강조 <select id="focusColor"><option value="#ffff00">노랑</option><option value="#b6f36a">연두</option></select></label>
@@ -1765,42 +1765,90 @@ function vlogSave(){
 let vlogOpening=false;
 setInterval(vlogSave,4000);addEventListener('pagehide',vlogSave);
 function rowAt(c){for(let pi=0;pi<lineRange.length;pi++)for(let li=0;li<lineRange[pi].length;li++){const r=lineRange[pi][li];if(r[1]>r[0]&&c>=r[0]&&c<r[1])return [pi+1,li+1]}return null}
-// 관리자 Apps Script로 음성인식 진단 로그를 주기적으로 전송한다. 브라우저에는 실패 시 재시도용으로 유지한다.
+// 관리자 Apps Script 진단: 마이크 시작 즉시 원고 및 인식 기록을 전송하고, 실행 중 15초마다 이어서 보낸다.
+// 서버는 no-cors 응답을 읽을 수 없으므로 "전송 시도"와 "드라이브 저장 확인"을 구분한다.
 const PROM_DIAG_URL='https://script.google.com/macros/s/AKfycbxQJ-k-vTozybdcuY9J2uY0jXolSsKhzHUqYmDFOKqpB4vXGCSkTE1BHbKrj8h2vVgZoQ/exec';
 const PROM_DIAG_END=Date.parse('2026-11-28T15:00:00Z');
 let promDiagSent=0,promDiagSession='',promDiagBusy=false,promDiagManifest=false;
+let promDiagLastAttempt=0,promDiagLastError='',promDiagAudioRecorder=null,promDiagAudioPending=Promise.resolve();
+function promDiagStatus(message){
+  const el=document.getElementById('promDiagStatus');
+  if(el){el.textContent=message;el.title='Google Apps Script는 브라우저에서 서버 저장 결과를 확인할 수 없습니다. 실제 파일은 관리자 드라이브에서 확인하세요.'}
+}
+function promDiagId(){return String(vlogSess.id||'').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,64)}
 function promDiagPost(data){
-  // Apps Script의 ContentService는 교차 출처 응답을 읽기 어려워 no-cors로 보낸다.
-  // 전송 시도만 확인할 수 있으므로 실패 복구를 위해 로컬 로그를 남긴다.
-  return fetch(PROM_DIAG_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(data),keepalive:false});
+  const body=JSON.stringify(data);
+  if(body.length>2400000)return Promise.reject(new Error('진단 기록 전송 크기 초과'));
+  return fetch(PROM_DIAG_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body,keepalive:false});
+}
+function promDiagBase64(blob){
+  return new Promise((resolve,reject)=>{const reader=new FileReader();
+    reader.onload=()=>resolve(String(reader.result).split(',')[1]||'');
+    reader.onerror=()=>reject(reader.error||new Error('오디오 변환 실패'));
+    reader.readAsDataURL(blob);
+  });
+}
+function promDiagAudioStart(){
+  if(Date.now()>=PROM_DIAG_END||!window.MediaRecorder||!micStream||promDiagAudioRecorder)return;
+  try{
+    const mime=['audio/webm;codecs=opus','audio/webm','audio/ogg','audio/mp4'].find(m=>MediaRecorder.isTypeSupported(m));
+    const recorder=new MediaRecorder(micStream,mime?{mimeType:mime}:undefined);
+    const type=(recorder.mimeType||'audio/webm').split(';')[0];
+    if(!['audio/webm','audio/ogg','audio/mp4'].includes(type))return;
+    const session=promDiagId();
+    if(session.length<8)return;
+    promDiagAudioRecorder=recorder;
+    recorder.ondataavailable=e=>{
+      if(!e.data||!e.data.size)return;
+      const chunk=e.data;
+      promDiagAudioPending=promDiagAudioPending.then(async()=>{
+        const base64=await promDiagBase64(chunk);
+        if(base64.length>2350000)throw new Error('오디오 조각이 서버 제한을 초과했습니다');
+        await promDiagPost({session,kind:'audio',mime:type,base64});
+      }).catch(err=>{promDiagLastError=String(err);console.warn('PROM 오디오 진단 전송 실패',err)});
+    };
+    recorder.onerror=e=>{promDiagLastError='오디오 녹음 오류';console.warn('PROM 오디오 녹음 오류',e)};
+    recorder.start(10000);
+  }catch(err){promDiagLastError=String(err);console.warn('PROM 진단 녹음 시작 실패',err)}
+}
+function promDiagAudioStop(){
+  const recorder=promDiagAudioRecorder;promDiagAudioRecorder=null;
+  if(recorder&&recorder.state!=='inactive'){try{recorder.stop()}catch(err){console.warn('PROM 진단 녹음 종료',err)}}
 }
 async function promDiagSync(){
   if(promDiagBusy||Date.now()>=PROM_DIAG_END||!navigator.onLine||!vlog.length||!vlogSess.key)return;
+  const session=promDiagId();if(session.length<8)return;
   promDiagBusy=true;
   try{
-    const session=vlogSess.id.replace(/[^a-zA-Z0-9_-]/g,'').slice(0,64);
-    if(session.length<8)return;
     if(promDiagSession!==session){promDiagSession=session;promDiagSent=0;promDiagManifest=false}
     if(!promDiagManifest){
       const doc=voiceLogDoc();
-      const manifest={session,kind:'manifest',startedAt:doc.session.startedAt,manuscriptKey:doc.session.manuscriptKey,
+      const manifest={session,kind:'manifest',app:'prom',startedAt:doc.session.startedAt,manuscriptKey:doc.session.manuscriptKey,
         manuscript:doc.manuscript,settings:doc.settings,userAgent:doc.userAgent};
       if(JSON.stringify(manifest).length>260000){
-        // Apps Script 원고 크기 제한: 원고 전체 대신 식별자와 페이지 수를 기록한다.
         manifest.manuscript={key:doc.session.manuscriptKey,pageCount:doc.manuscript.pages.length,truncated:true};
       }
-      await promDiagPost(manifest);promDiagManifest=true;
+      await promDiagPost(manifest);
+      promDiagManifest=true;
     }
     while(promDiagSent<vlog.length){
-      const end=Math.min(promDiagSent+150,vlog.length);
+      const end=Math.min(promDiagSent+100,vlog.length);
       await promDiagPost({session,kind:'events',offset:promDiagSent,events:vlog.slice(promDiagSent,end)});
       promDiagSent=end;
     }
-  }catch(err){console.warn('PROM 진단 기록 자동 전송 재시도 예정',err)}
-  finally{promDiagBusy=false}
+    promDiagLastAttempt=Date.now();promDiagLastError='';
+    promDiagStatus('진단 전송 시도됨');
+  }catch(err){
+    promDiagLastError=String(err&&err.message||err);
+    promDiagStatus('진단 전송 재시도 예정');
+    console.warn('PROM 진단 기록 자동 전송 실패 · 다음에 재시도',err);
+  }finally{promDiagBusy=false}
 }
-setInterval(promDiagSync,30000);
-addEventListener('pagehide',()=>{if(!promDiagBusy&&vlog.length>promDiagSent)promDiagSync()});
+setInterval(promDiagSync,15000);
+addEventListener('online',promDiagSync);
+addEventListener('visibilitychange',()=>{if(document.hidden)promDiagSync()});
+window.__promDiagStatus=()=>({session:promDiagSession,events:vlog.length,attempted:promDiagSent,lastAttempt:promDiagLastAttempt,lastError:promDiagLastError,audioRecording:!!promDiagAudioRecorder});
+// 기존 기기 저장 기능은 별도로 유지한다.
 function voiceLogDoc(){
   vlogSave();
   return {version:1,savedAt:new Date().toISOString(),userAgent:navigator.userAgent,settings:{lead:$('lead').value,lines:LINES,mobile:MOBILE},
@@ -2002,6 +2050,8 @@ async function startMic(){
   const hasSlideshow=!!notifyUI('hasSlideshow');
   await holdMic();
   typeof vlogAdd==='function'&&vlogAdd({k:'mic',v:'start',cursor});lexFrom=vlog.length;
+  // PPT와 같이 마이크를 켜는 즉시 관리자 드라이브 전송을 시작한다.
+  promDiagSync();
   rec=new SR(); rec.lang='ko-KR'; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
   const activeRec=rec;
   rec.onresult=e=>{
@@ -2046,13 +2096,16 @@ async function startMic(){
   $('fontPanel').classList.remove('open');$('ttsPanel').classList.remove('open');
   document.activeElement?.blur();fit();render();
   setDot(''); cap('마이크 여는 중…'); startRec();
+  // 이미 열어 둔 PC 마이크를 재사용해 10초 단위 진단 음성을 기록한다.
+  // 안드로이드는 음성인식과 마이크 동시 점유 충돌 방지를 위해 오디오 녹음은 생략한다.
+  promDiagAudioStart();
   $('mic').classList.add('on'); $('mic').textContent='음성인식 종료'; $('mic').setAttribute('aria-pressed','true');
   keepAwake(); speedStart();
 }
 let lexFrom=0;
 // 마이크를 끌 때 이번에 들은 말과 원고를 맞대어 틀린 짝을 배운다 (같은 짝이 서로 다른 곳에서 2번 이상 나오면 쓰기 시작)
 function lexLearn(finalOnly=false){try{if(typeof PromLexicon==='object'&&vlog.length>lexFrom){const recent=vlog.slice(lexFrom);PromLexicon.learn(finalOnly?recent.filter(e=>e.k==='heard'&&e.fin===true):recent,norm);lexFrom=vlog.length;}}catch(_){}}
-function stopMic(){ typeof vlogAdd==='function'&&(vlogAdd({k:'mic',v:'stop'}),vlogSave()); lexLearn(); speedStop(); endWait();
+function stopMic(){ typeof vlogAdd==='function'&&(vlogAdd({k:'mic',v:'stop'}),vlogSave()); promDiagAudioStop(); promDiagSync(); lexLearn(); speedStop(); endWait();
   listening=false;$('view').classList.remove('presenting','controls-open','operator-mode');fit();render();showBar();
   cap(''); releaseMic(); if(rec)try{rec.stop()}catch(_){}
   $('mic').classList.remove('on'); $('mic').textContent='음성인식으로 시작'; $('mic').setAttribute('aria-pressed','false'); setDot('');
