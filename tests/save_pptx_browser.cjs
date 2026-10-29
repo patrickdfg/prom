@@ -10,6 +10,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
  else await page.evaluate(()=>{baseName='시험';startWith(parseTxt('주님은 사랑이십니다.\n\n다음 문단입니다. 이어서 읽습니다.'))});
  await page.waitForTimeout(300);
  const n=await page.evaluate(()=>P.length);
+ await page.click('#save');
  const [dl]=await Promise.all([page.waitForEvent('download'),page.click('#savePptx')]);
  const out=process.env.OUT||'/tmp/prompter_test.pptx';fs.copyFileSync(await dl.path(),out);
  

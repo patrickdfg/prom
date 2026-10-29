@@ -32,6 +32,9 @@ var t=r||{};var i=t.boundary||"SheetJS";i="------="+i;var n=["MIME-Version: 1.0"
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif}
 button{font:inherit;cursor:pointer}
+#saveDialog{width:min(340px,calc(100vw - 24px))}
+#saveDialog .save-options{display:grid;gap:10px}
+#saveDialog .save-options button{text-align:left;padding:14px 16px;font-size:16px}
 /* 불러오기 화면 */
 #setup{max-width:640px;margin:0 auto;padding:40px 16px 88px}
 #setup h1{font-size:24px;margin:0 0 6px}
@@ -198,7 +201,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <div class="control-group"><button id="prev" aria-label="이전 쪽">◀</button><span id="pg">1 / 1</span><button id="find">검색</button><button id="next" aria-label="다음 쪽">▶</button></div>
     <div class="control-group view-switch" role="group" aria-label="원고 보기"><button id="viewSingle" aria-pressed="true">한 장</button><button id="viewMultiple" aria-pressed="false">여러 장</button><button id="viewScroll" aria-pressed="false" title="현재 창에서 원고를 부드럽게 스크롤합니다">스크롤 보기</button></div>
     <div class="control-group"><label id="pageNumOptWrap" title="원고에 적힌 쪽 번호를 왼쪽 위에 크게 빨간색으로 띄웁니다(원고에 쪽 번호가 있을 때)"><input type="checkbox" id="pageNumOpt" checked>쪽</label><label id="speedOptWrap" title="마이크를 켰을 때 오른쪽 위에 말하는 속도(현수 목소리=100)를 띄웁니다"><input type="checkbox" id="speedOpt" checked>속도<span class="wide"> 표시</span></label><label id="dimOptWrap"><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label></div>
-    <div class="control-group"><button id="note">발표 메모</button><button id="edit">연속 편집 (E)</button><button id="save">저장</button><button id="savePptx" title="쪽마다 슬라이드 한 장인 PPT(PPTX) 파일로 저장합니다">PPT 저장</button><button id="openf">열기</button></div>
+    <div class="control-group"><button id="note">발표 메모</button><button id="edit">연속 편집 (E)</button><button id="save" aria-haspopup="dialog" aria-controls="saveDialog">저장</button><button id="openf">열기</button></div>
     <label id="labOptWrap" title="줄 간격을 좁히고 다음 장 첫 줄을 하단에 표시합니다"><input type="checkbox" id="labNextLine" checked> 다음 장 첫 줄 보기</label>
     <button id="more" aria-expanded="false" aria-controls="moreTools">더보기</button>
     <span id="autosaveState" role="status">기기에 저장됨</span>
@@ -226,6 +229,9 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     </ol>
     <p>사용 중에는 보조 프로그램을 켜 두세요. 창의 X는 트레이로 숨기기이며, 다시 보려면 시계 옆 아이콘을 두 번 클릭하세요. 기본 Tab은 OBS 전환에만 쓰고, PgDn·방향키·스페이스는 PowerPoint 또는 Chrome 넘김에 사용하세요.</p>
     <a id="obsFullscreenDownload" class="btn obs-download" href="downloads/OBSFullscreenBridge-1.4.0.exe" download="obsscreen.exe">obsscreen 다운로드 · v1.4</a>
+  </dialog>
+  <dialog id="saveDialog" class="tool-dialog" aria-labelledby="saveTitle"><div class="dialog-head"><h2 id="saveTitle">저장</h2><button data-close="saveDialog" aria-label="저장 목록 닫기">닫기</button></div>
+    <div class="save-options"><button id="savePptx" title="쪽마다 슬라이드 한 장인 PPT 파일로 저장합니다">PPT 저장</button><button id="saveHwpx" title="글자·줄·쪽 나눔·강조색을 한글 문서로 저장합니다">HWPX 저장</button><button id="saveProject" title="편집 상태를 다시 불러올 수 있는 프롬프터 파일로 저장합니다">프롬프터 저장</button></div>
   </dialog>
   <dialog id="searchDialog" class="tool-dialog" aria-labelledby="searchTitle"><div class="dialog-head"><h2 id="searchTitle">검색</h2><button data-close="searchDialog" aria-label="검색 닫기">닫기</button></div>
     <label class="sr-only" for="searchQuery">원고에서 찾을 말</label><input type="search" id="searchQuery" placeholder="성구나 문장을 입력하세요"><p id="searchCount" role="status"></p><div id="searchResults"></div>
@@ -397,6 +403,7 @@ async function parseHwpx(buf){
   const hf=zip.file('Contents/header.xml');
   if(!hf)throw new Error('한글 hwpx 파일이 아닙니다.');
   const header=await hf.async('string');
+  const saved=await PromHwpx.read(zip,header);if(saved)return saved;
   const colors={};
   for(const m of header.matchAll(/<hh:charPr\b[^>]*\bid="(\d+)"[^>]*\btextColor="#([0-9A-Fa-f]{6})"/g)) colors[m[1]]=m[2];
   const secs=Object.keys(zip.files).filter(n=>/^Contents\/section\d+\.xml$/.test(n))
@@ -1589,7 +1596,9 @@ function parseSaved(text){
   if(!pages.some(hasText))throw new Error('읽을 내용이 없습니다.');
   return {pages,lines,mobile:o.mobile||false,meta:o.meta||{}};
 }
-$('save').onclick=savePages;
+$('save').onclick=()=>{$('saveDialog').showModal();showBar();};
+$('saveDialog').addEventListener('keydown',e=>e.stopPropagation());
+$('saveProject').onclick=()=>{$('saveDialog').close();savePages();};
 // 원고를 쪽마다 슬라이드 한 장인 PPTX로 저장한다 (지금 배경: 검정이면 검정 바탕·흰 글씨)
 async function currentPptBackgroundJpeg(){
   const raw=$('page').style.backgroundImage;
@@ -1625,7 +1634,21 @@ async function savePptx(){
     toast('PPT로 저장했습니다 · '+name+' · '+pages.length+'장 (다운로드 폴더)',6000);
   }catch(e){toast('PPT 저장에 실패했습니다: '+(e.message||e),6000);}
 }
-$('savePptx').onclick=savePptx;
+$('savePptx').onclick=()=>{$('saveDialog').close();savePptx();};
+async function saveHwpx(){
+  if(!P.length)return;
+  try{
+    const pages=snapshotPages(),fontName=$('page').classList.contains('fallback')?'Malgun Gothic':'HY견고딕';
+    const blob=await PromHwpx.create(pages,{count:LINES,dark:$('theme').value==='dark',title:baseName,fontName}),name=baseName+'_프롬프터.hwpx';
+    if(window.showSaveFilePicker){
+      try{const h=await showSaveFilePicker({suggestedName:name,types:[{description:'한글 문서',accept:{'application/hwp+zip':['.hwpx']}}]});const w=await h.createWritable();await w.write(blob);await w.close();toast('HWPX로 저장했습니다 · '+h.name+' · '+pages.length+'쪽',6000);return;}
+      catch(e){if(e&&e.name==='AbortError')return;}
+    }
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),10000);
+    toast('HWPX로 저장했습니다 · '+name+' · '+pages.length+'쪽 (다운로드 폴더)',6000);
+  }catch(e){toast('HWPX 저장에 실패했습니다: '+(e.message||e),6000);}
+}
+$('saveHwpx').onclick=()=>{$('saveDialog').close();saveHwpx();};
 $('openf').onclick=()=>{
   if(dirty&&!confirm('고친 내용을 저장하지 않았습니다. 그래도 다른 파일을 열까요?'))return;
   $('file').click();
@@ -2374,6 +2397,11 @@ async function loadFile(f){
     else if(/\.ppt$/i.test(f.name)) r=await parsePpt(await f.arrayBuffer());
     else if(/\.pdf$/i.test(f.name)) r=await parsePdf(await f.arrayBuffer());
     else throw new Error('hwp, hwpx, doc, docx, ppt, pptx, pdf, txt, html 파일만 열 수 있습니다.');
+    if(r.lines){
+      if(listening)stopMic();if(editing)endEdit();window.PromPptxOriginal?.clear();
+      setMode(false);LINES=r.lines;$('theme').value=r.dark?'dark':'white';applyTheme();openPrompter(r.pages);lastSrc={pages:P.map(p=>p.slice())};dirty=false;$('loadmsg').textContent='';
+      toast('HWPX 파일을 열었습니다 · '+P.length+'쪽 · '+LINES+'줄',5000);return;
+    }
     if(!r.original&&!r.pages.some(p=>p.some(l=>l.some(x=>x.t.trim()))))throw new Error('읽을 내용이 없습니다.');
     if($('view').style.display==='block'){if(editing)endEdit();stopMic();tStop();startWith(r.pages,r.bg,r.original);$('loadmsg').textContent='';return}
     pending=r; $('start').disabled=false; $('fname').textContent=r.original?f.name+' · '+r.original.slides.length+'장 원본 모양 유지 · 시작을 누르세요.':f.name+' 을(를) 읽었습니다. 줄 수를 고르고 시작을 누르세요.';
@@ -2496,7 +2524,7 @@ if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 <script src="overview.js?v=20261023-one-top-row"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
 <script src="extras.js?v=20261023-stage-hide1"></script>
-<script src="ppt/drive-config.js?v=20261020-sync1"></script><script src="google-session.js?v=20261021-session1"></script><script src="prompter-pptx.js?v=20261024-onebox1"></script><script src="drive-sync.js?v=20261021-session1"></script>
+<script src="ppt/drive-config.js?v=20261020-sync1"></script><script src="google-session.js?v=20261021-session1"></script><script src="prompter-pptx.js?v=20261024-onebox1"></script><script src="prompter-hwpx.js?v=20261029-save1"></script><script src="drive-sync.js?v=20261021-session1"></script>
 
 <div data-prom-support class="prom-support-floating" aria-label="사용자 도움말"></div><script src="support.js?v=20261023-voice-start"></script></body>
 </html>
