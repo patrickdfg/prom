@@ -1793,7 +1793,7 @@ function onHeard(text){
   const optional=PromOptionalSpeech.match(all,optionalSpeech,cursor)??(typeof PromSpeechMatch==='undefined'?null:PromSpeechMatch.optional(all,optionalSpeech,cursor)?.pos??null);
   const scripture=typeof PromScriptureSpeech==='undefined'?null:PromScriptureSpeech.match(all,scriptureSpeech,cursor);
   let to,ppt=null,recovered=false,timed=null,trustedOmission=false;
-  if(scripture){to=scripture.pos;pend=null;}
+  if(scripture){to=scripture.pos;trustedOmission=true;pend=null;}
   else if(optional!==null){to=optional;trustedOmission=true;pend=null;}
   else if(confirmed!==null){to=confirmed;pend=null;}
   else if(local!==null){to=local;pend=null;}
