@@ -1769,6 +1769,17 @@ function pptSpeech(text){
     return {pos:r.pos};
   }catch(_){return null}
 }
+// 같은 표현이 뒤쪽 줄에도 나올 때 중간 문장의 순서를 확인한다.
+function sentenceOrderAllows(target,heard){
+  if(target<=cursor)return true;
+  const rows=lineRange.flat().filter(r=>r[1]>r[0]);
+  const current=rows.findIndex(r=>r[1]>cursor);
+  const destination=rows.findIndex(r=>r[1]>=target);
+  if(current<0||destination<0||destination<=current+1)return true;
+  const next=rows[current+1];
+  const prefix=norm.slice(next[0],Math.min(next[1],next[0]+10));
+  return prefix.length<6||heard.includes(prefix);
+}
 function onHeard(text){
   // The displayed page may lead the reading position. Manual navigation already resets cursor.
   const all=normStr(heardCarry+text);
@@ -1778,7 +1789,7 @@ function onHeard(text){
   const sampleKey=all.slice(-96);if(sampleKey===lastTail)return;
   lastTail=sampleKey;
   const cuePos=cueMatch(S);
-  if(cuePos!==null&&cuePos-cursor<=180){cursor=cuePos;if(typeof safeFollow!=='undefined')safeFollow?.progress(cursor);pend=null;go(pageOf(cursor));cap(base+' ✓ 다음 장 첫 줄 확인');return;}
+  if(cuePos!==null&&cuePos-cursor<=180&&sentenceOrderAllows(cuePos,all)){cursor=cuePos;if(typeof safeFollow!=='undefined')safeFollow?.progress(cursor);pend=null;go(pageOf(cursor));cap(base+' ✓ 다음 장 첫 줄 확인');return;}
   // 가까운 곳(지금 위치 앞뒤)을 먼저 본다. 이미 읽은 곳을 다시 읽으면(강조·다 같이 읽기) 그대로 두고,
   // 멀리 앞쪽과 맞으면 바로 넘기지 않고 이어서 더 읽어 같은 흐름이 확인될 때만 넘긴다 (부연 설명 중 우연히 맞는 것 막기)
   const h=locate3(S,cursor), lim=Math.floor(S.length*0.3);
@@ -1820,6 +1831,9 @@ function onHeard(text){
     const nearby=typeof safeFollow==='undefined'?null:(safeFollow?.recover(all,norm,cursor)??null);
     if(nearby===null){cap(base+' · 먼 위치로 이동하지 않고 기다림');return}
     to=nearby;recovered=true;
+  }
+  if(!trustedOmission&&!sentenceOrderAllows(to,all)){
+    cap(base+' · 중간 문장 순서 확인 중 · 기다림');return;
   }
   cap(base+' ✓ 원고 위치 찾음');
   const beforeMove=cursor;
