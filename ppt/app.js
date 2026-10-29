@@ -21,10 +21,26 @@ function save(){clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{try{if(tr
 function frame(){return CaptionStandbyCore.frame(project,live,forceGreen);}
 function publish(){channel?.postMessage(frame());}
 function showLive(at,green=false){clearTimeout(greenTimer);live=at;forceGreen=green;publish();const current=frame();CaptionRender.show($('livePreview'),current.slide);$('liveLabel').textContent=current.label;$('showStandby').setAttribute('aria-pressed',String(at<0&&!green&&!!project.standby));for(const [i,el] of [...$('slideList').children].entries()){el.classList.toggle('live',i===at);if(i===at)el.setAttribute('aria-current','true');else el.removeAttribute('aria-current');}if(at>=0){select(at);$('slideList').children[at]?.scrollIntoView({block:'nearest',behavior:'smooth'});}previews();}
-function syncAuto(){if(!auto)return;const at=C.active(project.links,cursor);if(at!==live)showLive(at);}
+// 자막 첫 문장의 일부가 실제로 읽힌 뒤에만 송출하고, 짧은 원고 위치 흔들림으로 인한 녹색 깜빡임을 막는다.
+function syncAuto(immediate=false){
+ if(!auto)return;
+ const at=C.active(project.links,cursor);
+ if(at===live){clearTimeout(greenTimer);greenTimer=null;return;}
+ if(!immediate&&at>=0){
+  const link=project.links[at],span=link.end-link.start;
+  const confirm=Math.min(span-1,Math.max(3,Math.min(10,Math.floor(span/4))));
+  if(cursor<link.start+confirm)return;
+ }
+ if(!immediate&&at<0&&live>=0){
+  if(!greenTimer)greenTimer=setTimeout(()=>{greenTimer=null;if(auto&&C.active(project.links,cursor)<0)showLive(-1);},750);
+  return;
+ }
+ clearTimeout(greenTimer);greenTimer=null;
+ showLive(at);
+}
 function setAuto(value){if(value)pendingManualTarget=-1;auto=value;$('automatic').checked=value;$('mode').textContent=value?'자동 송출':'수동 유지';if(value)showLive(C.active(project.links,cursor));}
 function followRow(item){if(!item)return;const host=$('manuscript'),top=item.getBoundingClientRect().top-host.getBoundingClientRect().top+host.scrollTop-(host.clientHeight-item.offsetHeight)*.35;window.PromSmoothScroll.to(host,top);}
-function seek(pos,manual=false,speech=false){cursor=Math.max(0,Math.min(ix.text.length,pos));displayCursor=speech?Math.max(0,cursor-1):cursor;line=Math.max(0,rows.findIndex(r=>r.end>displayCursor));if(cursor===ix.text.length)line=Math.max(0,rows.length-1);const items=$('manuscript').querySelectorAll('.script-line');items.forEach((el,i)=>{el.classList.toggle('current',i===line);el.classList.toggle('past',i<line);});if(manual){safeFollow?.reset(cursor);carry='';lastHit=Date.now();if(listening){const keepAuto=auto;stopMic();startMic();setAuto(keepAuto);}}if($('follow').checked)followRow(items[line]);syncAuto();}
+function seek(pos,manual=false,speech=false){cursor=Math.max(0,Math.min(ix.text.length,pos));displayCursor=speech?Math.max(0,cursor-1):cursor;line=Math.max(0,rows.findIndex(r=>r.end>displayCursor));if(cursor===ix.text.length)line=Math.max(0,rows.length-1);const items=$('manuscript').querySelectorAll('.script-line');items.forEach((el,i)=>{el.classList.toggle('current',i===line);el.classList.toggle('past',i<line);});if(manual){safeFollow?.reset(cursor);carry='';lastHit=Date.now();if(listening){const keepAuto=auto;stopMic();startMic();setAuto(keepAuto);}}if($('follow').checked)followRow(items[line]);syncAuto(manual);}
 function previews(){
  const center=live>=0?live:selected;
  for(const [id,n] of [['previousPreview',center-1],['nextPreview',center+1]]){CaptionRender.show($(id),project.slides[n]);$(id+'Label').textContent=n>=0&&n<project.slides.length?`${n+1}번`:'없음';}
