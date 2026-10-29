@@ -1,0 +1,38 @@
+# 프롬프터 음성 추적 변경 시 장거리 점프 방지와 기존 인식 동작을 검사한다.
+name: PROM safe speech regression
+
+on:
+  pull_request:
+    paths:
+      - "index.html"
+      - "speech-safe-follow.js"
+      - "speech-match.js"
+      - "tests/safe_follow.cjs"
+      - "tests/far_jump.cjs"
+      - "tests/lexicon_live.cjs"
+      - ".github/workflows/prom-safe-speech.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check new JavaScript syntax
+        run: node --check speech-safe-follow.js
+      - name: Test bounded recovery and existing speech regressions
+        run: |
+          node tests/safe_follow.cjs
+          node tests/lexicon_live.cjs
+          node tests/far_jump.cjs
+          node tests/speech_follow.cjs
+          node tests/speech_match.cjs
+          node tests/speech_match_handlers.cjs
+          node tests/optional_speech.cjs
+          node tests/scripture_speech.cjs
