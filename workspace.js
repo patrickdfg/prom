@@ -51,6 +51,25 @@
     }
   }
   document.addEventListener('fullscreenchange',syncPresentationMode);
+  // 조작창 보기와 무관하게 송출창의 페이지/스크롤 방식을 선택한다.
+  let outputViewMode='page';
+  try{outputViewMode=localStorage.getItem('promOutputViewMode')==='scroll'?'scroll':'page'}catch(_){}
+  const outputModeLabel=document.createElement('label');
+  outputModeLabel.className='control-group';
+  outputModeLabel.textContent='송출 보기 ';
+  const outputModeSelect=document.createElement('select');
+  outputModeSelect.id='outputViewMode';
+  outputModeSelect.setAttribute('aria-label','송출창 보기 방식');
+  outputModeSelect.innerHTML='<option value="page">페이지</option><option value="scroll">스크롤</option>';
+  outputModeSelect.value=outputViewMode;
+  outputModeLabel.appendChild(outputModeSelect);
+  $('audience').after(outputModeLabel);
+  outputModeSelect.onchange=()=>{
+    outputViewMode=outputModeSelect.value;
+    try{localStorage.setItem('promOutputViewMode',outputViewMode)}catch(_){}
+    publish(true);
+  };
+  if(!matchMedia('(max-width:700px)').matches)$('viewScroll').hidden=true;
   let localScroll=false;
   const scrollHost=document.createElement('div');scrollHost.id='localScroll';scrollHost.className='scroll-host';scrollHost.hidden=true;scrollHost.setAttribute('aria-label','현재 창 스크롤 슬라이드쇼');$('stage').appendChild(scrollHost);
   const localRenderer=new PromScrollView(scrollHost);
@@ -310,7 +329,7 @@
   $('theme').addEventListener('change',()=>{syncTheme();publish();saveNow();});syncTheme();
   function payload() {
     const original=window.PromPptxOriginal?.isActive();
-    const extra={...(window.PromExtras?.settings()||{}),continuous:!!listening&&!original};
+    const extra={...(window.PromExtras?.settings()||{}),continuous:outputViewMode==='scroll'&&!original};
     const originalKey=original?window.PromPptxOriginal.key(page):null;
     return {type:'frame',extra,originalKey,originalAspect:original?window.PromPptxOriginal.aspect():null,originalSlide:original?window.PromPptxOriginal.slide(page):null,pageNumber:manualPageNumber(),...(extra.continuous?{document:P,ranges:lineRange}:{}),nextCue:nextCueLine()?.text||'',pages:P[page],page,total:P.length,lines:LINES,cursor,readingAnchor:PromScrollView.getAnchor(),range:lineRange[page],dim:$('dim').checked,focus:$('focusColor').value,dark:$('theme').value==='dark',bg:$('theme').value==='dark'?null:background||BG_DEFAULT};
   }
@@ -339,7 +358,7 @@
   }
   let localVoiceMode=false;
   function openLocalSlideshow(){
-    if(listening)$('viewScroll').click();else $('viewSingle').click();
+    $('viewSingle').click();
     if(!document.fullscreenElement)$('fs').click();
   }
   let openingAudience=false;
@@ -438,7 +457,7 @@
       menu.hidden=true; $('more').setAttribute('aria-expanded','false');
       dirty=false; render(); scheduleSave();
       if(window.PromPptxOriginal?.isActive())$('viewSingle').click();
-      else if(!MOBILE&&!localScroll)$('viewScroll').click();   // 원본 PPT에서는 쪽 단위 화면을 유지한다
+      else if(!MOBILE&&localScroll)$('viewSingle').click();   // 데스크톱 조작창은 한 장/여러 장을 사용한다
     },
     render() {
       syncPresentationMode();
