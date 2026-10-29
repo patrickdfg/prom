@@ -51,7 +51,7 @@ function create(pages,scroll=false,experiment='baseline'){
 }
 async function prepare(input,output){
  const streams=JSON.parse(fs.readFileSync(input,'utf8')),keys=Object.keys(streams);
- const c={Uint8Array,DataView,TextDecoder,localStorage:{getItem:()=>null},
+ const c={PromLineBreaks:require('../korean-line-breaks.js'),Uint8Array,DataView,TextDecoder,localStorage:{getItem:()=>null},
   CFB:{read:()=>({FullPaths:keys.map(k=>'Root Entry/'+k),FileIndex:keys.map(k=>({content:Buffer.from(streams[k],'base64')}))})}};
  vm.createContext(c);
  vm.runInContext(section('function parseTagged(line){','// hwpx 문단의 글자'),c);

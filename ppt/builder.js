@@ -1,6 +1,6 @@
 window.CaptionBuilder=(()=>{
 'use strict';
-const C=CaptionCore,clone=x=>structuredClone(x);let templatePromise,themeXml,templateBank,defaultBank,defaultTheme,masterOverrides={},speakerInference='legacy';const templateUrl=new URL('template-data.json?v=2',document.currentScript.src);
+const C=CaptionCore,K=window.PromLineBreaks||(typeof require==='function'&&require('../korean-line-breaks.js')),clone=x=>structuredClone(x);let templatePromise,themeXml,templateBank,defaultBank,defaultTheme,masterOverrides={},speakerInference='legacy';const templateUrl=new URL('template-data.json?v=2',document.currentScript.src);
 const layouts={caption:'하단 자막',word:'말씀',wordGod:'하나님 말씀',wordSon:'성자 말씀',wordSpirit:'성령 말씀',wordTeacher:'선생님 말씀 (인물 없음)',verse:'성경 구절',emphasis:'큰 글씨 강조',cover:'표지',passage:'본문 성구',proverb:'잠언 항목'};
 const layoutFallback={proverb:'wordTeacher'};// 항목 디자인이 없으면 인물 없는 전체 화면을 사용한다.
 async function templates(){if(templateBank)return templateBank;return templatePromise||(templatePromise=fetch(templateUrl).then(r=>{if(!r.ok)throw Error('자막 디자인을 불러오지 못했습니다. 인터넷 연결을 확인하세요.');return r.json();}).then(data=>{themeXml=data.themeXml;for(const scene of Object.values(data.layouts))for(const shape of scene.shapes)if(shape.src?.startsWith('@'))shape.src=data.assets[shape.src.slice(1)];templateBank=data.layouts;defaultBank=clone(templateBank);defaultTheme=themeXml;return data.layouts;}).catch(e=>{templatePromise=null;throw e;}));}
@@ -89,6 +89,8 @@ function balance(chars,m,rowCount){
  for(let k=1;k<=rowCount;k++)for(let j=k;j<=n;j++)for(let a=k-1;a<j;a++){if(dp[k-1][a]===Infinity)continue;const v=dp[k-1][a]+cost(a,j,k);if(v<dp[k][j]){dp[k][j]=v;from[k][j]=a;}}
  if(dp[rowCount][n]===Infinity)return null;
  const rows=[];for(let k=rowCount,j=n;k>0;k--){const a=from[k][j];rows.unshift(trim(chars.slice(words[a][0],words[j-1][1])));j=a;}
+ const sizes=K.refine(rows.map(row=>row.map(c=>c.ch).join('').split(/\s+/)),m.measure,m.width);
+ if(sizes){let at=0;return sizes.map(size=>{const a=at;at+=size;return trim(chars.slice(words[a][0],words[at-1][1]));});}
  return rows.every(r=>r.length)?rows:null;
 }
 function wrap(chars,m){const greedy=wrapGreedy(chars,m);if(greedy.length<2||chars.some(c=>c.ch==='\n'))return attachBareNumbers(greedy);return attachBareNumbers(balance(trim(chars),m,greedy.length)||greedy);}

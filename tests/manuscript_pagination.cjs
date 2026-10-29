@@ -1,6 +1,6 @@
 const fs=require('node:fs'),vm=require('node:vm'),zlib=require('node:zlib'),assert=require('node:assert/strict');
 const source=fs.readFileSync('index.html','utf8');
-const c={TextDecoder,Uint8Array,DataView,localStorage:{getItem(){return null}}};vm.createContext(c);
+const c={PromLineBreaks:require('../korean-line-breaks.js'),TextDecoder,Uint8Array,DataView,localStorage:{getItem(){return null}}};vm.createContext(c);
 vm.runInContext([...source.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)][2][1],c);
 vm.runInContext(source.slice(source.indexOf('function parseTagged('),source.indexOf('/* ---------- 워드')),c);
 c.inflateRaw=async bytes=>new Uint8Array(zlib.inflateRawSync(bytes));
@@ -49,7 +49,11 @@ assert.equal(existing.length,1);assert.equal(text(existing[0]).join('|'),'첫째
 const sparse=check([para('하나님을 사랑하고 우리 모두 기뻐하며 살아갑니다.')],5).pages;
 assert(sparse.some(pg=>text(pg).length>=2),'long single-line manuscript can be spread naturally');
 const brief=check([para('참 좋은 말씀입니다.')],5).pages;
-assert.deepEqual(brief.flatMap(text),['참 좋은 말씀입니다.'],'genuinely short manuscript stays short');
+assert.equal(brief.flatMap(text).join('\n'),'참 좋은 말씀입니다.','genuinely short manuscript stays short');
+const meaningful=check([para('4. 성령님) 아닌 것은 온 인류가 주장해도 아니다. 저 구름이 일주일 동안 저기 떠 있을 것이라고 80억 명이 주장해도 아닌 것은 아니다.')],5).pages.flatMap(text);
+assert(meaningful.some(t=>t.startsWith('온 인류가')),'온 인류가는 한 줄에 붙인다');
+const relational=check([para('1. 섭리사를 따라와도 시대 보낸 자와 말씀과 그가 행한 일에 대해 자세히 알아야 한다. 청중만 따라다녀도 안 된다.')],5).pages.flatMap(text);
+assert(relational.some(t=>t.startsWith('일에 대해')),'행한 일에를 붙이려고 일에 대해를 나누지 않는다');
 const longPaste=c.parseTxt('1.\n하나님을 사랑하고 이웃을 사랑하며 오늘 하루도 기쁨으로 살아가야 합니다. 지금 해야 할 일을 늦지 않게 하십시오.');
 assert(longPaste.flatMap(text).every(t=>!/^\d+\.?$/.test(t.trim())),'pasted long manuscript must attach isolated number');
 (async()=>{
