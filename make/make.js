@@ -17,7 +17,7 @@ function readData(file){return new Promise((ok,no)=>{const r=new FileReader();r.
 
 const makeInputs=MakeManuscripts.mount({input:$('makeScript'),list:$('makePasteList'),add:$('makePasteAdd'),filesNote:$('makeScriptFiles')});
 
-async function spiritManuscriptImporter(file){
+async function pdfManuscriptImporter(file){
  if(!/\.pdf$/i.test(file.name))return CaptionImport.manuscriptRich(file);
  if(!window.pdfjsLib)throw Error('PDF 읽기 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하세요.');
  window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -151,7 +151,7 @@ $('pairRun').onclick=async()=>{
   if(!df){status('pairStatus','완성 PPT를 고르고 원고 파일 또는 붙여넣은 글을 넣으세요.',true);return;}
   busy=true;$('pairRun').disabled=true;status('pairStatus','원고와 완성 PPT를 읽고 슬라이드를 맞춰 보는 중…');
   try{
-    const rich=await MakeManuscripts.read(files,pastes,CaptionImport.manuscriptRich),parsed=await CaptionImport.deck(df);parsed.name=df.name;
+    const rich=await MakeManuscripts.read(files,pastes,pdfManuscriptImporter),parsed=await CaptionImport.deck(df);parsed.name=df.name;
     const name=$('pairName').value.trim()||stem(rich.name)+' 템플릿',scope=$('pairScope').value==='auto'?R.mode({name}):$('pairScope').value;
     let analysis,result;
     if(scope==='worship'){
@@ -402,8 +402,8 @@ function adaptMakeInputs(){
  if(service.sermonOnly)$('makeScopeHint').textContent='주일설교는 말씀 원고만으로 만듭니다. 광고·교독문은 포함하지 않습니다.';
  else if(!service.allowAnnouncements)$('makeScopeHint').textContent='새벽설교는 말씀 원고만으로 만듭니다. 광고·교독문은 입력받지 않습니다.';
  else if(service.full)$('makeScopeHint').textContent='주일예배 전체는 말씀·교독문·광고 중 입력한 자료만 만듭니다. 교독문이나 광고를 비워 두어도 계속 진행합니다.';
- $('makeFileField').querySelector('input').accept=spirit?'.hwp,.hwpx,.docx,.txt,.pdf':'.hwp,.hwpx,.docx,.txt';
- $('makeFileField').firstChild.textContent=spirit?'원고 파일 (PDF · HWP · HWPX · DOCX · TXT, 선택)':'원고 파일 (HWP · HWPX · DOCX · TXT, 여러 개 선택)';
+ $('makeFileField').querySelector('input').accept='.hwp,.hwpx,.docx,.txt,.pdf';
+ $('makeFileField').firstChild.textContent='원고 파일 (PDF · HWP · HWPX · DOCX · TXT, 여러 개 선택)';
 }
 $('makeTemplate').onchange=()=>{const rec=byId($('makeTemplate').value);try{localStorage.setItem(LAST,$('makeTemplate').value)}catch{}$('makeScope').value=R.mode(rec);scopeHint();adaptMakeInputs();};
 $('makeScope').onchange=async()=>{scopeHint();const rec=byId($('makeTemplate').value);if(rec)await put({...rec,options:{...rec.options,sourceMode:$('makeScope').value,allText:false},instructions:R.instructions(rec.instructions,$('makeScope').value)});};
@@ -434,7 +434,7 @@ $('makeRun').onclick=async()=>{
   busy=true;$('makeRun').disabled=true;$('makeDownload').disabled=true;status('makeStatus','원고를 읽고 PPT를 만드는 중…');
   try{
     let rec=byId($('makeTemplate').value);const service=MakePptEngine.policy(rec),hasScript=makeInputs.files().length||makeInputs.pastes().some(t=>t.trim());
-    const rich=service.full&&!hasScript?{lines:[],richLines:[],name:'주일예배'}:await makeInputs.read(R.mode(rec)==='spirit'?spiritManuscriptImporter:CaptionImport.manuscriptRich);
+    const rich=service.full&&!hasScript?{lines:[],richLines:[],name:'주일예배'}:await makeInputs.read(pdfManuscriptImporter);
     // Keep blank paragraph separators in plain pasted spirit manuscripts.
     // The generic importer intentionally drops empty lines, which otherwise merges paragraphs.
     if(R.mode(rec)==='spirit'){
