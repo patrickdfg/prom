@@ -8,7 +8,7 @@ function load(file){
   let now=1e6;const c={Date:{now:()=>now}};vm.createContext(c);vm.runInContext(m[0],c);
   return {confirm:p=>vm.runInContext('farConfirm('+p+')',c),tick:ms=>{now+=ms}};
 }
-for(const file of ['index.html','ppt/app.js']){
+for(const file of ['ppt/app.js']){
   const f=load(file);
   assert.equal(f.confirm(3626),false,file+': 먼 결과 첫 발견은 따르지 않는다');
   f.tick(3000);assert.equal(f.confirm(3630),false,file+': 24자 미만 진행은 확인으로 치지 않는다');
@@ -17,10 +17,11 @@ for(const file of ['index.html','ppt/app.js']){
   f.tick(20000);assert.equal(f.confirm(500),false,file+': 15초가 지나면 후보를 새로 잡는다');
   f.tick(20000);assert.equal(f.confirm(900),false);f.tick(1000);assert.equal(f.confirm(2000),false,file+': 흐름이 다른 먼 결과로 확인되지 않는다');
 }
-// onHeard: 먼 결과·되돌림이 확인 거쳐야 따르는 분기 연결(소스 점검)
+// 메인 PROM은 장거리 자동 이동과 과거 위치로의 되돌림을 모두 차단한다.
 const html=fs.readFileSync('index.html','utf8');
-assert.match(html,/ppt=pptSpeech\(text\)\)!==null&&\(!ppt\.far\|\|farConfirm\(ppt\.pos\)\)/,'PROM 분기에 확인 절차 연결');
-assert.match(html,/cursor=backTo\?hit\.pos:Math\.max\(cursor,hit\.pos\)/,'확인된 되돌림만 뒤로 이동');
+assert.doesNotMatch(html,/let farCand=null/,'PROM 장거리 재탐색을 제거한다');
+assert.match(html,/r\.reacquired\|\|r\.pos<=cursor\|\|r\.pos-cursor>120/,'PROM 전역 재탐색 결과를 차단한다');
+assert.match(html,/if\(to-cursor>\(recovered\?180:120\)\)/,'PROM 최대 이동폭을 제한한다');
 const app=fs.readFileSync('ppt/app.js','utf8');
 assert.match(app,/hit\.reacquired&&Math\.abs\(hit\.pos-cursor\)>450&&!farConfirm\(hit\.pos\)\)hit=null/,'PPT 앱에 확인 절차 연결');
-console.log('PASS far jump: 먼 다시 찾음은 이어 읽을 때만 따름 (PROM·PPT), 되돌림도 같은 확인');
+console.log('PASS far jump: PROM의 무제한 점프 제거 · 기존 PPT 앱 먼 위치 확인 유지');
