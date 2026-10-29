@@ -15,7 +15,7 @@
       const metrics=PromSlideLayout.measure(innerWidth,innerHeight,Math.max(1,current.lines||5));
       size=metrics.font*manualScale/100;
     }
-    if(Number.isFinite(size)&&size>0)num.style.fontSize=size+'px';
+    if(Number.isFinite(size)&&size>0)num.style.fontSize=Math.round(size*1.45)+'px';
   }
   function fit(){
     if(!current)return;
