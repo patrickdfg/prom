@@ -1756,7 +1756,9 @@ function heardLogged(text,fin){
   // 자주 틀리게 받아쓰는 말은 사전으로 원고 말로 바꿔 맞춰 본다 (원고 근처에 그 말이 있을 때만). 기록에는 들은 그대로 남긴다.
   const used=typeof PromLexicon==='object'?PromLexicon.fix(text,norm,cursor):text;
   try{onHeard(used)}catch(e){err=String(e&&e.message||e);throw e}
-  finally{if(typeof vlogAdd==='function'){const rb=rowAt(before),ra=rowAt(cursor);vlogAdd({k:'heard',fin:fin===undefined?null:fin,heard:String(text).slice(-80),...(used!==text?{fixed:String(used).slice(-80)}:{}),carry:heardCarry.slice(-30),from:before,to:cursor,row0:rb,row1:ra,page:page+1,msg:lastCap,err})}}
+  finally{if(typeof vlogAdd==='function'){const rb=rowAt(before),ra=rowAt(cursor);vlogAdd({k:'heard',fin:fin===undefined?null:fin,heard:String(text).slice(-80),...(used!==text?{fixed:String(used).slice(-80)}:{}),carry:heardCarry.slice(-30),from:before,to:cursor,row0:rb,row1:ra,page:page+1,msg:lastCap,err})}
+    // 확정된 문장만 조용히 학습하고, 같은 오인식이 두 곳에서 확인되면 즉시 허용 사전에 적용한다.
+    if(fin===true&&typeof lexLearn==='function')lexLearn(true);}
 }
 // 다른 페이지의 비슷한 구절로 복구하는 전역 검색은 사용하지 않는다.
 const safeFollow=typeof PromSafeFollow==='object'?PromSafeFollow.create():null;
@@ -1965,7 +1967,7 @@ async function startMic(){
 }
 let lexFrom=0;
 // 마이크를 끌 때 이번에 들은 말과 원고를 맞대어 틀린 짝을 배운다 (같은 짝이 서로 다른 곳에서 2번 이상 나오면 쓰기 시작)
-function lexLearn(){try{if(typeof PromLexicon==='object'&&vlog.length>lexFrom){PromLexicon.learn(vlog.slice(lexFrom),norm);lexFrom=vlog.length;}}catch(_){}}
+function lexLearn(finalOnly=false){try{if(typeof PromLexicon==='object'&&vlog.length>lexFrom){const recent=vlog.slice(lexFrom);PromLexicon.learn(finalOnly?recent.filter(e=>e.k==='heard'&&e.fin===true):recent,norm);lexFrom=vlog.length;}}catch(_){}}
 function stopMic(){ typeof vlogAdd==='function'&&(vlogAdd({k:'mic',v:'stop'}),vlogSave()); lexLearn(); speedStop(); endWait();
   listening=false;$('view').classList.remove('presenting','controls-open','operator-mode');fit();render();showBar();
   cap(''); releaseMic(); if(rec)try{rec.stop()}catch(_){}
