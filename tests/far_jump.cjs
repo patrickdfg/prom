@@ -21,7 +21,7 @@ for(const file of ['ppt/app.js']){
 const html=fs.readFileSync('index.html','utf8');
 assert.doesNotMatch(html,/let farCand=null/,'PROM 장거리 재탐색을 제거한다');
 assert.match(html,/r\.reacquired\|\|r\.pos<=cursor\|\|r\.pos-cursor>120/,'PROM 전역 재탐색 결과를 차단한다');
-assert.match(html,/if\(to-cursor>\(recovered\?180:120\)\)/,'PROM 최대 이동폭을 제한한다');
+assert.match(html,/if\(!trustedOmission&&to-cursor>\(recovered\?180:120\)\)/,'PROM 최대 이동폭을 제한한다');
 const app=fs.readFileSync('ppt/app.js','utf8');
 assert.match(app,/hit\.reacquired&&Math\.abs\(hit\.pos-cursor\)>450&&!farConfirm\(hit\.pos\)\)hit=null/,'PPT 앱에 확인 절차 연결');
 console.log('PASS far jump: PROM의 무제한 점프 제거 · 기존 PPT 앱 먼 위치 확인 유지');
