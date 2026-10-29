@@ -1792,9 +1792,9 @@ function onHeard(text){
   const skipAhead=confirmedSpeech(all,norm.slice(from,Math.min(norm.length,cursor+450)),cursor,from,null,20);
   const optional=PromOptionalSpeech.match(all,optionalSpeech,cursor)??(typeof PromSpeechMatch==='undefined'?null:PromSpeechMatch.optional(all,optionalSpeech,cursor)?.pos??null);
   const scripture=typeof PromScriptureSpeech==='undefined'?null:PromScriptureSpeech.match(all,scriptureSpeech,cursor);
-  let to,ppt=null,recovered=false,timed=null;
+  let to,ppt=null,recovered=false,timed=null,trustedOmission=false;
   if(scripture){to=scripture.pos;pend=null;}
-  else if(optional!==null){to=optional;pend=null;}
+  else if(optional!==null){to=optional;trustedOmission=true;pend=null;}
   else if(confirmed!==null){to=confirmed;pend=null;}
   else if(local!==null){to=local;pend=null;}
   else if(seen!==null){to=seen;pend=null;}
@@ -1814,7 +1814,7 @@ function onHeard(text){
     }
   }else if(typeof safeFollow!=='undefined'&&safeFollow&&(timed=safeFollow.recover(all,norm,cursor))!==null){to=timed;recovered=true;pend=null;
   }else{cap(base+' · 원고와 안 맞음');return}
-  if(to-cursor>(recovered?180:120)){
+  if(!trustedOmission&&to-cursor>(recovered?180:120)){
     const nearby=typeof safeFollow==='undefined'?null:(safeFollow?.recover(all,norm,cursor)??null);
     if(nearby===null){cap(base+' · 먼 위치로 이동하지 않고 기다림');return}
     to=nearby;recovered=true;
