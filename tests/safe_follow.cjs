@@ -32,6 +32,6 @@ assert.equal(follow.recover(manuscript.slice(78,110),manuscript,24),null,'수동
 const html=fs.readFileSync('index.html','utf8');
 assert.match(html,/speech-safe-follow\.js/,'실제 프롬프터에서 복구 모듈을 불러온다');
 assert.match(html,/r\.reacquired\|\|r\.pos<=cursor\|\|r\.pos-cursor>120/,'전역 재탐색 결과는 채택하지 않는다');
-assert.match(html,/if\(to-cursor>\(recovered\?180:120\)\)/,'즉시 추적의 이동폭을 제한한다');
+assert.match(html,/if\(!trustedOmission&&to-cursor>\(recovered\?180:120\)\)/,'즉시 추적의 이동폭을 제한한다');
 assert.doesNotMatch(html,/let farCand=null/,'기존 원고 전체 장거리 점프 확인 기능을 제거한다');
 console.log('PASS 안전형 음성 추적: 큰 점프 금지, 10초 정지, 속도 기반 주변 검색, 반복 구절 배제, 두 번 연속 확인, 수동 이동 초기화');
