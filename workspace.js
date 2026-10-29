@@ -104,10 +104,11 @@
   $('pageNumOpt').onchange=()=>{showPageNum=$('pageNumOpt').checked;try{localStorage.setItem('promShowPageNum',showPageNum?'1':'0')}catch(_){}updatePageNums();publish(true);};
   const PN_TOP=58; // 상단 상태줄 아래 (숫자의 높이는 본문 크기에 맞춰 동적으로 계산)
   function pageNumberFontSize(){
-    // 스크롤 모드와 일반 보기 모두 실제 화면 본문 폰트를 읽는다.
-    const body=localScroll?scrollHost.querySelector('.scroll-flow'):$('lines');
+    // 숫자 글리프가 한글보다 작게 보이는 현상을 보정한다.
+    // 실제 본문 폰트 크기를 읽어 화면/글자 크기 조절에 맞춰 변경한다.
+    const body=localScroll?scrollHost.querySelector('.scroll-flow'):$('page');
     const size=body?parseFloat(getComputedStyle(body).fontSize):NaN;
-    return Number.isFinite(size)&&size>0?size:72;
+    return Math.round((Number.isFinite(size)&&size>0?size:72)*1.45);
   }
   // 글 속 원고 쪽 번호 찾기: 빨간색 숫자만 있는 덩어리가 2, 3, 4…처럼 이어질 때만 쪽 번호로 본다(그냥 빨간 숫자는 거른다)
   function manuscriptMarks(){
