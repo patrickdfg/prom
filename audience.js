@@ -5,6 +5,18 @@
   const channel=new BroadcastChannel('prom-display-'+id); let current=null,lastSeen=Date.now();
   let manualScale=100,manualSpacing=100;
   const originalSceneCache=new Map();let displayedOriginalKey='',displayedTextKey='';
+  function syncPageNumberFont(){
+    const num=document.getElementById('manuscriptPageNumber');
+    if(num.hidden||!current)return;
+    const content=current.extra?.continuous?display.querySelector('.scroll-flow'):display;
+    let size=content?parseFloat(getComputedStyle(content).fontSize):NaN;
+    if(current.originalKey){
+      // 원본 PPT는 이미지/텍스트 개체가 혼합되어 있으므로 표시 크기의 본문 기준값을 따른다.
+      const metrics=PromSlideLayout.measure(innerWidth,innerHeight,Math.max(1,current.lines||5));
+      size=metrics.font*manualScale/100;
+    }
+    if(Number.isFinite(size)&&size>0)num.style.fontSize=size+'px';
+  }
   function fit(){
     if(!current)return;
     if(current.originalKey){
@@ -14,16 +26,18 @@
       display.style.width=width+'px';display.style.height=height+'px';
       display.style.transform='scale('+(manualScale/100)+')';
       display.style.position='relative';display.style.overflow='hidden';
+      syncPageNumberFont();
       return;
     }
     display.style.transform='';display.style.position='';display.style.overflow='';
-    if(current.extra?.continuous){scrollRenderer.position='';scrollRenderer.layout='';scrollRenderer.update(current);return;}
+    if(current.extra?.continuous){scrollRenderer.position='';scrollRenderer.layout='';scrollRenderer.update(current);syncPageNumberFont();return;}
     const rows=Math.max(1,current.lines,current.pages.length);
     const metrics=PromSlideLayout.measure(innerWidth,innerHeight,rows);
     display.style.width=metrics.width+'px';display.style.height=metrics.height+'px';
     display.style.fontSize=(metrics.font*manualScale/100)+'px';
     display.style.setProperty('--manual-line-height',String(1.2*manualSpacing/100));
     display.querySelectorAll('.ln>span').forEach(s=>{s.style.transform='';const w=s.scrollWidth,max=s.parentElement.clientWidth;if(w>max)s.style.transform=`scale(${max/w})`;});
+    syncPageNumberFont();
   }
   const zoomTools=document.getElementById('scrollTextTools'),toolsToggle=document.getElementById('displayToolsToggle');
   let hideToolsTimer=null;
@@ -76,7 +90,8 @@
     document.body.classList.add('connected');
     const extra=d.extra||{};
     const pageNumber=document.getElementById('manuscriptPageNumber');
-    const shownPage=d.originalKey?d.page+1:d.pageNumber;
+    // 조작창의 [쪽] 체크 여부가 원본 PPT에서도 그대로 적용되도록 한 가지 값만 사용한다.
+    const shownPage=d.pageNumber;
     pageNumber.hidden=!Number.isInteger(shownPage)||shownPage<1||shownPage>999;
     pageNumber.textContent=pageNumber.hidden?'':String(shownPage);
     zoomLabels();
@@ -87,7 +102,7 @@
     document.body.style.setProperty('--focus',d.dark?(d.focus==='#b6f36a'?'#b6f36a':'#ffff00'):'#0000ff');
     document.getElementById('paper').style.backgroundColor=d.dark?'#000':'#fff';display.style.color=d.dark?'#fff':'#000';
     document.getElementById('paper').style.backgroundImage=!d.dark && typeof d.bg==='string' && /^(data:image\/|blob:)/.test(d.bg)?`url("${d.bg.replace(/["\\\n\r]/g,'')}")`:'';
-    if(extra.continuous&&Array.isArray(d.document)){scrollRenderer.update(d);document.title=`${d.page+1} / ${d.total} · 슬라이드쇼`;return;}
+    if(extra.continuous&&Array.isArray(d.document)){scrollRenderer.update(d);syncPageNumberFont();document.title=`${d.page+1} / ${d.total} · 슬라이드쇼`;return;}
     if(d.originalKey){
       if(d.originalSlide){
         originalSceneCache.set(d.originalKey,d.originalSlide);
