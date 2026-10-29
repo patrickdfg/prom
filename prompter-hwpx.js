@@ -8,10 +8,10 @@ const serialize=doc=>'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+n
 const all=(node,ns,name)=>Array.from(node.getElementsByTagNameNS(ns,name));
 const element=(doc,ns,name,attrs={})=>{const e=doc.createElementNS(ns,name);for(const[k,v]of Object.entries(attrs))e.setAttribute(k,String(v));return e;};
 const nextId=table=>Math.max(-1,...Array.from(table.children,e=>+e.getAttribute('id')))+1;
-async function create(pages,{count=5,dark=true,title='프롬프터',fontName='Malgun Gothic'}={}){
+async function create(pages,{count=5,dark=true,title='프롬프터',fontName='Malgun Gothic',backgroundJpeg=''}={}){
  const zip=await JSZip.loadAsync(TEMPLATE,{base64:true}),header=parse(await zip.file('Contents/header.xml').async('string')),section=parse(await zip.file('Contents/section0.xml').async('string'));
  const chars=all(header,HH,'charProperties')[0],paras=all(header,HH,'paraProperties')[0],styles=all(header,HH,'styles')[0],borders=all(header,HH,'borderFills')[0];
- const rows=Math.max(count,...pages.map(p=>p.length)),height=33449,width=59528,top=rows===7?.1339:rows===6?.0882:.0424,margin=Math.round(height*top),pitch=Math.floor((height-2*margin)/rows),size=Math.round(3200*5/rows);
+ const rows=Math.max(count,...pages.map(p=>p.length)),height=33449,width=59528,bottom=Math.round(height*(rows===7?.1339:rows===6?.0882:.0424)),margin=2835,pitch=Math.floor((height-margin-bottom)/rows),size=Math.round(3200*5/rows);
  const colors={k:dark?'#FFFFFF':'#000000',b:dark?'#FFFF00':'#0000FF',r:'#FF0000',n:'#FF0000'},ids={};
  for(const face of all(header,HH,'fontface')){const font=all(face,HH,'font').find(f=>f.getAttribute('id')==='0');if(font)font.setAttribute('face',fontName);}
  for(const c of ['k','b','r','n']){
@@ -28,11 +28,14 @@ async function create(pages,{count=5,dark=true,title='프롬프터',fontName='Ma
  const styleId=nextId(styles);styles.appendChild(element(header,HH,'hh:style',{id:styleId,type:'PARA',name:'PROM '+rows+'줄',engName:'PROM '+rows+' rows',paraPrIDRef:paraId,charPrIDRef:ids.k,nextStyleIDRef:styleId,langID:'1042',lockForm:'0'}));
  const startStyleId=nextId(styles);styles.appendChild(element(header,HH,'hh:style',{id:startStyleId,type:'PARA',name:'PROM paragraph start',engName:'PROM paragraph start',paraPrIDRef:paraId,charPrIDRef:ids.k,nextStyleIDRef:styleId,langID:'1042',lockForm:'0'}));
  const border=borders.firstElementChild.cloneNode(true),borderId=nextId(borders);border.setAttribute('id',borderId);
- const fill=element(header,HC,'hc:fillBrush');fill.appendChild(element(header,HC,'hc:winBrush',{faceColor:dark?'#000000':'#FFFFFF',hatchColor:'#000000',alpha:'0'}));border.appendChild(fill);borders.appendChild(border);
+ const fill=element(header,HC,'hc:fillBrush');
+ if(backgroundJpeg){const brush=element(header,HC,'hc:imgBrush',{mode:'TOTAL'});brush.appendChild(element(header,HC,'hc:img',{binaryItemIDRef:'promBackground',bright:'0',contrast:'0',effect:'REAL_PIC',alpha:'0'}));fill.appendChild(brush);zip.file('BinData/prom-background.jpg',backgroundJpeg,{base64:true});}
+ else fill.appendChild(element(header,HC,'hc:winBrush',{faceColor:dark?'#000000':'#FFFFFF',hatchColor:'#000000',alpha:'0'}));
+ border.appendChild(fill);borders.appendChild(border);
  for(const table of [chars,paras,styles,borders])table.setAttribute('itemCnt',table.children.length);
  const secPr=all(section,HP,'secPr')[0].cloneNode(true),colPr=all(section,HP,'ctrl')[0].cloneNode(true),pagePr=all(secPr,HP,'pagePr')[0];
  pagePr.setAttribute('width',width);pagePr.setAttribute('height',height);pagePr.setAttribute('landscape','WIDELY');
- const pageMargin=all(pagePr,HP,'margin')[0];for(const[k,v]of Object.entries({left:1417,right:1417,top:margin,bottom:margin,header:0,footer:0,gutter:0}))pageMargin.setAttribute(k,v);
+ const pageMargin=all(pagePr,HP,'margin')[0];for(const[k,v]of Object.entries({left:1417,right:1417,top:margin,bottom,header:0,footer:0,gutter:0}))pageMargin.setAttribute(k,v);
  for(const pageFill of all(secPr,HP,'pageBorderFill')){pageFill.setAttribute('borderFillIDRef',borderId);const offset=all(pageFill,HP,'offset')[0];for(const side of ['left','right','top','bottom'])offset.setAttribute(side,'0');}
  section.documentElement.replaceChildren();let id=0;
  pages.forEach((page,pi)=>{for(let li=0;li<rows;li++){
@@ -45,6 +48,7 @@ async function create(pages,{count=5,dark=true,title='프롬프터',fontName='Ma
   section.documentElement.appendChild(p);
  }});
  const content=parse(await zip.file('Contents/content.hpf').async('string'));all(content,OPF,'title')[0].textContent=title;
+ if(backgroundJpeg)all(content,OPF,'manifest')[0].appendChild(element(content,OPF,'opf:item',{id:'promBackground',href:'BinData/prom-background.jpg','media-type':'image/jpeg',isEmbeded:'1'}));
  for(const meta of all(content,OPF,'meta'))if(['CreatedDate','ModifiedDate'].includes(meta.getAttribute('name')))meta.textContent=new Date().toISOString();
  zip.file('Contents/header.xml',serialize(header));zip.file('Contents/section0.xml',serialize(section));zip.file('Contents/content.hpf',serialize(content));
  zip.file('Preview/PrvText.txt',pages.map(p=>p.map(l=>l.map(r=>r.t).join('')).join('\r\n')).join('\r\n\f\r\n'));
@@ -60,8 +64,13 @@ async function read(zip,headerText){
  for(const style of styles){const m=/^PROM:([kbrn])$/.exec(style.getAttribute('name')||'');if(m)kinds[style.getAttribute('charPrIDRef')]=m[1];}
  const body=Object.keys(kinds).find(id=>kinds[id]==='k'),dark=shapes[body]?.getAttribute('textColor').toUpperCase()==='#FFFFFF';
  const text=node=>Array.from(node.childNodes,n=>n.nodeType===3?n.nodeValue:n.localName==='lineBreak'?'\n':n.localName==='tab'?' ':text(n)).join('');
- const names=Object.keys(zip.files).filter(n=>/^Contents\/section\d+\.xml$/.test(n)).sort((a,b)=>+a.match(/\d+/)[0]-+b.match(/\d+/)[0]),pages=[];let page=[];
- for(const name of names){const section=parse(await zip.file(name).async('string'));for(const p of section.documentElement.children){
+ const names=Object.keys(zip.files).filter(n=>/^Contents\/section\d+\.xml$/.test(n)).sort((a,b)=>+a.match(/\d+/)[0]-+b.match(/\d+/)[0]),pages=[];let page=[],bg=null;
+ for(const name of names){const section=parse(await zip.file(name).async('string'));
+  if(!bg){
+   const ref=all(section,HP,'pageBorderFill')[0]?.getAttribute('borderFillIDRef'),border=all(header,HH,'borderFill').find(e=>e.getAttribute('id')===ref),id=border&&all(border,HC,'img')[0]?.getAttribute('binaryItemIDRef');
+   if(id){const content=zip.file('Contents/content.hpf'),doc=content&&parse(await content.async('string')),item=doc&&all(doc,OPF,'item').find(e=>e.getAttribute('id')===id),file=item&&zip.file(item.getAttribute('href'));if(file)bg=URL.createObjectURL(new Blob([await file.async('uint8array')],{type:item.getAttribute('media-type')||'image/jpeg'}));}
+  }
+  for(const p of section.documentElement.children){
   if(p.localName!=='p')continue;
   if(p.getAttribute('pageBreak')==='1'&&page.length){pages.push(page);page=[];}
   let row=[],paragraphStart=p.getAttribute('styleIDRef')===startStyle;
@@ -72,7 +81,7 @@ async function read(zip,headerText){
   push();
  }}
  if(page.length)pages.push(page);
- return {pages,bg:null,lines:Math.max(count,...pages.map(p=>p.length)),dark};
+ return {pages,bg,lines:Math.max(count,...pages.map(p=>p.length)),dark};
 }
 return {create,read};
 })();

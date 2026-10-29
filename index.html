@@ -1611,7 +1611,7 @@ async function currentPptBackgroundJpeg(){
   });
   const canvas=document.createElement('canvas');canvas.width=1920;canvas.height=1080;
   const ctx=canvas.getContext('2d');
-  if(!ctx)throw new Error('PPT 배경 이미지 변환을 지원하지 않는 브라우저입니다.');
+  if(!ctx)throw new Error('배경 이미지 변환을 지원하지 않는 브라우저입니다.');
   const sw=img.naturalWidth,sh=img.naturalHeight,scale=Math.max(1920/sw,1080/sh);
   const w=sw*scale,h=sh*scale;
   ctx.drawImage(img,(1920-w)/2,(1080-h)/2,w,h);
@@ -1639,7 +1639,8 @@ async function saveHwpx(){
   if(!P.length)return;
   try{
     const pages=snapshotPages(),fontName=$('page').classList.contains('fallback')?'Malgun Gothic':'HY견고딕';
-    const blob=await PromHwpx.create(pages,{count:LINES,dark:$('theme').value==='dark',title:baseName,fontName}),name=baseName+'_프롬프터.hwpx';
+    const backgroundJpeg=$('theme').value==='cloud'?await currentPptBackgroundJpeg():'';
+    const blob=await PromHwpx.create(pages,{count:LINES,dark:$('theme').value==='dark',title:baseName,fontName,backgroundJpeg}),name=baseName+'_프롬프터.hwpx';
     if(window.showSaveFilePicker){
       try{const h=await showSaveFilePicker({suggestedName:name,types:[{description:'한글 문서',accept:{'application/hwp+zip':['.hwpx']}}]});const w=await h.createWritable();await w.write(blob);await w.close();toast('HWPX로 저장했습니다 · '+h.name+' · '+pages.length+'쪽',6000);return;}
       catch(e){if(e&&e.name==='AbortError')return;}
@@ -2399,7 +2400,7 @@ async function loadFile(f){
     else throw new Error('hwp, hwpx, doc, docx, ppt, pptx, pdf, txt, html 파일만 열 수 있습니다.');
     if(r.lines){
       if(listening)stopMic();if(editing)endEdit();window.PromPptxOriginal?.clear();
-      setMode(false);LINES=r.lines;$('theme').value=r.dark?'dark':'white';applyTheme();openPrompter(r.pages);lastSrc={pages:P.map(p=>p.slice())};dirty=false;$('loadmsg').textContent='';
+      setMode(false);LINES=r.lines;$('theme').value=r.bg?'cloud':r.dark?'dark':'white';applyTheme();openPrompter(r.pages,r.bg);lastSrc={pages:P.map(p=>p.slice()),bg:r.bg};dirty=false;$('loadmsg').textContent='';
       toast('HWPX 파일을 열었습니다 · '+P.length+'쪽 · '+LINES+'줄',5000);return;
     }
     if(!r.original&&!r.pages.some(p=>p.some(l=>l.some(x=>x.t.trim()))))throw new Error('읽을 내용이 없습니다.');
@@ -2524,7 +2525,7 @@ if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 <script src="overview.js?v=20261023-one-top-row"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
 <script src="extras.js?v=20261023-stage-hide1"></script>
-<script src="ppt/drive-config.js?v=20261020-sync1"></script><script src="google-session.js?v=20261021-session1"></script><script src="prompter-pptx.js?v=20261024-onebox1"></script><script src="prompter-hwpx.js?v=20261029-save1"></script><script src="drive-sync.js?v=20261021-session1"></script>
+<script src="ppt/drive-config.js?v=20261020-sync1"></script><script src="google-session.js?v=20261021-session1"></script><script src="prompter-pptx.js?v=20261024-onebox1"></script><script src="prompter-hwpx.js?v=20261029-background1"></script><script src="drive-sync.js?v=20261021-session1"></script>
 
 <div data-prom-support class="prom-support-floating" aria-label="사용자 도움말"></div><script src="support.js?v=20261023-voice-start"></script></body>
 </html>
