@@ -1765,6 +1765,42 @@ function vlogSave(){
 let vlogOpening=false;
 setInterval(vlogSave,4000);addEventListener('pagehide',vlogSave);
 function rowAt(c){for(let pi=0;pi<lineRange.length;pi++)for(let li=0;li<lineRange[pi].length;li++){const r=lineRange[pi][li];if(r[1]>r[0]&&c>=r[0]&&c<r[1])return [pi+1,li+1]}return null}
+// 관리자 Apps Script로 음성인식 진단 로그를 주기적으로 전송한다. 브라우저에는 실패 시 재시도용으로 유지한다.
+const PROM_DIAG_URL='https://script.google.com/macros/s/AKfycbxQJ-k-vTozybdcuY9J2uY0jXolSsKhzHUqYmDFOKqpB4vXGCSkTE1BHbKrj8h2vVgZoQ/exec';
+const PROM_DIAG_END=Date.parse('2026-11-28T15:00:00Z');
+let promDiagSent=0,promDiagSession='',promDiagBusy=false,promDiagManifest=false;
+function promDiagPost(data){
+  // Apps Script의 ContentService는 교차 출처 응답을 읽기 어려워 no-cors로 보낸다.
+  // 전송 시도만 확인할 수 있으므로 실패 복구를 위해 로컬 로그를 남긴다.
+  return fetch(PROM_DIAG_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(data),keepalive:false});
+}
+async function promDiagSync(){
+  if(promDiagBusy||Date.now()>=PROM_DIAG_END||!navigator.onLine||!vlog.length||!vlogSess.key)return;
+  promDiagBusy=true;
+  try{
+    const session=vlogSess.id.replace(/[^a-zA-Z0-9_-]/g,'').slice(0,64);
+    if(session.length<8)return;
+    if(promDiagSession!==session){promDiagSession=session;promDiagSent=0;promDiagManifest=false}
+    if(!promDiagManifest){
+      const doc=voiceLogDoc();
+      const manifest={session,kind:'manifest',startedAt:doc.session.startedAt,manuscriptKey:doc.session.manuscriptKey,
+        manuscript:doc.manuscript,settings:doc.settings,userAgent:doc.userAgent};
+      if(JSON.stringify(manifest).length>260000){
+        // Apps Script 원고 크기 제한: 원고 전체 대신 식별자와 페이지 수를 기록한다.
+        manifest.manuscript={key:doc.session.manuscriptKey,pageCount:doc.manuscript.pages.length,truncated:true};
+      }
+      await promDiagPost(manifest);promDiagManifest=true;
+    }
+    while(promDiagSent<vlog.length){
+      const end=Math.min(promDiagSent+150,vlog.length);
+      await promDiagPost({session,kind:'events',offset:promDiagSent,events:vlog.slice(promDiagSent,end)});
+      promDiagSent=end;
+    }
+  }catch(err){console.warn('PROM 진단 기록 자동 전송 재시도 예정',err)}
+  finally{promDiagBusy=false}
+}
+setInterval(promDiagSync,30000);
+addEventListener('pagehide',()=>{if(!promDiagBusy&&vlog.length>promDiagSent)promDiagSync()});
 function voiceLogDoc(){
   vlogSave();
   return {version:1,savedAt:new Date().toISOString(),userAgent:navigator.userAgent,settings:{lead:$('lead').value,lines:LINES,mobile:MOBILE},
