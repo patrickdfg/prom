@@ -102,7 +102,13 @@
   let showPageNum=true;try{showPageNum=localStorage.getItem('promShowPageNum')!=='0'}catch(_){}
   $('pageNumOpt').checked=showPageNum;
   $('pageNumOpt').onchange=()=>{showPageNum=$('pageNumOpt').checked;try{localStorage.setItem('promShowPageNum',showPageNum?'1':'0')}catch(_){}updatePageNums();publish(true);};
-  const PN_TOP=58,PN_H=78;   // 고정 위치(위 툴바 아래)와 번호 한 칸 높이
+  const PN_TOP=58; // 상단 상태줄 아래 (숫자의 높이는 본문 크기에 맞춰 동적으로 계산)
+  function pageNumberFontSize(){
+    // 스크롤 모드와 일반 보기 모두 실제 화면 본문 폰트를 읽는다.
+    const body=localScroll?scrollHost.querySelector('.scroll-flow'):$('lines');
+    const size=body?parseFloat(getComputedStyle(body).fontSize):NaN;
+    return Number.isFinite(size)&&size>0?size:72;
+  }
   // 글 속 원고 쪽 번호 찾기: 빨간색 숫자만 있는 덩어리가 2, 3, 4…처럼 이어질 때만 쪽 번호로 본다(그냥 빨간 숫자는 거른다)
   function manuscriptMarks(){
     const out=[];let last=0;
@@ -114,8 +120,8 @@
     return out;
   }
   function manualPageNumber(){
-    if(!showPageNum||MOBILE)return null;
-    const marks=manuscriptMarks();if(!marks.length)return null;
+    if(!showPageNum||!P.length)return null;
+    const marks=manuscriptMarks();if(!marks.length)return page+1;
     let number=Math.max(1,marks[0].n-1);
     for(const mark of marks){
       const range=lineRange?.[mark.pi]?.[mark.li];
@@ -129,10 +135,20 @@
   function pnShow(list){const n=Math.max(list.length,pageNumLayer.children.length);for(let i=0;i<n;i++){const el=pnLabel(i);if(list[i]){el.hidden=false;if(el.textContent!==String(list[i][0]))el.textContent=String(list[i][0]);el.style.top=Math.round(list[i][1])+'px';}else el.hidden=true;}}
   function updatePageNums(){
     const v=$('view');
-    if(!showPageNum||MOBILE||!P.length||v.style.display!=='block'||v.classList.contains('overview-mode')){pageNumLayer.hidden=true;return;}
+    if(!showPageNum||!P.length||v.style.display!=='block'||v.classList.contains('overview-mode')){pageNumLayer.hidden=true;return;}
+    const fontSize=pageNumberFontSize();
+    pageNumLayer.style.setProperty('--prom-page-number-size',fontSize+'px');
+    const PN_H=Math.ceil(fontSize*1.15);
     const marks=manuscriptMarks();
-    if(!marks.length){pageNumLayer.hidden=true;return;}                 // 원고에 쪽 번호가 없으면 보여 줄 번호가 없다
     pageNumLayer.hidden=false;
+    if(!marks.length){
+      // 일반 텍스트/슬라이드에도 쪽 체크를 켜면 프롬프터 쪽 번호가 표시된다.
+      // 스크롤 모드에서는 현재 화면에 보이는 문단의 쪽을 사용한다.
+      const top=scrollHost.getBoundingClientRect().top+PN_TOP;
+      const visible=localScroll?localRenderer.rows.find(r=>r.el.getBoundingClientRect().bottom>top):null;
+      pnShow([[(visible?.pi??page)+1,PN_TOP]]);
+      return;
+    }
     const first=Math.max(1,marks[0].n-1);                                // 첫 번호 앞은 그 앞 쪽
     if(!localScroll){                                                    // 쪽 보기: 이 쪽이 시작될 때의 원고 쪽 번호 하나
       let n=first;for(const m of marks)if(m.pi<page)n=m.n;else break;
