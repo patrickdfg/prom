@@ -200,7 +200,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <div class="control-group"><button id="tts">읽어주기</button><span id="ttsRateControls" class="control-group" role="group" aria-label="읽기 속도" hidden><span>읽기 속도</span><button id="ttsRateMinus" type="button" aria-label="읽기 속도 줄이기">−</button><output id="ttsRateInline" aria-live="polite">1.0</output><button id="ttsRatePlus" type="button" aria-label="읽기 속도 높이기">＋</button></span></div>
     <div class="control-group"><button id="prev" aria-label="이전 쪽">◀</button><span id="pg">1 / 1</span><button id="find">검색</button><button id="next" aria-label="다음 쪽">▶</button></div>
     <div class="control-group view-switch" role="group" aria-label="원고 보기"><button id="viewSingle" aria-pressed="true">한 장</button><button id="viewMultiple" aria-pressed="false">여러 장</button><button id="viewScroll" aria-pressed="false" title="현재 창에서 원고를 부드럽게 스크롤합니다">스크롤 보기</button></div>
-    <div class="control-group"><label id="pageNumOptWrap" title="쪽 번호를 왼쪽 위에 본문 글자 크기로 표시합니다. 원고에 쪽 번호가 없으면 프롬프터 페이지 번호를 표시합니다."><input type="checkbox" id="pageNumOpt" checked>쪽</label><label id="speedOptWrap" title="마이크를 켰을 때 오른쪽 위에 말하는 속도(현수 목소리=100)를 띄웁니다"><input type="checkbox" id="speedOpt" checked>속도<span class="wide"> 표시</span></label><label id="dimOptWrap"><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label></div>
+    <div class="control-group"><label id="pageNumOptWrap" title="쪽 번호를 왼쪽 위에 본문 글자 크기로 표시합니다. 원고에 쪽 번호가 없으면 프롬프터 페이지 번호를 표시합니다."><input type="checkbox" id="pageNumOpt" checked>쪽</label><label id="speedOptWrap" title="마이크를 켰을 때 오른쪽 위에 말하는 속도(현수 목소리=100)를 띄웁니다"><input type="checkbox" id="speedOpt">속도<span class="wide"> 표시</span></label><label id="dimOptWrap"><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label></div>
     <div class="control-group"><button id="note">발표 메모</button><button id="edit">연속 편집 (E)</button><button id="save" aria-haspopup="dialog" aria-controls="saveDialog">저장</button><button id="openf">열기</button></div>
     <label id="labOptWrap" title="줄 간격을 좁히고 다음 장 첫 줄을 하단에 표시합니다"><input type="checkbox" id="labNextLine" checked> 다음 장 첫 줄 보기</label>
     <button id="more" aria-expanded="false" aria-controls="moreTools">더보기</button>
@@ -2098,7 +2098,8 @@ function speedTick(){
   if(!spHeardAt||now-spHeardAt>8000||span<4||spTotal===c0){v.textContent='—';return}
   v.textContent=Math.round((spTotal-c0)/span/HYUNSU_CPS*100);
 }
-let showSpeed=true; try{showSpeed=localStorage.getItem('prompterShowSpeed')!=='0'}catch(_){}
+// 첫 사용 시 속도 표시는 끄되, 이전에 저장한 사용자 선택('1' 또는 '0')을 그대로 따른다.
+let showSpeed=false; try{const saved=localStorage.getItem('prompterShowSpeed');if(saved!==null)showSpeed=saved==='1'}catch(_){}
 $('speedOpt').checked=showSpeed;
 $('speedOpt').onchange=()=>{showSpeed=$('speedOpt').checked; try{localStorage.setItem('prompterShowSpeed',showSpeed?'1':'0')}catch(_){} if(spTimer)$('speedLayer').hidden=!showSpeed;notifyUI('speedLayer');};
 function speedStart(){speedStop(); spTotal=0; spLast=0; spHist=[]; spHeardAt=0; $('speedVal').textContent='—'; $('speedLayer').hidden=!showSpeed;notifyUI('speedLayer'); spTimer=setInterval(speedTick,1000)}
