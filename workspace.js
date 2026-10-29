@@ -1,7 +1,7 @@
 /* 프롬프터 준비·탐색·복구. 원고와 메모는 이 브라우저에만 보관한다. */
 (() => {
   'use strict';
-  try{$('labNextLine').checked=localStorage.getItem('promLabNextLine')==='true';}catch(_){}
+  try{const saved=localStorage.getItem('promLabNextLine'),prev=localStorage.getItem('prompterNextLine');$('labNextLine').checked=saved===null?(prev===null||prev!=='0'):(saved!=='false'&&saved!=='0');}catch(_){}
   $('labNextLine').onchange=()=>{
     try{localStorage.setItem('promLabNextLine',String($('labNextLine').checked));}catch(_){}
     render();
