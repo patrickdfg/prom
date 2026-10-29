@@ -9,6 +9,7 @@ on:
       - "speech-match.js"
       - "tests/safe_follow.cjs"
       - "tests/far_jump.cjs"
+      - "tests/lexicon_live.cjs"
       - ".github/workflows/prom-safe-speech.yml"
   workflow_dispatch:
 
@@ -28,6 +29,7 @@ jobs:
       - name: Test bounded recovery and existing speech regressions
         run: |
           node tests/safe_follow.cjs
+          node tests/lexicon_live.cjs
           node tests/far_jump.cjs
           node tests/speech_follow.cjs
           node tests/speech_match.cjs
