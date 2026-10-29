@@ -199,7 +199,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <div class="control-group view-switch" role="group" aria-label="원고 보기"><button id="viewSingle" aria-pressed="true">한 장</button><button id="viewMultiple" aria-pressed="false">여러 장</button><button id="viewScroll" aria-pressed="false" title="현재 창에서 원고를 부드럽게 스크롤합니다">스크롤 보기</button></div>
     <div class="control-group"><label id="pageNumOptWrap" title="원고에 적힌 쪽 번호를 왼쪽 위에 크게 빨간색으로 띄웁니다(원고에 쪽 번호가 있을 때)"><input type="checkbox" id="pageNumOpt" checked>쪽</label><label id="speedOptWrap" title="마이크를 켰을 때 오른쪽 위에 말하는 속도(현수 목소리=100)를 띄웁니다"><input type="checkbox" id="speedOpt" checked>속도<span class="wide"> 표시</span></label><label id="dimOptWrap"><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label></div>
     <div class="control-group"><button id="note">발표 메모</button><button id="edit">연속 편집 (E)</button><button id="save">저장</button><button id="savePptx" title="쪽마다 슬라이드 한 장인 PPT(PPTX) 파일로 저장합니다">PPT 저장</button><button id="openf">열기</button></div>
-    <label hidden id="labOptWrap" title="줄 간격을 좁히고 다음 장 첫 줄을 하단에 표시합니다"><input type="checkbox" id="labNextLine"> 실험실 · 다음 장 첫 줄</label>
+    <label id="labOptWrap" title="줄 간격을 좁히고 다음 장 첫 줄을 하단에 표시합니다"><input type="checkbox" id="labNextLine" checked> 다음 장 첫 줄 보기</label>
     <button id="more" aria-expanded="false" aria-controls="moreTools">더보기</button>
     <span id="autosaveState" role="status">기기에 저장됨</span>
     <div id="moreTools" hidden>
@@ -2420,6 +2420,13 @@ $('mic').onclick=()=>listening?stopMic():startMic();
 $('prev').onclick=()=>go(page-1,true);
 $('next').onclick=()=>go(page+1,true);
 $('dim').onchange=render;
+// 다음 장 첫 줄 미리보기는 기본으로 켜고, 사용자가 끈 설정은 유지한다.
+try{$('labNextLine').checked=localStorage.getItem('prompterNextLine')!=='0'}catch(_){}
+$('labNextLine').onchange=()=>{
+  try{localStorage.setItem('prompterNextLine',$('labNextLine').checked?'1':'0')}catch(_){}
+  render();
+};
+
 function applyTheme(){$('page').classList.toggle('dark',$('theme').value==='dark');$('page').classList.toggle('white',$('theme').value==='white');try{localStorage.setItem('prompterTheme',$('theme').value)}catch(_){}}
 try{const t=localStorage.getItem('prompterTheme');if(t)$('theme').value=t}catch(_){}
 // 폰은 검정·흰색 배경만 쓴다. 구름 배경이 골라져 있으면 흰색으로 바꾼다
