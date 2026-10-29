@@ -56,6 +56,10 @@
     });
     grid.appendChild(fragment);
   }
+  // 여러 장 보기에서 현재 슬라이드를 선명하게 표시한다.
+  const highlight=document.createElement('style');
+  highlight.textContent=`#slideGrid .slide-card.active{outline:5px solid #ffcc00!important;outline-offset:-5px;box-shadow:0 0 0 3px #fff,0 0 18px 5px rgba(255,204,0,.75)!important;position:relative;z-index:2}#slideGrid .slide-card.active .slide-label{background:#ffcc00!important;color:#111!important;font-weight:900!important}#slideGrid .slide-card.active .slide-live{display:inline-block!important;background:#111!important;color:#ffeb66!important;padding:2px 8px;border-radius:5px;font-weight:900}`;
+  document.head.appendChild(highlight);
   function update(){
     if(!enabled)return;
     const next=JSON.stringify([P,LINES,MOBILE,$('theme').value,$('page').style.backgroundImage,window.PromPptxOriginal?.key(0)]);
