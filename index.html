@@ -1342,6 +1342,18 @@ function ceReflowBlock(pages,from,caret,ends){
   }));
   return {start:from,end,pages:out,caret:at,ends:out.map((_,k)=>k===out.length-1&&isEnd(end))};
 }
+// 줄의 runs 에서 글자 위치 [a,b) 를 color(k 기본·b 강조·r 빨강)로 바꾼다. 같은 색이 이어지면 합치고 새 문단 표시는 첫 조각에 둔다
+function ceRecolor(runs,a,b,color){
+  const out=[];let pos=0;
+  const push=(t,c)=>{if(!t)return;const last=out[out.length-1];if(last&&last.c===c)last.t+=t;else out.push({t,c});};
+  for(const r of runs){
+    const s0=pos,e0=pos+r.t.length,x=Math.max(a,s0),y=Math.min(b,e0);pos=e0;
+    if(x>=y){push(r.t,r.c);continue;}
+    push(r.t.slice(0,x-s0),r.c);push(r.t.slice(x-s0,y-s0),color);push(r.t.slice(y-s0),r.c);
+  }
+  if(runs[0]?.paragraphStart&&out.length)out[0].paragraphStart=true;
+  return out;
+}
 // Ctrl+Enter: ci 번째 줄부터 새 쪽. 앞뒤에 남은 빈 줄은 빼고, 새 쪽의 첫 글줄을 새 문단(paragraphStart)으로 표시한다
 function ceSplitPage(ls,ci){
   const a=ls.slice(0,ci).map(l=>l.map(r=>({...r}))), b=ls.slice(ci).map(l=>l.map(r=>({...r})));
@@ -1385,7 +1397,7 @@ function endEdit(){
 const ceDialog=document.createElement('dialog');
 ceDialog.id='continuousEditor';
 ceDialog.setAttribute('aria-label','원고 연속 편집');
-ceDialog.innerHTML='<div class="ce-top"><div class="ce-notice"><span>많이 고쳐야 한다면 한글(HWPX) 파일로 받아 편집한 뒤, ‘열기’로 다시 불러오세요.</span><button type="button" id="ceHwpx" title="지금 이 창에서 고친 내용까지 포함해 한글 문서(HWPX)로 저장합니다">한글(HWPX) 파일 받기</button></div><div class="ce-head"><div><strong>원고 연속 편집</strong><span id="ceCount"></span></div><div class="ce-actions"><button type="button" id="ceLegacy">기존 1쪽 편집</button><button type="button" id="ceCancel">취소</button><button type="button" id="ceDone">편집 완료 · 적용</button></div></div></div><p class="ce-help">전체 쪽을 아래로 스크롤하며 수정하세요. 쪽 경계는 유지합니다. 줄이 넘치면 같은 문단의 다음 장으로 이어지고, 문단이 끝나는 장이면 새 장이 됩니다. Ctrl+Enter 는 여기부터 새 쪽, 쪽 맨 앞 Backspace·맨 끝 Delete 는 쪽 합치기, Ctrl+Z / Ctrl+Y 는 되돌리기·다시 하기입니다. 경계의 ↑·↓ 버튼으로 한 줄씩 이동할 수도 있습니다.</p><div id="cePages" class="ce-pages"></div><div id="ceState" role="status">편집 내용은 「편집 완료 · 적용」을 누를 때 원고와 음성인식에 반영됩니다.</div>';
+ceDialog.innerHTML='<div class="ce-top"><div class="ce-notice"><span>많이 고쳐야 한다면 한글(HWPX) 파일로 받아 편집한 뒤, ‘열기’로 다시 불러오세요.</span><button type="button" id="ceHwpx" title="지금 이 창에서 고친 내용까지 포함해 한글 문서(HWPX)로 저장합니다">한글(HWPX) 파일 받기</button></div><div class="ce-head"><div><strong>원고 연속 편집</strong><span id="ceCount"></span></div><div class="ce-actions"><button type="button" id="ceLegacy">기존 1쪽 편집</button><button type="button" id="ceCancel">취소</button><button type="button" id="ceDone">편집 완료 · 적용</button></div></div><div class="ce-tools"><button type="button" id="ceUndo" title="되돌리기 (Ctrl+Z)">↶ 되돌리기</button><button type="button" id="ceRedo" title="다시 하기 (Ctrl+Y)">↷ 다시 하기</button><span class="ce-sep"></span><span>글자색</span><button type="button" class="ce-color" data-color="k" style="--sw:#fff" title="선택한 글을 기본색(흰색)으로">기본</button><button type="button" class="ce-color" data-color="b" style="--sw:#f8e736" title="선택한 글을 강조색(노랑)으로">강조</button><button type="button" class="ce-color" data-color="r" style="--sw:#fa6666" title="빨강은 원고 쪽번호 표시색입니다. 음성 따라가기에서는 읽지 않는 글로 취급됩니다">빨강</button><small>글을 드래그해 선택한 뒤 누르세요</small></div></div><p class="ce-help">전체 쪽을 아래로 스크롤하며 수정하세요. 쪽 경계는 유지합니다. 줄이 넘치면 같은 문단의 다음 장으로 이어지고, 문단이 끝나는 장이면 새 장이 됩니다. Ctrl+Enter 는 여기부터 새 쪽, 쪽 맨 앞 Backspace·맨 끝 Delete 는 쪽 합치기, Ctrl+Z / Ctrl+Y 는 되돌리기·다시 하기입니다. 경계의 ↑·↓ 버튼으로 한 줄씩 이동할 수도 있습니다.</p><div id="cePages" class="ce-pages"></div><div id="ceState" role="status">편집 내용은 「편집 완료 · 적용」을 누를 때 원고와 음성인식에 반영됩니다.</div>';
 document.body.appendChild(ceDialog);
 const ceStyle=document.createElement('style');
 ceStyle.textContent=[
@@ -1394,6 +1406,12 @@ ceStyle.textContent=[
 '#continuousEditor .ce-top{position:sticky;top:0;z-index:3}',
 '#continuousEditor .ce-notice{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 20px;background:#16273c;border-bottom:1px solid #3a5272;color:#d1deee;font-size:13px}',
 '#continuousEditor .ce-notice button{padding:5px 10px;font-size:12px;white-space:nowrap}',
+'#continuousEditor .ce-tools{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:7px 20px;background:#192a40;border-bottom:1px solid #3a5272;font-size:13px;color:#d1deee}',
+'#continuousEditor .ce-tools button{padding:5px 10px;font-size:13px}',
+'#continuousEditor .ce-tools button:disabled{opacity:.4;cursor:not-allowed}',
+'#continuousEditor .ce-tools .ce-sep{width:1px;height:20px;background:#526b8a;margin:0 6px}',
+'#continuousEditor .ce-tools small{color:#a8bdd9;font-size:12px}',
+'#continuousEditor .ce-color:before{content:"";display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px;background:var(--sw);border:1px solid #ffffff80}',
 '#continuousEditor .ce-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;background:#1e3049;border-bottom:1px solid #526b8a}',
 '#continuousEditor .ce-head>div{display:flex;align-items:center;gap:12px;flex-wrap:wrap}',
 '#continuousEditor .ce-head strong{font-size:21px}',
@@ -1413,7 +1431,7 @@ ceStyle.textContent=[
 '#continuousEditor .ce-break button:disabled{opacity:.35;cursor:not-allowed}',
 '#continuousEditor .ce-move-hint{font-size:11px;color:#ffdaaa;white-space:normal}',
 '#continuousEditor #ceState{position:sticky;bottom:0;z-index:3;padding:10px 20px;background:#1e3049;color:#b9d8ff;font-size:13px}',
-'@media(max-width:620px){#continuousEditor .ce-notice{align-items:stretch;flex-direction:column;gap:6px;padding:8px 10px}#continuousEditor .ce-head{align-items:stretch;flex-direction:column}#continuousEditor .ce-pages{padding:0 10px 20px}#continuousEditor .ce-break{gap:4px;flex-wrap:wrap}#continuousEditor .ce-break button{font-size:11px}}'
+'@media(max-width:620px){#continuousEditor .ce-tools{padding:7px 10px}#continuousEditor .ce-notice{align-items:stretch;flex-direction:column;gap:6px;padding:8px 10px}#continuousEditor .ce-head{align-items:stretch;flex-direction:column}#continuousEditor .ce-pages{padding:0 10px 20px}#continuousEditor .ce-break{gap:4px;flex-wrap:wrap}#continuousEditor .ce-break button{font-size:11px}}'
 ].join('\n');
 document.head.appendChild(ceStyle);
 const cePages=$('cePages'),ceState=$('ceState');
@@ -1641,8 +1659,9 @@ function cePush(kind){
   const now=Date.now();
   if(kind==='type'&&ceHistKind==='type'&&ceHist.length>1&&now-ceHistAt<700)ceHist[ceHist.length-1]=ceSnap();   // 이어서 친 글은 한 번에 되돌린다
   else{ceHist.push(ceSnap());if(ceHist.length>200)ceHist.shift();}
-  ceHistKind=kind;ceHistAt=now;ceFuture=[];
+  ceHistKind=kind;ceHistAt=now;ceFuture=[];ceUpdateTools();
 }
+function ceUpdateTools(){$('ceUndo').disabled=ceHist.length<2;$('ceRedo').disabled=!ceFuture.length;}
 function ceRestore(snap){
   const top=ceDialog.scrollTop;
   cePages.replaceChildren();ceCards=[];
@@ -1653,11 +1672,11 @@ function ceRestore(snap){
 }
 function ceUndo(){
   if(ceHist.length<2){ceState.textContent='더 되돌릴 내용이 없습니다.';return;}
-  ceFuture.push(ceHist.pop());ceHistKind='';ceRestore(ceHist[ceHist.length-1]);ceState.textContent='되돌렸습니다.';
+  ceFuture.push(ceHist.pop());ceHistKind='';ceRestore(ceHist[ceHist.length-1]);ceUpdateTools();ceState.textContent='되돌렸습니다.';
 }
 function ceRedo(){
   const snap=ceFuture.pop();if(!snap){ceState.textContent='다시 할 내용이 없습니다.';return;}
-  ceHist.push(snap);ceHistKind='';ceRestore(snap);ceState.textContent='다시 적용했습니다.';
+  ceHist.push(snap);ceHistKind='';ceRestore(snap);ceUpdateTools();ceState.textContent='다시 적용했습니다.';
 }
 // Enter 로 줄을 나누면 브라우저가 문단 시작 표시(data)까지 복사한다. 글이 있는 쪽 줄에만 남긴다
 function ceDedupParagraph(){
@@ -1702,25 +1721,34 @@ function ceHardBreak(){
   ceSetCaret(here.card+1,Math.max(0,b.findIndex(l=>lineText(l).trim())),0);
   ceRefresh();cePush('struct');ceState.textContent='여기부터 새 쪽으로 나눴습니다.';
 }
-// 쪽 끝에서 방향키로 옆 카드로 넘어간다 (보이는 첫 줄·끝 줄일 때만)
+// 빈 줄 채움과 >> 줄은 글이 아니다
+const ceIsFiller=row=>{const t=row.textContent.replace(/\u00a0/g,' ').trim();return !t||t==='>>';};
+// 커서 위·아래에 글이 있는 줄이 더 없는지 (쪽 맨 앞·맨 끝인지)
+function ceEdges(here){
+  const rows=[...ceCards[here.card].body.children];
+  return {rows,top:rows.slice(0,here.row).every(ceIsFiller),bottom:rows.slice(here.row+1).every(ceIsFiller)};
+}
+// 쪽 끝에서 방향키로 옆 카드의 글이 있는 줄로 넘어간다 (보이는 첫 줄·끝 줄일 때만)
 function ceArrowKey(e){
   if(e.shiftKey||e.ctrlKey||e.metaKey||e.altKey)return false;
   const here=ceCaret();if(!here||!here.sel.isCollapsed)return false;
-  const rows=[...ceCards[here.card].body.children],row=rows[here.row],len=row.textContent.length;
-  let to=-1,toRow=0,toOffset=here.offset;
+  const {rows,top,bottom}=ceEdges(here),row=rows[here.row],len=row.textContent.length;
+  let to=-1,toOffset=here.offset,last=false;
   if(e.key==='ArrowUp'||e.key==='ArrowDown'){
     const up=e.key==='ArrowUp';
-    if(here.row!==(up?0:rows.length-1))return false;
-    const box=row.getBoundingClientRect(),caretBox=here.sel.getRangeAt(0).getClientRects()[0]||box,lh=parseFloat(getComputedStyle(row).lineHeight)||box.height;
-    if(up?caretBox.top-box.top>=lh*.6:box.bottom-caretBox.bottom>=lh*.6)return false;      // 줄이 길어 여러 줄로 보일 때는 그 안에서 먼저 움직인다
-    to=here.card+(up?-1:1);toRow=up?(ceCards[to]?.body.children.length||1)-1:0;
-  }else if(e.key==='ArrowLeft'&&here.row===0&&here.offset===0){
-    to=here.card-1;toRow=(ceCards[to]?.body.children.length||1)-1;toOffset=ceCards[to]?.body.children[toRow]?.textContent.length||0;
-  }else if(e.key==='ArrowRight'&&here.row===rows.length-1&&here.offset>=len){
-    to=here.card+1;toRow=0;toOffset=0;
-  }else return false;
-  if(!ceCards[to])return false;
-  e.preventDefault();ceSetCaret(to,toRow,toOffset);return true;
+    if(up?!top:!bottom)return false;
+    if(!ceIsFiller(row)){
+      const box=row.getBoundingClientRect(),caretBox=here.sel.getRangeAt(0).getClientRects()[0]||box,lh=parseFloat(getComputedStyle(row).lineHeight)||box.height;
+      if(up?caretBox.top-box.top>=lh*.6:box.bottom-caretBox.bottom>=lh*.6)return false;      // 줄이 길어 여러 줄로 보일 때는 그 안에서 먼저 움직인다
+    }
+    to=here.card+(up?-1:1);last=up;
+  }else if(e.key==='ArrowLeft'&&top&&here.offset===0){to=here.card-1;last=true;toOffset=Infinity;}
+  else if(e.key==='ArrowRight'&&bottom&&here.offset>=len){to=here.card+1;toOffset=0;}
+  else return false;
+  const target=ceCards[to];if(!target)return false;
+  const trows=[...target.body.children],texts=trows.map((r,i)=>ceIsFiller(r)?-1:i).filter(i=>i>=0);
+  const toRow=texts.length?(last?texts[texts.length-1]:texts[0]):(last?trows.length-1:0);
+  e.preventDefault();ceSetCaret(to,toRow,toOffset===Infinity?trows[toRow].textContent.length:toOffset);return true;
 }
 cePages.addEventListener('keydown',e=>{
   if(e.isComposing||e.keyCode===229)return;
@@ -1731,9 +1759,9 @@ cePages.addEventListener('keydown',e=>{
   }else if(mod&&e.key==='Enter'){e.preventDefault();ceHardBreak();}
   else if((e.key==='Backspace'||e.key==='Delete')&&!mod&&!e.altKey){
     const here=ceCaret();if(!here||!here.sel.isCollapsed)return;
-    const rows=ceCards[here.card].body.children;
-    if(e.key==='Backspace'&&here.row===0&&here.offset===0&&here.card>0){e.preventDefault();ceJoinPages(here.card-1,false);}
-    else if(e.key==='Delete'&&here.row===rows.length-1&&here.offset>=rows[here.row].textContent.length&&here.card<ceCards.length-1){e.preventDefault();ceJoinPages(here.card,true);}
+    const {rows,top,bottom}=ceEdges(here);
+    if(e.key==='Backspace'&&top&&here.offset===0&&here.card>0){e.preventDefault();ceJoinPages(here.card-1,false);}
+    else if(e.key==='Delete'&&bottom&&here.offset>=rows[here.row].textContent.length&&here.card<ceCards.length-1){e.preventDefault();ceJoinPages(here.card,true);}
   }else if(e.key.startsWith('Arrow'))ceArrowKey(e);
 });
 cePages.addEventListener('click',e=>{
@@ -1765,6 +1793,35 @@ ceDialog.addEventListener('keydown',e=>{
 });
 ceDialog.addEventListener('cancel',e=>{e.preventDefault();ceCancel();});
 $('ceDone').onclick=ceApply;$('ceCancel').onclick=ceCancel;
+// 선택한 글의 색을 바꾼다. 줄을 runs 로 읽어 색만 바꾼 뒤 다시 그리고, 선택은 같은 글에 다시 건다
+function ceRowOffset(row,node,offset){const r=document.createRange();r.selectNodeContents(row);r.setEnd(node,offset);return r.toString().length;}
+function ceColorSelection(color){
+  const sel=getSelection();
+  if(!sel||!sel.rangeCount||sel.isCollapsed||!cePages.contains(sel.anchorNode)){ceState.textContent='색을 바꿀 글을 먼저 드래그해서 선택하세요.';return;}
+  const range=sel.getRangeAt(0);let first=null,last=null;
+  ceCards.forEach((entry,ci)=>[...entry.body.children].forEach((row,ri)=>{
+    if(!range.intersectsNode(row))return;
+    const total=row.textContent.length,a=row.contains(range.startContainer)?ceRowOffset(row,range.startContainer,range.startOffset):0,b=row.contains(range.endContainer)?ceRowOffset(row,range.endContainer,range.endOffset):total;
+    if(a>=b)return;
+    const next=ceLine(ceRecolor(ceReadRuns(row),a,b,color));
+    row.replaceWith(next);ceMark(entry);
+    if(!first)first={ci,ri,a};last={ci,ri,b};
+  }));
+  if(!first){ceState.textContent='색을 바꿀 글을 먼저 드래그해서 선택하세요.';return;}
+  const from=cePoint(first.ci,first.ri,first.a),to=cePoint(last.ci,last.ri,last.b);
+  if(from&&to){ceCards[first.ci].body.focus({preventScroll:true});const r=document.createRange();r.setStart(from.node,from.offset);r.setEnd(to.node,to.offset);sel.removeAllRanges();sel.addRange(r);}
+  ceRefresh();cePush('struct');ceState.textContent='글자색을 바꿨습니다.';
+}
+function cePoint(card,row,offset){
+  const el=ceCards[card]?.body.children[row];if(!el)return null;
+  const walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);let left=offset,node;
+  while((node=walker.nextNode())){if(left<=node.nodeValue.length)return {node,offset:left};left-=node.nodeValue.length;}
+  return {node:el,offset:el.childNodes.length};
+}
+const ceTools=ceDialog.querySelector('.ce-tools');
+ceTools.addEventListener('mousedown',e=>e.preventDefault());      // 단추를 눌러도 선택과 커서가 편집 칸에 그대로 남게 한다
+ceTools.addEventListener('click',e=>{const button=e.target.closest('.ce-color');if(button)ceColorSelection(button.dataset.color);});
+$('ceUndo').onclick=ceUndo;$('ceRedo').onclick=ceRedo;
 $('ceHwpx').onclick=async()=>{
   if(ceComposing){ceState.textContent='한글 입력이 끝난 뒤 받아 주세요.';return;}
   ceFlow({noPull:true});ceState.textContent='한글(HWPX) 파일을 만드는 중입니다…';
@@ -2791,7 +2848,7 @@ if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 <script src="slide-layout.js?v=20261016-6"></script>
 <script src="smooth-scroll.js?v=20261017-line1"></script>
 <script src="scroll-view.js?v=20261020-phone2"></script>
-<script src="display-screens.js?v=20261023-local-output"></script><script src="workspace.js?v=20261030-checkbox-default1"></script>
+<script src="display-screens.js?v=20261023-local-output"></script><script src="workspace.js?v=20261031-ce-keys1"></script>
 <script src="overview.js?v=20261023-one-top-row"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
 <script src="extras.js?v=20261023-stage-hide1"></script>

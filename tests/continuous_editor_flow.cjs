@@ -80,6 +80,16 @@ const B = [[], para('둘째 문단 첫 줄.'), line('둘째 문단 둘째 줄.')
   const wrong = c.ceReflowBlock([edited, next], 0, null);
   assert.equal(wrong.end, 1, 'without flags the marker-less full page would continue into the next paragraph');
 }
+{ // recolor: only the selected characters change, neighbours stay, equal colors merge, the paragraph mark stays first
+  const runs = [{t: '가나다라마', c: 'k', paragraphStart: true}, {t: '바사', c: 'b'}];
+  same(c.ceRecolor(runs, 1, 3, 'b'), [{t: '가', c: 'k', paragraphStart: true}, {t: '나다', c: 'b'}, {t: '라마', c: 'k'}, {t: '바사', c: 'b'}]);
+  same(c.ceRecolor(runs, 3, 6, 'b'), [{t: '가나다', c: 'k', paragraphStart: true}, {t: '라마바사', c: 'b'}], 'selection touching an existing run merges with it');
+  const all = c.ceRecolor(runs, 0, 7, 'r');
+  same(all, [{t: '가나다라마바사', c: 'r', paragraphStart: true}], 'whole line recolored and merged');
+  same(c.ceRecolor(runs, 0, 7, 'k').map(r => r.c), ['k'], 'back to default merges into one run');
+  same(c.ceRecolor([], 0, 3, 'b'), [], 'empty line stays empty');
+  assert.equal(JSON.stringify(runs).includes('"r"'), false, 'input is not modified');
+}
 { // the original single-page editor uses the same block ends
   c.P = [A, B]; assert.equal(vm.runInContext('blockEnd(0)', c), true);
 }

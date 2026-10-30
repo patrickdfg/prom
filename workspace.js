@@ -453,7 +453,8 @@
       const action=['ArrowRight','ArrowDown','PageDown',' '].includes(e.key)?'next':['ArrowLeft','ArrowUp','PageUp'].includes(e.key)?'prev':e.key==='Home'?'home':null;
       if(action&&!(e.target.tagName==='BUTTON'&&e.key===' ')&&navigateAudience(action)){e.preventDefault();e.stopImmediatePropagation();return;}
     }
-    if(document.querySelector('dialog[open]') || ['INPUT','TEXTAREA'].includes(e.target.tagName))e.stopImmediatePropagation();
+    // 연속 편집 창은 자기 키(방향키·Backspace·Ctrl+Z 등)를 직접 처리하므로 막지 않는다
+    if(!e.target.closest?.('#continuousEditor')&&(document.querySelector('dialog[open]') || ['INPUT','TEXTAREA'].includes(e.target.tagName)))e.stopImmediatePropagation();
     if(!editing && !noteEditing && !listening && !document.querySelector('dialog[open]') && $('view').style.display==='block' && (e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='f') { e.preventDefault(); $('find').click(); }
   },true);
   $('view').addEventListener('pointerdown',showBar);
