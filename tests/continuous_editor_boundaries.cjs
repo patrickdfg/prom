@@ -15,7 +15,7 @@ const ctx = {
   ceReadRuns: row => row?.text ? [{t: row.text, c: 'k'}] : []
 };
 vm.createContext(ctx);
-vm.runInContext(between('function ceHasText(row)', 'function ceFlow(){'), ctx);
+vm.runInContext(between('function ceHasText(row)', 'function ceCaret(){'), ctx);
 
 function makeCard(contents) {
   const body = {
@@ -119,6 +119,6 @@ function move(before, after, direction) {
   assert.equal(up.disabled, true, 'truly full page disables up');
   assert.match(hint.textContent, /가득/, 'disabled reason is explained');
 }
-assert.match(source, /P=pages;page=Math\.min\(page,P\.length-1\);index\(\);cursor=pStart\[page\]/,
+assert.match(source, /P=pages;(window\.PromPptxOriginal\?\.syncPages\(P\);)?page=Math\.min\(page,P\.length-1\);index\(\);cursor=pStart\[page\]/,
   'applying edited pages still rebuilds the voice-recognition index');
 console.log('PASS continuous editor: up/down, blank spacers, paragraph gaps, button state, text counts and voice index');
