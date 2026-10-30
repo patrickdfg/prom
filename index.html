@@ -1356,6 +1356,18 @@ function ceRecolor(runs,a,b,color,hex){
   if(runs[0]?.paragraphStart&&out.length)out[0].paragraphStart=true;
   return out;
 }
+// 줄의 종류: 글이 있는 줄 'text', 글 사이의 빈 줄 'gap', 앞뒤 빈 줄 채움과 >> 줄 'fill'
+function ceLineKinds(lines){
+  const has=lines.map(l=>{const t=lineText(l).trim();return !!t&&t!=='>>';});
+  const first=has.indexOf(true),last=has.lastIndexOf(true);
+  return lines.map((l,i)=>has[i]?'text':first>=0&&i>first&&i<last&&lineText(l).trim()!=='>>'?'gap':'fill');
+}
+// 두 줄의 글을 이어 붙인다. 붙는 자리에 공백이 없으면 하나 넣고, 뒤 줄의 새 문단 표시는 지운다. at 은 붙은 자리(앞 줄 글자 수)
+function ceJoinRuns(a,b){
+  const ta=lineText(a),tb=lineText(b),space=ta&&tb&&!/\s$/.test(ta)&&!/^\s/.test(tb)?[{t:' ',c:'k'}]:[];
+  const tail=b.map(r=>{const x={...r};delete x.paragraphStart;return x;});
+  return {runs:[...a.map(r=>({...r})),...space,...tail],at:ta.length};
+}
 // Ctrl+Enter: ci 번째 줄부터 새 쪽. 앞뒤에 남은 빈 줄은 빼고, 새 쪽의 첫 글줄을 새 문단(paragraphStart)으로 표시한다
 function ceSplitPage(ls,ci){
   const a=ls.slice(0,ci).map(l=>l.map(r=>({...r}))), b=ls.slice(ci).map(l=>l.map(r=>({...r})));
@@ -1491,12 +1503,15 @@ function ceReadRuns(row){
   return runs;
 }
 function ceNormalize(card){
-  const body=card.body;
+  const body=card.body;let changed=false;
   for(const node of [...body.childNodes]){
     if(node.nodeType===3){const row=document.createElement('div');row.className='ln';row.textContent=node.nodeValue;body.replaceChild(row,node);}
     else if(node.nodeType===1&&node.tagName==='BR'){const row=ceLine([]);body.replaceChild(row,node);}
     else if(node.nodeType===1)node.classList.add('ln');
   }
+  // 줄을 합칠 때 브라우저가 붙이는 글자 크기·색 껍데기(span)는 지운다. 색은 class(b·r·n)와 data-hex 로만 둔다
+  body.querySelectorAll('span:not(.b):not(.r):not(.n):not([data-hex])').forEach(sp=>{sp.replaceWith(...sp.childNodes);changed=true;});
+  return changed;
 }
 function ceReadPage(card){
   ceNormalize(card);
@@ -1590,14 +1605,19 @@ function ceReplaceRange(start,oldCount,pages,before,ends){
   ceFixSeparators();
 }
 // 줄이 넘치거나(밀기) 글 줄이 줄면(당기기) 그 쪽이 속한 덩어리 안에서만 다시 나눈다
-function ceFlowBlock(here,pull){
+function ceFlowBlock(here,pull,force){
   let moved=false;
+  const fixed=!MOBILE&&!window.PromPptxOriginal?.isActive();
+  const shrunk=entry=>[...entry.body.children].filter(ceHasText).length<entry.rows||fixed&&entry.body.children.length<LINES;
   for(let guard=0;guard<40;guard++){
     let target=ceCards.findIndex(entry=>entry.body.children.length>LINES),shrink=false;
     if(target<0){
-      const entry=pull&&!moved&&here?ceCards[here.card]:null;
-      if(!entry||[...entry.body.children].filter(ceHasText).length>=entry.rows)break;
-      target=here.card;shrink=true;
+      if(moved)break;
+      const entry=here?ceCards[here.card]:null;
+      if(force!=null&&ceCards[force])target=force;
+      else if(pull&&entry&&shrunk(entry))target=here.card;
+      else break;
+      shrink=true;
     }
     const pages=ceAllPages();
     if(shrink&&ceCards[target].end)break;        // 덩어리가 끝나는 쪽이면 당겨 올 글이 없다
@@ -1610,8 +1630,10 @@ function ceFlowBlock(here,pull){
 }
 function ceFlow(opts={}){
   // 커서가 있는 줄을 기억해 두었다가 줄이 옮겨 가도 같은 줄에서 이어 쓰게 한다
-  const here=ceCaret();
-  for(const entry of ceCards)ceNormalize(entry);
+  const here=opts.here||ceCaret();
+  let unwrapped=false;
+  for(const entry of ceCards)if(ceNormalize(entry))unwrapped=true;
+  if(unwrapped&&here)ceSetCaret(here.card,here.row,here.offset);
   let moved=false;
   if(window.PromPptxOriginal?.isActive()){
     for(let i=0;i<ceCards.length;i++){
@@ -1624,7 +1646,7 @@ function ceFlow(opts={}){
       }
     }
     if(here&&moved){const row=ceCards[here.card]?.body.children[here.row];if(!row||!row.isConnected)ceSetCaret(here.card,here.row,here.offset);}
-  }else moved=ceFlowBlock(here,!opts.noPull);
+  }else moved=ceFlowBlock(here,!opts.noPull,opts.pullCard);
   for(const entry of ceCards)if(entry.dirty)cePadCard(entry);
   ceRefresh();
   if(opts.hist)cePush(moved?'struct':opts.hist);
@@ -1706,7 +1728,7 @@ cePages.addEventListener('input',e=>{
   const card=ceCards.find(c=>c.body===e.target||c.body.contains(e.target));if(!card)return;
   if(e.inputType==='insertParagraph')ceDedupParagraph();
   ceMark(card);ceState.textContent='수정 중 · 「편집 완료 · 적용」을 누르면 저장됩니다.';
-  if(!ceComposing)ceFlow({hist:'type'});
+  if(!e.isComposing){ceComposing=false;ceFlow({hist:'type'});}
 });
 cePages.addEventListener('beforeinput',e=>{
   if(e.inputType==='historyUndo'){e.preventDefault();ceUndo();}
@@ -1714,17 +1736,45 @@ cePages.addEventListener('beforeinput',e=>{
 });
 cePages.addEventListener('compositionstart',()=>{ceComposing=true;});
 cePages.addEventListener('compositionend',()=>{ceComposing=false;ceFlow({hist:'type'});});
-// 쪽 경계를 없앤다: i 쪽과 i+1 쪽을 이어 붙이고 그 덩어리 끝까지 다시 나눈다 (Backspace=뒤 쪽 맨 앞에서, Delete=앞 쪽 맨 끝에서)
-function ceJoinPages(i,atEnd){
-  const pages=ceAllPages(),left=pageContent(pages[i]),right=pageContent(pages[i+1]),merged=[...left,...right];
-  if(!merged.length)merged.push([]);
-  const row=atEnd?Math.max(0,left.length-1):left.length;
-  const next=pages.slice(),ends=ceCards.map(entry=>entry.end);next.splice(i,2,merged);ends.splice(i,2,ends[i+1]);
-  const result=ceReflowBlock(next,i,{page:i,row},ends),count=result.end-i+2;
-  ceReplaceRange(i,count,result.pages,pages.slice(i,i+count),result.ends);
-  const at=result.caret||{page:i,row:0};
-  ceSetCaret(at.page,at.row,atEnd&&left.length?lineText(left[left.length-1]).length:0);
-  ceRefresh();cePush('struct');ceState.textContent='쪽 경계를 없앴습니다.';
+const ceKinds=card=>ceLineKinds([...ceCards[card].body.children].map(ceReadRuns));
+const ceEndOf=(card,row)=>({card,row,offset:ceCards[card].body.children[row].textContent.length});
+// Backspace / Delete 를 줄 단위로 처리한다. 앞뒤 빈 줄 채움과 >> 줄은 글이 아니라서 건너뛰고, 글이 있는 줄끼리는 공백 하나로 이어 붙인다.
+// 쪽의 첫 줄·끝 줄이면 이웃 쪽의 글줄과 잇고, 줄이 줄어든 쪽은 같은 덩어리의 뒤 쪽에서 당겨 채운다. 처리했으면 true(브라우저 기본 동작은 막는다)
+function ceDeleteKey(e){
+  const here=ceCaret();if(!here||!here.sel.isCollapsed)return false;
+  const back=e.key==='Backspace',card=here.card,rows=[...ceCards[card].body.children],kinds=ceLineKinds(rows.map(ceReadRuns)),kind=kinds[here.row];
+  if(kind==='text'&&(back?here.offset>0:here.offset<rows[here.row].textContent.length))return false;      // 글자 사이는 브라우저가 지운다
+  const first=kinds.indexOf('text'),last=kinds.lastIndexOf('text');
+  const go=to=>{if(to)ceSetCaret(to.card,to.row,to.offset);return true;};            // 글은 그대로 두고 커서만 옮긴다
+  const prevEnd=()=>{if(card<1)return null;const k=ceKinds(card-1).lastIndexOf('text');return k<0?null:ceEndOf(card-1,k);};
+  const nextStart=()=>{if(card>=ceCards.length-1)return null;const k=ceKinds(card+1).indexOf('text');return k<0?null:{card:card+1,row:k,offset:0};};
+  const finish=(at,pullCard)=>{
+    if(!ceFlow({hist:'struct',here:at,pullCard}))ceSetCaret(at.card,at.row,at.offset);
+    ceState.textContent='줄을 정리했습니다.';return true;
+  };
+  const merge=(ac,ar,bc,br)=>{        // b 줄을 a 줄 뒤에 이어 붙인다
+    const A=ceCards[ac].body.children[ar],B=ceCards[bc].body.children[br],joined=ceJoinRuns(ceReadRuns(A),ceReadRuns(B));
+    A.replaceWith(ceLine(joined.runs));B.remove();ceMark(ceCards[ac]);ceMark(ceCards[bc]);
+    return finish({card:ac,row:ar,offset:joined.at},bc);
+  };
+  const drop=(row,at)=>{rows[row].remove();ceMark(ceCards[card]);return finish(at,card);};
+  if(kind==='fill'){
+    if(back)return go(first<0||here.row<first?prevEnd():ceEndOf(card,last));
+    if(first>=0&&here.row<first)return go({card,row:first,offset:0});
+    const to=nextStart();
+    return first<0?go(to):to?merge(card,last,to.card,to.row):true;
+  }
+  if(kind==='gap')return back?drop(here.row,ceEndOf(card,here.row-1)):drop(here.row,{card,row:here.row,offset:0});
+  if(back){        // 글줄의 맨 앞
+    const above=here.row>0?kinds[here.row-1]:'fill';
+    if(above==='text')return merge(card,here.row-1,card,here.row);
+    if(above==='gap')return drop(here.row-1,{card,row:here.row-1,offset:0});
+    const to=prevEnd();return to?merge(to.card,to.row,card,here.row):true;
+  }
+  const below=here.row<rows.length-1?kinds[here.row+1]:'fill';        // 글줄의 맨 끝
+  if(below==='text')return merge(card,here.row,card,here.row+1);
+  if(below==='gap')return drop(here.row+1,{card,row:here.row,offset:here.offset});
+  const to=nextStart();return to?merge(card,here.row,to.card,to.row):true;
 }
 // Ctrl+Enter: 커서에서 줄을 나눠 그 아래를 새 쪽(새 문단)으로 시작한다
 function ceHardBreak(){
@@ -1767,18 +1817,15 @@ function ceArrowKey(e){
   e.preventDefault();ceSetCaret(to,toRow,toOffset===Infinity?trows[toRow].textContent.length:toOffset);return true;
 }
 cePages.addEventListener('keydown',e=>{
+  if(ceComposing&&!e.isComposing&&e.keyCode!==229)ceComposing=false;
   if(e.isComposing||e.keyCode===229)return;
   const mod=e.ctrlKey||e.metaKey;
   if(mod&&!e.altKey&&(e.code==='KeyZ'||e.code==='KeyY')){
     e.preventDefault();
     if(e.code==='KeyY'||e.shiftKey)ceRedo();else ceUndo();
   }else if(mod&&e.key==='Enter'){e.preventDefault();ceHardBreak();}
-  else if((e.key==='Backspace'||e.key==='Delete')&&!mod&&!e.altKey){
-    const here=ceCaret();if(!here||!here.sel.isCollapsed)return;
-    const {rows,top,bottom}=ceEdges(here);
-    if(e.key==='Backspace'&&top&&here.offset===0&&here.card>0&&(here.row===0||!ceIsFiller(rows[here.row]))){e.preventDefault();ceJoinPages(here.card-1,false);}
-    else if(e.key==='Delete'&&bottom&&here.offset>=rows[here.row].textContent.length&&here.card<ceCards.length-1){e.preventDefault();ceJoinPages(here.card,true);}
-  }else if(e.key.startsWith('Arrow'))ceArrowKey(e);
+  else if((e.key==='Backspace'||e.key==='Delete')&&!mod&&!e.altKey){if(ceDeleteKey(e))e.preventDefault();}
+  else if(e.key.startsWith('Arrow'))ceArrowKey(e);
 });
 cePages.addEventListener('click',e=>{
   const button=e.target.closest('button[data-move]');if(!button)return;

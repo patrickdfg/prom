@@ -96,6 +96,19 @@ const B = [[], para('둘째 문단 첫 줄.'), line('둘째 문단 둘째 줄.')
   same(c.ceRecolor(hexed, 1, 4, 'b'), [{t: '가', c: 'k', paragraphStart: true}, {t: '나다라', c: 'b'}, {t: '마', c: 'k'}, {t: '바사', c: 'b'}], 'class color replaces hex');
   same(c.ceRecolor(hexed, 0, 7, 'k'), [{t: '가나다라마바사', c: 'k', paragraphStart: true}], 'default color clears hex and merges');
 }
+{ // line kinds: text lines, blank lines between text (gap), and layout filler (leading/trailing blanks and >> rows)
+  same(c.ceLineKinds([[], line('가'), [], line('나'), line('>>'), []]), ['fill', 'text', 'gap', 'text', 'fill', 'fill']);
+  same(c.ceLineKinds([[], [], []]), ['fill', 'fill', 'fill']);
+  same(c.ceLineKinds([line('가 >>'), [], []]), ['text', 'fill', 'fill']);
+}
+{ // joining two lines: one space between words, none if already spaced or empty, colors kept, 2nd paragraph mark dropped
+  const r = c.ceJoinRuns([{t: '아래쪽', c: 'k', paragraphStart: true}], [{t: '마이크', c: 'b', paragraphStart: true}]);
+  same(r.runs, [{t: '아래쪽', c: 'k', paragraphStart: true}, {t: ' ', c: 'k'}, {t: '마이크', c: 'b'}]); assert.equal(r.at, 3);
+  same(c.ceJoinRuns([{t: '끝 ', c: 'k'}], [{t: '다음', c: 'k'}]).runs, [{t: '끝 ', c: 'k'}, {t: '다음', c: 'k'}], 'no extra space');
+  same(c.ceJoinRuns([], [{t: '가', c: 'k'}]).runs, [{t: '가', c: 'k'}], 'empty first line');
+  const hex = c.ceJoinRuns([{t: '가', c: 'k', hex: '#12ab34'}], [{t: '나', c: 'k'}]);
+  assert.equal(hex.runs[0].hex, '#12ab34', 'custom color kept');
+}
 { // a custom color survives saving and reloading the prompter file; invalid values are dropped
   vm.runInContext(source.slice(source.indexOf('function snapshotPages(){'), source.indexOf('async function savePages()')), c);
   vm.runInContext(source.slice(source.indexOf('function parseSaved(text){'), source.indexOf("$('save').onclick")), c);
