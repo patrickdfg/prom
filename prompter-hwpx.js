@@ -14,9 +14,11 @@ async function create(pages,{count=5,dark=true,title='프롬프터',fontName='Ma
  const rows=Math.max(count,...pages.map(p=>p.length)),height=33449,width=59528,bottom=Math.round(height*(rows===7?.1339:rows===6?.0882:.0424)),margin=2835,pitch=Math.floor((height-margin-bottom)/rows),size=Math.round(3200*5/rows);
  const colors={k:dark?'#FFFFFF':'#000000',b:dark?'#FFFF00':'#0000FF',r:'#FF0000',n:'#FF0000'},ids={};
  for(const face of all(header,HH,'fontface')){const font=all(face,HH,'font').find(f=>f.getAttribute('id')==='0');if(font)font.setAttribute('face',fontName);}
- for(const c of ['k','b','r','n']){
+ const hexOf=r=>/^#[0-9a-f]{6}$/i.test(r&&r.hex||'')?r.hex.toLowerCase():'';
+ const extra=[...new Set(pages.flat(2).map(hexOf).filter(Boolean))];      // 직접 고른 색마다 글자 모양을 하나씩 더 만든다
+ for(const c of ['k','b','r','n',...extra]){
   const ch=chars.firstElementChild.cloneNode(true),id=nextId(chars);ids[c]=id;
-  ch.setAttribute('id',id);ch.setAttribute('height',Math.round(size*(c==='n'?.6:1)));ch.setAttribute('textColor',colors[c]);
+  ch.setAttribute('id',id);ch.setAttribute('height',Math.round(size*(c==='n'?.6:1)));ch.setAttribute('textColor',colors[c]||c.toUpperCase());
   for(const attr of ['hangul','latin','hanja','japanese','other','symbol','user'])all(ch,HH,'fontRef')[0].setAttribute(attr,'0');
   ch.insertBefore(element(header,HH,'hh:bold'),all(ch,HH,'underline')[0]);chars.appendChild(ch);
   styles.appendChild(element(header,HH,'hh:style',{id:nextId(styles),type:'CHAR',name:'PROM:'+c,engName:'PROM:'+c,paraPrIDRef:'0',charPrIDRef:id,nextStyleIDRef:'0',langID:'1042',lockForm:'0'}));
@@ -43,7 +45,7 @@ async function create(pages,{count=5,dark=true,title='프롬프터',fontName='Ma
   if(pi===0&&li===0){const r=element(section,HP,'hp:run',{charPrIDRef:ids.k});r.append(secPr,colPr);p.appendChild(r);}
   const runs=(page[li]||[]).filter(r=>r&&r.t);
   for(const r of runs.length?runs:[{t:'',c:'k'}]){
-   const run=element(section,HP,'hp:run',{charPrIDRef:ids[r.c]??ids.k}),t=element(section,HP,'hp:t');t.textContent=r.t;run.appendChild(t);p.appendChild(run);
+   const run=element(section,HP,'hp:run',{charPrIDRef:ids[hexOf(r)||r.c]??ids.k}),t=element(section,HP,'hp:t');t.textContent=r.t;run.appendChild(t);p.appendChild(run);
   }
   section.documentElement.appendChild(p);
  }});
@@ -61,7 +63,7 @@ async function read(zip,headerText){
  const count=+marker[1];if(count<4||count>60)return null;
  const startStyle=styles.find(s=>s.getAttribute('name')==='PROM paragraph start')?.getAttribute('id');
  const kinds={},shapes=Object.fromEntries(all(header,HH,'charPr').map(e=>[e.getAttribute('id'),e]));
- for(const style of styles){const m=/^PROM:([kbrn])$/.exec(style.getAttribute('name')||'');if(m)kinds[style.getAttribute('charPrIDRef')]=m[1];}
+ for(const style of styles){const m=/^PROM:([kbrn]|#[0-9a-fA-F]{6})$/.exec(style.getAttribute('name')||'');if(m)kinds[style.getAttribute('charPrIDRef')]=m[1];}
  const body=Object.keys(kinds).find(id=>kinds[id]==='k'),dark=shapes[body]?.getAttribute('textColor').toUpperCase()==='#FFFFFF';
  const text=node=>Array.from(node.childNodes,n=>n.nodeType===3?n.nodeValue:n.localName==='lineBreak'?'\n':n.localName==='tab'?' ':text(n)).join('');
  const names=Object.keys(zip.files).filter(n=>/^Contents\/section\d+\.xml$/.test(n)).sort((a,b)=>+a.match(/\d+/)[0]-+b.match(/\d+/)[0]),pages=[];let page=[],bg=null;
@@ -76,7 +78,7 @@ async function read(zip,headerText){
   let row=[],paragraphStart=p.getAttribute('styleIDRef')===startStyle;
   const push=()=>{if(paragraphStart&&row.length){row[0].paragraphStart=true;paragraphStart=false;}page.push(row);row=[];};
   for(const run of p.children){if(run.localName!=='run')continue;const id=run.getAttribute('charPrIDRef'),hex=shapes[id]?.getAttribute('textColor').toUpperCase(),c=kinds[id]||(['#000000','#FFFFFF'].includes(hex)?'k':hex==='#FF0000'?'r':'b');
-   for(const t of Array.from(run.children).filter(e=>e.localName==='t'))text(t).split('\n').forEach((part,i)=>{if(i)push();if(part)row.push({t:part,c});});
+   for(const t of Array.from(run.children).filter(e=>e.localName==='t'))text(t).split('\n').forEach((part,i)=>{if(i)push();if(part)row.push(c[0]==='#'?{t:part,c:'k',hex:c.toLowerCase()}:{t:part,c});});
   }
   push();
  }}

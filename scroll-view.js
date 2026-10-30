@@ -37,7 +37,7 @@ window.PromScrollView=class {
           const runs=pg[li]||[];
           // 화면에 그릴 때만 쪽 넘김 기호를 제외한다. 원고와 음성 추적 인덱스는 유지한다.
           let remaining=runs.map(r=>r.t).join('').replace(/\s*>>\s*$/,'').length;
-          for(const r of runs){const text=r.t.slice(0,remaining);remaining=Math.max(0,remaining-r.t.length);if(!text)continue;const span=document.createElement('span');span.textContent=text;if(['b','r','n'].includes(r.c))span.className=r.c;wrap.appendChild(span);}
+          for(const r of runs){const text=r.t.slice(0,remaining);remaining=Math.max(0,remaining-r.t.length);if(!text)continue;const span=document.createElement('span');span.textContent=text;if(/^#[0-9a-f]{6}$/i.test(r.hex||''))span.style.color=r.hex;else if(['b','r','n'].includes(r.c))span.className=r.c;wrap.appendChild(span);}
           const range=data.ranges?.[pi]?.[li];
           if(!wrap.textContent.trim()){
             // Only an interior blank is source spacing; page edge padding is discarded.

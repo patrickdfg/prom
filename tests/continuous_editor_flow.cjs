@@ -89,6 +89,22 @@ const B = [[], para('둘째 문단 첫 줄.'), line('둘째 문단 둘째 줄.')
   same(c.ceRecolor(runs, 0, 7, 'k').map(r => r.c), ['k'], 'back to default merges into one run');
   same(c.ceRecolor([], 0, 3, 'b'), [], 'empty line stays empty');
   assert.equal(JSON.stringify(runs).includes('"r"'), false, 'input is not modified');
+  // any color: a hex run keeps c='k' (so speech following is unaffected), merges with equal hex, and a class color clears it
+  const hexed = c.ceRecolor(runs, 1, 4, 'k', '#12ab34');
+  same(hexed, [{t: '가', c: 'k', paragraphStart: true}, {t: '나다라', c: 'k', hex: '#12ab34'}, {t: '마', c: 'k'}, {t: '바사', c: 'b'}]);
+  same(c.ceRecolor(hexed, 2, 3, 'k', '#12ab34'), hexed, 'same hex inside a hex run changes nothing');
+  same(c.ceRecolor(hexed, 1, 4, 'b'), [{t: '가', c: 'k', paragraphStart: true}, {t: '나다라', c: 'b'}, {t: '마', c: 'k'}, {t: '바사', c: 'b'}], 'class color replaces hex');
+  same(c.ceRecolor(hexed, 0, 7, 'k'), [{t: '가나다라마바사', c: 'k', paragraphStart: true}], 'default color clears hex and merges');
+}
+{ // a custom color survives saving and reloading the prompter file; invalid values are dropped
+  vm.runInContext(source.slice(source.indexOf('function snapshotPages(){'), source.indexOf('async function savePages()')), c);
+  vm.runInContext(source.slice(source.indexOf('function parseSaved(text){'), source.indexOf("$('save').onclick")), c);
+  c.editing = false; c.cleanText = x => x; c.hasText = p => p.some(l => l.some(r => r.t.trim()));
+  c.P = [[[{t: '가', c: 'k', hex: '#12AB34'}, {t: '나', c: 'k', hex: 'red'}]]];
+  const saved = c.snapshotPages();
+  assert.equal(saved[0][0][0].hex, '#12ab34'); assert.equal(saved[0][0][1].hex, undefined, 'invalid color not saved');
+  const loaded = c.parseSaved(JSON.stringify({app: 'sermon-prompter', pages: [[[{t: '가', c: 'k', hex: '#12ab34'}, {t: '나', c: 'k', hex: '<script>'}]]], lines: 5}));
+  assert.equal(loaded.pages[0][0][0].hex, '#12ab34'); assert.equal(loaded.pages[0][0][1].hex, undefined, 'unsafe color is not loaded');
 }
 { // the original single-page editor uses the same block ends
   c.P = [A, B]; assert.equal(vm.runInContext('blockEnd(0)', c), true);

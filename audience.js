@@ -134,7 +134,7 @@
     for(let i=0;i<Math.max(d.lines,d.pages.length);i++){
       const row=document.createElement('div'),wrap=document.createElement('span'),r=d.range?.[i];row.className='ln';
       if(r && r[1]>r[0]){if(d.dim && d.cursor>=r[1])row.classList.add('read');/* 한 장 송출 화면에서는 현재 줄 세로바를 표시하지 않는다. */}
-      for(const run of d.pages[i]||[]){const s=document.createElement('span');s.textContent=run.t;s.className=['b','r','n'].includes(run.c)?run.c:'';wrap.appendChild(s);}
+      for(const run of d.pages[i]||[]){const s=document.createElement('span');s.textContent=run.t;s.className=['b','r','n'].includes(run.c)?run.c:'';if(/^#[0-9a-f]{6}$/i.test(run.hex||''))s.style.color=run.hex;wrap.appendChild(s);}
       row.appendChild(wrap);display.appendChild(row);
     }
     if(d.nextCue){const row=document.createElement('div'),span=document.createElement('span');row.className='ln next-cue';row.style.color=d.dark?'#73d8ff':'#005b78';span.textContent=d.nextCue;row.appendChild(span);display.appendChild(row);}

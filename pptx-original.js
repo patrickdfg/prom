@@ -281,7 +281,7 @@ window.PromPptxOriginal = (() => {
           const replacement=rows[par.rowIndex]||[];
           const newText=replacement.map(r=>r.t).join('');
           const useOriginal=par.rowIndex<0||par.text===newText;
-          const visibleRuns=useOriginal?par.runs:replacement.map(r=>({...par.runs[0],t:r.t,color:r.c==='b'?'#FFFF00':r.c==='r'?'#FF0000':par.runs[0]?.color}));
+          const visibleRuns=useOriginal?par.runs:replacement.map(r=>({...par.runs[0],t:r.t,color:/^#[0-9a-f]{6}$/i.test(r.hex||'')?r.hex:r.c==='b'?'#FFFF00':r.c==='r'?'#FF0000':par.runs[0]?.color}));
           for(const run of visibleRuns){
             const span=document.createElement('span');span.textContent=run.t;
             span.style.fontSize=units(run.size||28,sw);

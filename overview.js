@@ -37,7 +37,7 @@
       if(count===7)lines.style.inset='13.39% 2.38%';
       for(let i=0;i<count;i++){
         const line=document.createElement('div');line.className='mini-line';
-        for(const run of pg[i]||[]){const span=document.createElement('span');span.textContent=run.t;span.className=['b','r','n'].includes(run.c)?run.c:'';line.appendChild(span);}
+        for(const run of pg[i]||[]){const span=document.createElement('span');span.textContent=run.t;span.className=['b','r','n'].includes(run.c)?run.c:'';if(/^#[0-9a-f]{6}$/i.test(run.hex||''))span.style.color=run.hex;line.appendChild(span);}
         lines.appendChild(line);
       }
       if(window.PromPptxOriginal?.isActive()){

@@ -8,7 +8,7 @@ const NS='xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:
 const tree='<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>';
 function colors(dark){return {bg:dark?'000000':'FFFFFF',k:dark?'FFFFFF':'000000',b:dark?'FFFF00':'0000FF',r:'FF0000',n:'FF0000'};}
 function run(r,size,col,fontName){
-  const c=col[r.c]||col.k,sz=Math.round((r.c==='n'?size*.6:size)*100),font=esc(fontName);
+  const c=/^#[0-9a-f]{6}$/i.test(r.hex||'')?r.hex.slice(1).toUpperCase():col[r.c]||col.k,sz=Math.round((r.c==='n'?size*.6:size)*100),font=esc(fontName);
   return '<a:r><a:rPr lang="ko-KR" sz="'+sz+'" b="1" dirty="0"><a:solidFill><a:srgbClr val="'+c+'"/></a:solidFill><a:latin typeface="'+font+'"/><a:ea typeface="'+font+'"/></a:rPr><a:t xml:space="preserve">'+esc(r.t)+'</a:t></a:r>';
 }
 function backgroundPic(){
