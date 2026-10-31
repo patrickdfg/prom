@@ -13,9 +13,9 @@ const record={id:'personal',name:'주일예배전반 복제',design:{layouts:{wo
  assert(!decoded.includes(wave),'known green wave is excluded by source identity before decoding');
  assert.equal(L.collect([record],'background').length,1,'opaque background choices remain available');assert.equal(JSON.stringify(record),before,'preparing gallery never modifies original records or shapes');
  const count=decoded.length;await L.prepare([record]);assert.equal(decoded.length,count,'image checks are cached');
- const catalog=JSON.parse(fs.readFileSync('ppt/images/library/catalog.json','utf8'));assert.equal(catalog.items.filter(x=>x.kind==='background').length,15);assert.equal(catalog.items.filter(x=>x.kind==='artwork').length,10);
+ const catalog=JSON.parse(fs.readFileSync('ppt/images/library/catalog.json','utf8'));assert.equal(catalog.items.filter(x=>x.kind==='background').length,21);assert.equal(catalog.items.filter(x=>x.kind==='artwork').length,10);
  for(const id of ['banner-gold-ribbon-v1','banner-lavender-leaves-v1','banner-blue-diamond-v1','banner-pink-flowers-v1','banner-blue-wave-v1'])assert(!catalog.items.some(x=>x.id===id));
  assert(catalog.items.some(x=>x.id==='banner-gold-ribbon-transparent-v1'),'transparent ribbon stays');assert.equal(catalog.items.filter(x=>x.file.startsWith('v2/')).length,6,'all six transparent banners stay');
- for(const name of ['make/index.html','ppt/index.html'])assert(fs.readFileSync(name,'utf8').includes('image-library.js?v=20261026-backgrounds1'));
+ for(const name of ['make/index.html','ppt/index.html'])assert(fs.readFileSync(name,'utf8').includes('image-library.js?v=20261031-backgrounds2'));
  console.log('PASS opaque/empty/unreadable artwork removed, exact green-wave exclusion, unrelated transparent art and all backgrounds retained, cache, template immutability, five obsolete banners and both editor references');
 })().catch(e=>{console.error(e);process.exitCode=1});

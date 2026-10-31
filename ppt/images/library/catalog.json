@@ -1,5 +1,5 @@
 {
-  "version": 7,
+  "version": 8,
   "items": [
     {
       "id": "trinity-background-v1",
@@ -200,6 +200,54 @@
       "file": "v5/ivory-navy-gold-art-deco-frame.png",
       "width": 1672,
       "height": 941
+    },
+    {
+      "id": "brown-gold-double-frame-background-v6",
+      "kind": "background",
+      "label": "갈색 금빛 이중 테두리",
+      "file": "v6/brown-gold-double-frame.png",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "id": "light-gold-ornament-frame-background-v6",
+      "kind": "background",
+      "label": "연금빛 장식선 테두리",
+      "file": "v6/light-gold-ornament-frame.png",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "id": "white-sky-blue-gold-glow-background-v6",
+      "kind": "background",
+      "label": "흰빛 하늘색 금빛 번짐",
+      "file": "v6/white-sky-blue-gold-glow.jpg",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "id": "beige-marble-wheat-flower-background-v6",
+      "kind": "background",
+      "label": "베이지 대리석 밀 이삭·꽃",
+      "file": "v6/beige-marble-wheat-flower-frame.jpg",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "id": "teal-marble-white-flower-background-v6",
+      "kind": "background",
+      "label": "청록 대리석 흰 꽃",
+      "file": "v6/teal-marble-white-flower-frame.jpg",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "id": "pink-marble-rose-background-v6",
+      "kind": "background",
+      "label": "분홍 대리석 장미",
+      "file": "v6/pink-marble-rose-frame.jpg",
+      "width": 1920,
+      "height": 1080
     }
   ]
 }

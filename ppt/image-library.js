@@ -1,7 +1,7 @@
 /* Both editors read the same template artwork without changing stored templates. */
 (function(root){
 'use strict';
-const catalogUrl=typeof document==='object'?new URL('images/library/catalog.json?v=7',document.currentScript.src):null;
+const catalogUrl=typeof document==='object'?new URL('images/library/catalog.json?v=8',document.currentScript.src):null;
 // 그림 보관함에서만 제외한다. 사용 중인 PPT·템플릿의 원본 그림은 지우지 않는다.
 const excludedArtwork=new Set([
  // 주일예배전반의 꽃·나뭇잎 원본 (복제·이름 변경을 해도 같은 그림은 다시 나오지 않는다).
