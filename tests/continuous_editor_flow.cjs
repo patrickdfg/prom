@@ -109,6 +109,13 @@ const B = [[], para('둘째 문단 첫 줄.'), line('둘째 문단 둘째 줄.')
   const hex = c.ceJoinRuns([{t: '가', c: 'k', hex: '#12ab34'}], [{t: '나', c: 'k'}]);
   assert.equal(hex.runs[0].hex, '#12ab34', 'custom color kept');
 }
+{ // Backspace/Delete step one row at a time: the neighbouring row, across a page boundary to the neighbour page's last/first row
+  const counts = [5, 5, 3];
+  same(c.ceNearRow(counts, 1, 3, true), {card: 1, row: 2}); same(c.ceNearRow(counts, 1, 3, false), {card: 1, row: 4});
+  same(c.ceNearRow(counts, 1, 0, true), {card: 0, row: 4}, 'above the first row is the previous page\'s last row, not a skip over its blank rows');
+  same(c.ceNearRow(counts, 1, 4, false), {card: 2, row: 0}, 'below the last row is the next page\'s first row');
+  assert.equal(c.ceNearRow(counts, 0, 0, true), null, 'start of the manuscript'); assert.equal(c.ceNearRow(counts, 2, 2, false), null, 'end of the manuscript');
+}
 { // a custom color survives saving and reloading the prompter file; invalid values are dropped
   vm.runInContext(source.slice(source.indexOf('function snapshotPages(){'), source.indexOf('async function savePages()')), c);
   vm.runInContext(source.slice(source.indexOf('function parseSaved(text){'), source.indexOf("$('save').onclick")), c);
