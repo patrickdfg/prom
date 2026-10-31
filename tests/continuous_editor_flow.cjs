@@ -101,10 +101,12 @@ const B = [[], para('둘째 문단 첫 줄.'), line('둘째 문단 둘째 줄.')
   same(c.ceLineKinds([[], [], []]), ['fill', 'fill', 'fill']);
   same(c.ceLineKinds([line('가 >>'), [], []]), ['text', 'fill', 'fill']);
 }
-{ // joining two lines: one space between words, none if already spaced or empty, colors kept, 2nd paragraph mark dropped
+{ // joining two lines like Word: the text is simply concatenated (no space added, so Enter then Backspace restores the line), colors kept, 2nd paragraph mark dropped
   const r = c.ceJoinRuns([{t: '아래쪽', c: 'k', paragraphStart: true}], [{t: '마이크', c: 'b', paragraphStart: true}]);
-  same(r.runs, [{t: '아래쪽', c: 'k', paragraphStart: true}, {t: ' ', c: 'k'}, {t: '마이크', c: 'b'}]); assert.equal(r.at, 3);
-  same(c.ceJoinRuns([{t: '끝 ', c: 'k'}], [{t: '다음', c: 'k'}]).runs, [{t: '끝 ', c: 'k'}, {t: '다음', c: 'k'}], 'no extra space');
+  same(r.runs, [{t: '아래쪽', c: 'k', paragraphStart: true}, {t: '마이크', c: 'b'}]); assert.equal(r.at, 3);
+  same(c.ceJoinRuns([{t: '끝 ', c: 'k'}], [{t: '다음', c: 'k'}]).runs, [{t: '끝 ', c: 'k'}, {t: '다음', c: 'k'}], 'existing space kept as is');
+  const split = c.ceJoinRuns([{t: '소', c: 'k'}], [{t: '리', c: 'k'}]);
+  assert.equal(split.runs.map(x => x.t).join(''), '소리', 'a line split inside a word is restored exactly'); assert.equal(split.at, 1);
   same(c.ceJoinRuns([], [{t: '가', c: 'k'}]).runs, [{t: '가', c: 'k'}], 'empty first line');
   const hex = c.ceJoinRuns([{t: '가', c: 'k', hex: '#12ab34'}], [{t: '나', c: 'k'}]);
   assert.equal(hex.runs[0].hex, '#12ab34', 'custom color kept');

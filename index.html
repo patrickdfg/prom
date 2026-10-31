@@ -1262,7 +1262,7 @@ function startWith(pages,bg,original=null){
   openPrompter(reflow(pages,n),bg);
 }
 /* ---------- 화면에서 바로 고치기 ---------- */
-// Enter=줄 나누기, Backspace=지우기·줄 합치기(쪽 맨 앞이면 앞 쪽과 합침), Ctrl+Enter=그 자리부터 다음 쪽, Esc=편집 끝
+// Enter=줄 나누기, Backspace=한 글자 지우기·줄 맨 앞이면 윗줄과 합치기(워드와 같음), Ctrl+Enter=그 자리부터 다음 쪽, Esc=편집 끝
 let editing=false, dirty=false, baseName='대본';
 const hasText=ls=>ls.some(l=>l.some(r=>r.t.trim()));
 function readLines(trim=true){
@@ -1362,11 +1362,11 @@ function ceLineKinds(lines){
   const first=has.indexOf(true),last=has.lastIndexOf(true);
   return lines.map((l,i)=>has[i]?'text':first>=0&&i>first&&i<last&&lineText(l).trim()!=='>>'?'gap':'fill');
 }
-// 두 줄의 글을 이어 붙인다. 붙는 자리에 공백이 없으면 하나 넣고, 뒤 줄의 새 문단 표시는 지운다. at 은 붙은 자리(앞 줄 글자 수)
+// 두 줄의 글을 그대로 이어 붙인다(워드처럼 공백을 넣지 않아 Enter 의 정반대가 된다). 뒤 줄의 새 문단 표시는 지운다. at 은 붙은 자리(앞 줄 글자 수)
 function ceJoinRuns(a,b){
-  const ta=lineText(a),tb=lineText(b),space=ta&&tb&&!/\s$/.test(ta)&&!/^\s/.test(tb)?[{t:' ',c:'k'}]:[];
+  const ta=lineText(a);
   const tail=b.map(r=>{const x={...r};delete x.paragraphStart;return x;});
-  return {runs:[...a.map(r=>({...r})),...space,...tail],at:ta.length};
+  return {runs:[...a.map(r=>({...r})),...tail],at:ta.length};
 }
 // 커서 줄의 바로 위(back)·아래 줄. counts 는 쪽마다의 줄 수. 쪽 경계를 넘으면 이웃 쪽의 끝·첫 줄이고, 원고의 처음·끝이면 null
 function ceNearRow(counts,card,row,back){
@@ -1743,7 +1743,7 @@ cePages.addEventListener('compositionstart',()=>{ceComposing=true;});
 cePages.addEventListener('compositionend',()=>{ceComposing=false;ceFlow({hist:'type'});});
 const ceKinds=card=>ceLineKinds([...ceCards[card].body.children].map(ceReadRuns));
 const ceEndOf=(card,row)=>({card,row,offset:ceCards[card].body.children[row].textContent.length});
-// Backspace / Delete 를 줄 단위로 처리한다. 글이 있는 이웃 줄과는 공백 하나로 이어 붙이고(쪽 경계 포함), 빈 줄 채움과 >> 줄은 지우지 않고 한 줄씩 지나간다.
+// Backspace / Delete 를 워드처럼 처리한다. 글자는 한 칸씩 지우고, 줄 맨 앞·맨 끝이면 글이 있는 이웃 줄과 그대로 이어 붙이며(쪽 경계 포함), 빈 줄 채움과 >> 줄은 지우지 않고 한 줄씩 지나간다.
 // 이어 붙여 줄이 줄어든 쪽은 같은 덩어리의 뒤 쪽에서 당겨 채운다. 처리했으면 true(브라우저 기본 동작은 막는다)
 function ceDeleteKey(e){
   const here=ceCaret();if(!here||!here.sel.isCollapsed)return false;
