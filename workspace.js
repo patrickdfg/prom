@@ -26,7 +26,7 @@
   $('paste').addEventListener('input', () => { if(inputTab === 'paste') $('start').disabled = !$('paste').value.trim(); });
   $('paste').addEventListener('paste', () => queueMicrotask(() => { if(inputTab === 'paste') $('start').disabled = !$('paste').value.trim(); }));
   $('start').onclick = () => {
-    if(inputTab === 'file') { if(pending) startWith(pending.pages,pending.bg,pending.original); }
+    if(inputTab === 'file') { startPendingFile(); }
     else { baseName = '붙여 넣은 원고'; $('usePaste').click(); }
   };
   $('layoutMode').onchange = () => {

@@ -23,7 +23,10 @@ const{chromium}=require('playwright'),assert=require('node:assert/strict'),fs=re
    },Array.from(fs.readFileSync(file)));
    assert.equal(check.mime,'application/hwp+zip');assert.equal(check.first,'mimetype');assert.deepEqual(check.xmlErrors,[0,0]);assert.deepEqual(check.pages,pages);assert.equal(check.lines,count);assert.equal(check.hasMS,false);
    await page.evaluate(()=>openPrompter([[ [{t:'다른 원고',c:'k'}],[],[],[],[] ]]));
-   await page.setInputFiles('#file',file);await page.waitForFunction(n=>LINES===n&&P.length===2,count);assert.deepEqual(await page.evaluate(()=>P),pages);assert.equal(await page.locator('#theme').inputValue(),count===6?'white':'dark');
+   await page.setInputFiles('#file',file);
+   await page.waitForFunction(()=>!!pending&&document.getElementById('setup').style.display!=='none');
+   assert.equal(await page.evaluate(()=>P[0][0][0]?.t),'다른 원고','원고 선택만으로 기존 슬라이드를 바꾸지 않는다');
+   await page.click('#start');await page.waitForFunction(n=>LINES===n&&P.length===2,count);assert.deepEqual(await page.evaluate(()=>P),pages);assert.equal(await page.locator('#theme').inputValue(),count===6?'white':'dark');
   }
   const ordinary=await page.evaluate(async()=>{const z=new JSZip();z.file('Contents/header.xml','<hh:head xmlns:hh="http://www.hancom.co.kr/hwpml/2011/head"><hh:charPr id="0" textColor="#000000"/></hh:head>');z.file('Contents/section0.xml','<hs:sec xmlns:hs="http://www.hancom.co.kr/hwpml/2011/section" xmlns:hp="http://www.hancom.co.kr/hwpml/2011/paragraph"><hp:p><hp:run charPrIDRef="0"><hp:t>일반 원고</hp:t></hp:run></hp:p></hs:sec>');return parseHwpx(await z.generateAsync({type:'arraybuffer'}));});
   assert.equal(ordinary.lines,undefined);assert.equal(ordinary.pages[0][0][0].t,'일반 원고','다른 HWPX 파일은 기존 가져오기를 사용');

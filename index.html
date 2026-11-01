@@ -2752,6 +2752,26 @@ async function htmlRendered(src){
     return {pages:paginate(paras),bg:null};
   }finally{fr.remove()}
 }
+function startPendingFile(){
+  if(!pending)return;
+  const r=pending;
+  if(r.preserve==='saved'){
+    window.PromPptxOriginal?.clear();
+    if(+r.mobile>=MFS_MIN&&+r.mobile<=MFS_MAX)MFS=+r.mobile;
+    setMode(r.mobile);LINES=r.lines;
+    openPrompter(r.pages);notifyUI('applyMetadata',r.meta);render();
+    lastSrc={pages:P.map(p=>p.slice())};dirty=false;
+    toast('저장한 파일을 열었습니다 · '+P.length+'쪽 · '+LINES+'줄',5000);
+  }else if(r.preserve){
+    window.PromPptxOriginal?.clear();
+    setMode(false);LINES=r.lines;
+    if(r.preserve==='hwpx'){$('theme').value=r.bg?'cloud':r.dark?'dark':'white';applyTheme();}
+    openPrompter(r.pages,r.bg);
+    lastSrc={pages:P.map(p=>p.slice()),bg:r.bg};dirty=false;
+    if(r.preserve==='hwpx')toast('HWPX 파일을 열었습니다 · '+P.length+'쪽 · '+LINES+'줄',5000);
+  }else startWith(r.pages,r.bg,r.original);
+  $('loadmsg').textContent='';
+}
 async function loadFile(f){
   remClear(); pending=null; $('start').disabled=true; $('fname').textContent=''; $('loadmsg').textContent='읽는 중…';
   baseName=f.name.replace(/\.[^.]+$/,'').replace(/_프롬프터$/,'')||'대본';
@@ -2764,18 +2784,12 @@ async function loadFile(f){
       if(!('DecompressionStream' in window))throw new Error('이 브라우저는 hwp를 읽지 못합니다. 최신 크롬으로 열어 주세요.');
       r=await parseHwp(await f.arrayBuffer());
     }else if(/\.json$/i.test(f.name)){
-      // 이 프로그램에서 저장한 파일은 다시 변환하지 않고 그대로 연다
-      const s=parseSaved(await f.text());
-      if(listening)stopMic(); if(editing)endEdit();
-      window.PromPptxOriginal?.clear();
-      if(+s.mobile>=MFS_MIN&&+s.mobile<=MFS_MAX)MFS=+s.mobile; setMode(s.mobile); LINES=s.lines; openPrompter(s.pages); notifyUI('applyMetadata',s.meta); render(); lastSrc={pages:P.map(p=>p.slice())}; dirty=false; $('loadmsg').textContent='';
-      toast('저장한 파일을 열었습니다 · '+P.length+'쪽 · '+LINES+'줄',5000); return;
+      // 저장 파일의 쪽·설정·메모는 시작 버튼을 누를 때 복원한다.
+      r={...parseSaved(await f.text()),preserve:'saved'};
     }else if(/\.html?$/i.test(f.name)){
-      // html 은 이미 쪽이 나뉘어 있으니 줄 수 선택 없이 그대로 바로 연다
+      // HTML의 기존 쪽 나눔은 보존하되, 열기는 시작 버튼에서 한다.
       r=await parseHtml(await f.arrayBuffer());
-      if(!r.pages.some(p=>p.some(l=>l.some(x=>x.t.trim()))))throw new Error('읽을 내용이 없습니다.');
-      window.PromPptxOriginal?.clear(); setMode(false); LINES=Math.max(5,...r.pages.map(p=>p.length)); openPrompter(r.pages,r.bg);
-      $('loadmsg').textContent=''; const rr=remReport(); if(rr)toast(rr,10000); return;
+      r={...r,lines:Math.max(5,...r.pages.map(p=>p.length)),preserve:'html'};
     }
     else if(/\.txt$/i.test(f.name)) r={pages:parseTxt(await f.text()),bg:null};
     else if(/\.docx$/i.test(f.name)) r=await parseDocx(await f.arrayBuffer());
@@ -2791,18 +2805,16 @@ async function loadFile(f){
     else if(/\.ppt$/i.test(f.name)) r=await parsePpt(await f.arrayBuffer());
     else if(/\.pdf$/i.test(f.name)) r=await parsePdf(await f.arrayBuffer());
     else throw new Error('hwp, hwpx, doc, docx, ppt, pptx, pdf, txt, html 파일만 열 수 있습니다.');
-    if(r.lines){
-      if(listening)stopMic();if(editing)endEdit();window.PromPptxOriginal?.clear();
-      setMode(false);LINES=r.lines;$('theme').value=r.bg?'cloud':r.dark?'dark':'white';applyTheme();openPrompter(r.pages,r.bg);lastSrc={pages:P.map(p=>p.slice()),bg:r.bg};dirty=false;$('loadmsg').textContent='';
-      toast('HWPX 파일을 열었습니다 · '+P.length+'쪽 · '+LINES+'줄',5000);return;
-    }
+    if(r.lines&&!r.preserve)r={...r,preserve:'hwpx'};
     if(!r.original&&!r.pages.some(p=>p.some(l=>l.some(x=>x.t.trim()))))throw new Error('읽을 내용이 없습니다.');
-    if($('view').style.display==='block'){if(editing)endEdit();stopMic();tStop();startWith(r.pages,r.bg,r.original);$('loadmsg').textContent='';return}
-    pending=r; $('start').disabled=false; $('fname').textContent=r.original?f.name+' · '+r.original.slides.length+'장 원본 모양 유지 · 시작을 누르세요.':f.name+' 을(를) 읽었습니다. 줄 수를 고르고 시작을 누르세요.';
+    // 기존 프롬프터가 열려 있어도 새 원고는 시작 버튼을 누르기 전까지 적용하지 않는다.
+    if($('view').style.display==='block')$('back').click();
+    pending=r;$('fileTab').click();$('start').disabled=false;
+    $('fname').textContent=r.original?f.name+' · '+r.original.slides.length+'장 원본 모양 유지 · 시작을 누르세요.':f.name+' 을(를) 읽었습니다. 시작을 누르세요.';
     $('loadmsg').textContent=''; const rr=remReport(); if(rr)toast(rr,10000);
   }catch(e){$('loadmsg').textContent=e.message; if($('view').style.display==='block')toast(e.message,6000)}
 }
-$('start').onclick=()=>{ if(pending)startWith(pending.pages,pending.bg,pending.original) };
+$('start').onclick=startPendingFile;
 try{$('skipParen').checked=localStorage.getItem('prompterSkipParen')==='1'}catch(_){}
 $('pick').onclick=()=>$('file').click();
 $('file').onchange=e=>{const f=e.target.files[0]; e.target.value=''; if(f)loadFile(f)};
@@ -2914,7 +2926,7 @@ if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 <script src="slide-layout.js?v=20261016-6"></script>
 <script src="smooth-scroll.js?v=20261017-line1"></script>
 <script src="scroll-view.js?v=20261031-hex1"></script>
-<script src="display-screens.js?v=20261023-local-output"></script><script src="workspace.js?v=20261031-ce-keys1"></script>
+<script src="display-screens.js?v=20261023-local-output"></script><script src="workspace.js?v=20261102-manuscript-start1"></script>
 <script src="overview.js?v=20261031-hex1"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
 <script src="extras.js?v=20261023-stage-hide1"></script>
