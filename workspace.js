@@ -346,10 +346,10 @@
   function setFont(name){fontPick=PromFont.clean(name);PromFont.apply(fontPick);PromFont.show($('fontFamily'),fontPick);}
   PromFont.bind($('fontPick'),PromFont.remembered(),name=>PromFont.remember(name));
   PromFont.bind($('fontFamily'),'',name=>{setFont(name);PromFont.remember(fontPick);PromFont.show($('fontPick'),fontPick);render();saveNow();publish();});
-  // 굵게: 체크하면 모든 화면의 본문을 굵게, 끄면 보통 굵기. 고른 적 없는 원고는 원래 굵기를 그대로 둔다.
+  // 굵게: 체크하면 모든 화면의 본문을 굵게, 끄면 보통 굵기. 새 원고는 시작 화면의 '굵게'(처음엔 늘 체크)를 따르고, 고른 적 없는 예전 원고는 원래 굵기를 그대로 둔다.
   let fontBold;
   function setBold(bold){fontBold=typeof bold==='boolean'?bold:undefined;PromFont.applyBold(fontBold);$('fontBold').checked=fontBold===true;}
-  $('fontBold').onchange=()=>{setBold($('fontBold').checked);PromFont.rememberBold(fontBold);render();saveNow();publish();};
+  $('fontBold').onchange=()=>{setBold($('fontBold').checked);render();saveNow();publish();};
   function syncTheme(){for(const value of ['dark','cloud','white'])$('theme-'+value).setAttribute('aria-pressed',String($('theme').value===value));}
   for(const value of ['dark','cloud','white'])$('theme-'+value).onclick=()=>{$('theme').value=value;$('theme').dispatchEvent(new Event('change'));};
   $('theme').addEventListener('change',()=>{syncTheme();publish();saveNow();});syncTheme();
@@ -419,7 +419,7 @@
     // 새 원고(data 없음)는 시작 화면의 글꼴, 저장된 원고는 저장된 글꼴을 쓴다. 글꼴 정보가 없던 예전 원고는 기본 글꼴 그대로다.
     const fresh=data==null; data=data||{};
     setFont(fresh?$('fontPick').value:typeof data.font==='string'?data.font:'');
-    setBold(fresh?PromFont.rememberedBold():data.bold);
+    setBold(fresh?$('fontPickBold').checked:data.bold);
     notes=Object.create(null);
     const fromLegacy=(text,i=0,count=LINES)=>({text:text.slice(0,2000),x:0.06,y:clamp(0.05+(i+0.3)*0.9/Math.max(1,count),0.04,0.9),size:20});
     if(data.notes&&typeof data.notes==='object')for(const [k,v]of Object.entries(data.notes))if(typeof v==='string'&&v.trim())notes[k]=[fromLegacy(v)];
