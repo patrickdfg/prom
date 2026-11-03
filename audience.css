@@ -7,8 +7,9 @@
 #fullscreen[hidden],:fullscreen #fullscreen{display:none!important}
 
 /* 두 발표 방식에 동일한 본문 글꼴과 굵기를 적용한다. */
-#display,#display .ln,#display .scroll-line{font-family:var(--prom-font-pick,'PFont'),'PFont','Malgun Gothic','Apple SD Gothic Neo',sans-serif;font-weight:700}
+#display,#display .ln,#display .scroll-line{font-family:var(--prom-font-pick,'PFont'),'PFont','Malgun Gothic','Apple SD Gothic Neo',sans-serif;font-weight:var(--prom-font-weight,700)}
 #display .ln>span,#display .scroll-line>span{font-family:inherit;font-weight:inherit}
+#display .ln span.b,#display .scroll-line span.b,#display .ln span.b *,#display .scroll-line span.b *{font-weight:700}
 
 .scroll-zoom{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:6px;padding:8px;border-radius:10px;background:#10151ded;z-index:20;opacity:0;pointer-events:none;transition:opacity .15s}
 .scroll-zoom[hidden]{display:none!important}.zoom-open .scroll-zoom{opacity:1;pointer-events:auto}

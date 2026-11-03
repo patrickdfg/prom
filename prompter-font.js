@@ -33,5 +33,9 @@
       else root.toast?.('PC 글꼴 목록을 불러오지 못했습니다. 브라우저의 글꼴 접근 허용을 확인하세요.',5000);
     });
   }
-  root.PromFont={clean,apply,remembered,remember,bind,show:fill};
+  // 굵게: true=700, false=보통. 한 번도 고르지 않은 원고(undefined)는 화면마다 원래 굵기를 그대로 쓴다.
+  function applyBold(bold,target=document.documentElement){if(typeof bold==='boolean')target.style.setProperty('--prom-font-weight',bold?'700':'400');else target.style.removeProperty('--prom-font-weight');}
+  function rememberedBold(){try{const v=localStorage.getItem('promFontBold');return v==='1'?true:v==='0'?false:undefined;}catch(_){return undefined;}}
+  function rememberBold(bold){try{localStorage.setItem('promFontBold',bold?'1':'0');}catch(_){}}
+  root.PromFont={clean,apply,remembered,remember,bind,show:fill,applyBold,rememberedBold,rememberBold};
 })(typeof window!=='undefined'?window:globalThis);

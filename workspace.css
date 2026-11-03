@@ -129,7 +129,7 @@ button:hover{filter:brightness(1.12)}
 #slideGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--card-width,330px)),1fr));gap:6px;align-items:start;position:relative}
 .slide-card{display:block;padding:2px;border:2px solid transparent;border-radius:10px;background:transparent;color:#c6d0dd;text-align:left;min-width:0;cursor:pointer}
 .slide-card:hover{background:#223043;filter:none}.slide-card.active{border-color:#8dbaff;background:#243a55;box-shadow:0 0 0 1px #8dbaff55}
-.mini-paper{container-type:inline-size;position:relative;aspect-ratio:210/118;overflow:hidden;background:#fff center/cover no-repeat;color:#000;font-family:var(--prom-font-pick,'PFont'),'PFont','Malgun Gothic',sans-serif;font-weight:700;border-radius:3px;box-shadow:0 3px 12px #0005}
+.mini-paper{container-type:inline-size;position:relative;aspect-ratio:210/118;overflow:hidden;background:#fff center/cover no-repeat;color:#000;font-family:var(--prom-font-pick,'PFont'),'PFont','Malgun Gothic',sans-serif;font-weight:var(--prom-font-weight,700);border-radius:3px;box-shadow:0 3px 12px #0005}
 .mini-paper.dark{background:#000;color:#fff}.mini-paper.dark .b{color:var(--focus)}.mini-paper.mobile{font-family:'Malgun Gothic',sans-serif;font-weight:400}
 .mini-lines{position:absolute;inset:4.24% 2.38%;display:flex;flex-direction:column;text-align:center}
 .mini-line{flex:1;display:flex;justify-content:center;align-items:center;white-space:pre;min-height:0}.mini-line.read{opacity:.4}
@@ -181,7 +181,7 @@ button:hover{filter:brightness(1.12)}
 #pageNumLayer[hidden]{display:none}
 #pageNumLayer .pn{position:absolute;left:22px;font:900 var(--prom-page-number-size,104px)/1 'PFont','Arial Black','Malgun Gothic','Apple SD Gothic Neo',system-ui,sans-serif;color:#ff2a2a;text-shadow:0 0 6px #000,0 2px 10px #000b;-webkit-text-stroke:2px #ff2a2a;paint-order:stroke fill}
 #pageNumLayer .pn[hidden]{display:none}
-#localScroll{position:absolute;inset:0;width:100%;height:100%;font-family:var(--prom-font-pick,'PFont'),'PFont','Malgun Gothic',sans-serif;font-weight:700;background:center/cover no-repeat}
+#localScroll{position:absolute;inset:0;width:100%;height:100%;font-family:var(--prom-font-pick,'PFont'),'PFont','Malgun Gothic',sans-serif;font-weight:var(--prom-font-weight,700);background:center/cover no-repeat}
 #localScroll:not(.scroll-dark){background-color:transparent}
 #view.local-scroll #page,#view.local-scroll #noteLayer{display:none!important}
 #view.solo-presentation.controls-open #bar,#view.solo-presentation.controls-open #statusbar{display:flex!important;opacity:1!important;pointer-events:auto!important}

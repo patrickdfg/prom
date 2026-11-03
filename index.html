@@ -60,11 +60,11 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #view{display:none;position:fixed;inset:0;background:#000}
 #stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
 #page{position:relative;background:#fff center/cover no-repeat;overflow:hidden;
-  font-family:var(--prom-font-pick,'PFont'),'PFont','Malgun Gothic',sans-serif;color:#000;text-align:center}
-#page.fallback{font-weight:700}
+  font-family:var(--prom-font-pick,'PFont'),'PFont','Malgun Gothic',sans-serif;color:#000;text-align:center;font-weight:var(--prom-font-weight,normal)}
+#page.fallback{font-weight:var(--prom-font-weight,700)}
 /* 모바일(폰 세로 전용)은 굵게 하지 않는다. 강조는 노란색으로만 구분 */
-#page.mobile{font-family:var(--prom-font-pick,'Malgun Gothic'),'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif;font-weight:700}
-#page.mobile .b,#page.mobile *{font-weight:700}
+#page.mobile{font-family:var(--prom-font-pick,'Malgun Gothic'),'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif;font-weight:var(--prom-font-weight,700)}
+#page.mobile *{font-weight:var(--prom-font-weight,700)}#page.mobile .b{font-weight:700}
 #lines{position:absolute;inset:4.24% 2.38%;display:flex;flex-direction:column}
 /* 줄 간격: 6줄은 90%, 7줄은 80%로 줄이고 가운데에 모은다 (글자 크기는 그대로) */
 #lines.g6{inset:8.82% 2.38%}
@@ -124,7 +124,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
-<link rel="stylesheet" href="workspace.css?v=20261103-font2">
+<link rel="stylesheet" href="workspace.css?v=20261103-bold1">
 <link rel="stylesheet" href="extras.css?v=20261017-follow3">
 <style>.app-switch{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;flex-shrink:0;padding:8px 12px;border:1px solid #506a88;border-radius:8px;background:#20344c;color:#d6f5ec!important;font:600 12px/1.4 sans-serif;text-decoration:none;pointer-events:auto}.app-switch:hover{background:#2b4963}.app-switch:focus-visible{outline:3px solid #5de2ca;outline-offset:2px}</style>
 <link rel="stylesheet" href="display-screens.css?v=20261017-screen1">
@@ -204,7 +204,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <div class="control-group"><label id="pageNumOptWrap" title="쪽 번호를 왼쪽 위에 본문 글자 크기로 표시합니다. 원고에 쪽 번호가 없으면 프롬프터 페이지 번호를 표시합니다."><input type="checkbox" id="pageNumOpt" checked>쪽</label><label id="speedOptWrap" title="마이크를 켰을 때 오른쪽 위에 말하는 속도(현수 목소리=100)를 띄웁니다"><input type="checkbox" id="speedOpt">속도<span class="wide"> 표시</span></label><label id="dimOptWrap"><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label></div>
     <div class="control-group"><button id="note">발표 메모</button><button id="edit">연속 편집 (E)</button><button id="save" aria-haspopup="dialog" aria-controls="saveDialog">저장</button><button id="openf">열기</button></div>
     <label id="labOptWrap" title="줄 간격을 좁히고 다음 장 첫 줄을 하단에 표시합니다"><input type="checkbox" id="labNextLine" checked> 다음 장 첫 줄 보기</label>
-    <div class="control-group style-group"><label>글꼴 <select id="fontFamily" title="이 원고의 본문 글꼴 · 원고와 함께 저장됩니다"></select></label><label>강조 <select id="focusColor"><option value="#ffff00">노랑</option><option value="#b6f36a">연두</option></select></label></div>
+    <div class="control-group style-group"><label>글꼴 <select id="fontFamily" title="이 원고의 본문 글꼴 · 원고와 함께 저장됩니다"></select></label><label title="본문 글자를 굵게 표시합니다 · 원고와 함께 저장됩니다"><input type="checkbox" id="fontBold"> 굵게</label><label>강조 <select id="focusColor"><option value="#ffff00">노랑</option><option value="#b6f36a">연두</option></select></label></div>
     <button id="more" aria-expanded="false" aria-controls="moreTools">더보기</button>
     <span id="autosaveState" role="status">기기에 저장됨</span>
     <div id="moreTools" hidden>
@@ -2927,7 +2927,7 @@ if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 <script src="slide-layout.js?v=20261016-6"></script>
 <script src="smooth-scroll.js?v=20261017-line1"></script>
 <script src="scroll-view.js?v=20261031-hex1"></script>
-<script src="display-screens.js?v=20261023-local-output"></script><script src="prompter-font.js?v=20261103-font1"></script><script src="workspace.js?v=20261103-font1"></script>
+<script src="display-screens.js?v=20261023-local-output"></script><script src="prompter-font.js?v=20261103-bold1"></script><script src="workspace.js?v=20261103-bold1"></script>
 <script src="overview.js?v=20261031-hex1"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
 <script src="extras.js?v=20261023-stage-hide1"></script>
