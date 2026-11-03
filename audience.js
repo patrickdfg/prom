@@ -99,6 +99,7 @@
     const notice=document.getElementById('stageNotice');notice.textContent=typeof extra.message==='string'?extra.message.slice(0,140):'';notice.hidden=!notice.textContent;
     display.classList.toggle('scroll-host',!!extra.continuous);
     if(!extra.continuous){if(!d.originalKey)display.replaceChildren();scrollRenderer.key='';}else {display.style.fontSize='';display.style.width=display.style.height='';}
+    window.PromFont?.apply(d.font);
     document.body.style.setProperty('--focus',d.dark?(d.focus==='#b6f36a'?'#b6f36a':'#ffff00'):'#0000ff');
     document.getElementById('paper').style.backgroundColor=d.dark?'#000':'#fff';display.style.color=d.dark?'#fff':'#000';
     document.getElementById('paper').style.backgroundImage=!d.dark && typeof d.bg==='string' && /^(data:image\/|blob:)/.test(d.bg)?`url("${d.bg.replace(/["\\\n\r]/g,'')}")`:'';

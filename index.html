@@ -60,10 +60,10 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #view{display:none;position:fixed;inset:0;background:#000}
 #stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
 #page{position:relative;background:#fff center/cover no-repeat;overflow:hidden;
-  font-family:'PFont','Malgun Gothic',sans-serif;color:#000;text-align:center}
+  font-family:var(--prom-font-pick,'PFont'),'PFont','Malgun Gothic',sans-serif;color:#000;text-align:center}
 #page.fallback{font-weight:700}
 /* 모바일(폰 세로 전용)은 굵게 하지 않는다. 강조는 노란색으로만 구분 */
-#page.mobile{font-family:'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif;font-weight:700}
+#page.mobile{font-family:var(--prom-font-pick,'Malgun Gothic'),'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif;font-weight:700}
 #page.mobile .b,#page.mobile *{font-weight:700}
 #lines{position:absolute;inset:4.24% 2.38%;display:flex;flex-direction:column}
 /* 줄 간격: 6줄은 90%, 7줄은 80%로 줄이고 가운데에 모은다 (글자 크기는 그대로) */
@@ -124,7 +124,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
-<link rel="stylesheet" href="workspace.css?v=20261030-speed-visibility1">
+<link rel="stylesheet" href="workspace.css?v=20261103-font1">
 <link rel="stylesheet" href="extras.css?v=20261017-follow3">
 <style>.app-switch{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;flex-shrink:0;padding:8px 12px;border:1px solid #506a88;border-radius:8px;background:#20344c;color:#d6f5ec!important;font:600 12px/1.4 sans-serif;text-decoration:none;pointer-events:auto}.app-switch:hover{background:#2b4963}.app-switch:focus-visible{outline:3px solid #5de2ca;outline-offset:2px}</style>
 <link rel="stylesheet" href="display-screens.css?v=20261017-screen1">
@@ -150,6 +150,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 쪽을 직접 나누려면 --- 를 한 줄로 넣으세요."></textarea>
     </div>
     <div class="mode-row"><label for="layoutMode">화면 구성</label><select id="layoutMode"><option value="desktop">PC · 큰 화면</option><option value="mobile">모바일 · 세로 화면</option></select></div>
+    <div class="mode-row"><label for="fontPick">글꼴</label><select id="fontPick" title="새로 만드는 프롬프터의 본문 글꼴입니다. 이 PC에 설치된 글꼴만 표시됩니다."></select></div>
     <div id="optrow"><div class="row" id="desktopLines"><b>한 화면 줄 수</b>
       <label><input type="radio" name="lines" value="5" checked> 5줄</label>
       <label><input type="radio" name="lines" value="6"> 6줄</label>
@@ -211,6 +212,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
       <button id="obsFullscreenSetup" type="button" title="OBS 전체화면 전환 용도·사용법·다운로드">OBS풀스크린설명</button>
       <label>넘김 <select id="lead"><option value="6">빠르게</option><option value="3" selected>보통</option><option value="1">늦게</option></select></label>
       <label>강조 <select id="focusColor"><option value="#ffff00">노랑</option><option value="#b6f36a">연두</option></select></label>
+      <label>글꼴 <select id="fontFamily" title="이 원고의 본문 글꼴 · 원고와 함께 저장됩니다"></select></label>
 
       <span id="heard"></span>
     </div>
@@ -1441,7 +1443,7 @@ ceStyle.textContent=[
 '#continuousEditor .ce-pages{padding:0 22px 24px}',
 '#continuousEditor .ce-card{border:2px solid #415a7c;border-radius:12px;background:#070d17;padding:15px 18px 18px;min-height:150px}',
 '#continuousEditor .ce-card-head{display:flex;justify-content:space-between;color:#b6cde9;font-weight:700;margin-bottom:10px}',
-'#continuousEditor .ce-lines{min-height:3em;outline:0;font:700 clamp(19px,2.2vw,27px)/1.75 PFont,"Malgun Gothic",sans-serif;color:white;white-space:pre-wrap;overflow-wrap:anywhere;text-align:center;caret-color:#ffeb68}',
+'#continuousEditor .ce-lines{min-height:3em;outline:0;font:700 clamp(19px,2.2vw,27px)/1.75 var(--prom-font-pick,PFont),PFont,"Malgun Gothic",sans-serif;color:white;white-space:pre-wrap;overflow-wrap:anywhere;text-align:center;caret-color:#ffeb68}',
 '#continuousEditor .ce-lines:focus{outline:2px dashed #8fbfff;outline-offset:5px;border-radius:3px}',
 '#continuousEditor .ce-lines>.ln{display:block;min-height:1.75em;white-space:pre-wrap;text-align:center}',
 '#continuousEditor .ce-lines .b{color:#f8e736}#continuousEditor .ce-lines .r{color:#fa6666}#continuousEditor .ce-lines .n{color:#87c7ff}',
@@ -2926,7 +2928,7 @@ if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 <script src="slide-layout.js?v=20261016-6"></script>
 <script src="smooth-scroll.js?v=20261017-line1"></script>
 <script src="scroll-view.js?v=20261031-hex1"></script>
-<script src="display-screens.js?v=20261023-local-output"></script><script src="workspace.js?v=20261102-manuscript-start1"></script>
+<script src="display-screens.js?v=20261023-local-output"></script><script src="prompter-font.js?v=20261103-font1"></script><script src="workspace.js?v=20261103-font1"></script>
 <script src="overview.js?v=20261031-hex1"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
 <script src="extras.js?v=20261023-stage-hide1"></script>

@@ -341,6 +341,11 @@
   });
   addEventListener('resize',placeSpeed);
   $('focusColor').onchange = () => { $('view').style.setProperty('--focus',$('focusColor').value); saveNow(); publish(); };
+  // 글꼴: 시작 화면에서 고른 글꼴은 새 원고에 쓰고, 더보기에서 바꾸면 이 원고에 저장한다. 둘 다 다음 새 원고의 기본값이 된다.
+  let fontPick='';
+  function setFont(name){fontPick=PromFont.clean(name);PromFont.apply(fontPick);PromFont.show($('fontFamily'),fontPick);}
+  PromFont.bind($('fontPick'),PromFont.remembered(),name=>PromFont.remember(name));
+  PromFont.bind($('fontFamily'),'',name=>{setFont(name);PromFont.remember(fontPick);PromFont.show($('fontPick'),fontPick);render();saveNow();publish();});
   function syncTheme(){for(const value of ['dark','cloud','white'])$('theme-'+value).setAttribute('aria-pressed',String($('theme').value===value));}
   for(const value of ['dark','cloud','white'])$('theme-'+value).onclick=()=>{$('theme').value=value;$('theme').dispatchEvent(new Event('change'));};
   $('theme').addEventListener('change',()=>{syncTheme();publish();saveNow();});syncTheme();
@@ -348,7 +353,7 @@
     const original=window.PromPptxOriginal?.isActive();
     const extra={...(window.PromExtras?.settings()||{}),continuous:outputViewMode==='scroll'&&!original};
     const originalKey=original?window.PromPptxOriginal.key(page):null;
-    return {type:'frame',extra,originalKey,originalAspect:original?window.PromPptxOriginal.aspect():null,originalSlide:original?window.PromPptxOriginal.slide(page):null,pageNumber:manualPageNumber(),...(extra.continuous?{document:P,ranges:lineRange}:{}),nextCue:nextCueLine()?.text||'',pages:P[page],page,total:P.length,lines:LINES,cursor,readingAnchor:PromScrollView.getAnchor(),range:lineRange[page],dim:$('dim').checked,focus:$('focusColor').value,dark:$('theme').value==='dark',bg:$('theme').value==='dark'?null:background||BG_DEFAULT};
+    return {type:'frame',extra,originalKey,originalAspect:original?window.PromPptxOriginal.aspect():null,originalSlide:original?window.PromPptxOriginal.slide(page):null,pageNumber:manualPageNumber(),...(extra.continuous?{document:P,ranges:lineRange}:{}),nextCue:nextCueLine()?.text||'',pages:P[page],page,total:P.length,lines:LINES,cursor,readingAnchor:PromScrollView.getAnchor(),range:lineRange[page],dim:$('dim').checked,focus:$('focusColor').value,font:fontPick,dark:$('theme').value==='dark',bg:$('theme').value==='dark'?null:background||BG_DEFAULT};
   }
   function publish(force=false) {
     if(!channel && !audience)return;
@@ -405,8 +410,11 @@
   };
   $('audience').onclick=openSlideshow;
   addEventListener('message',e=>{if(e.origin===location.origin && e.source===audience && e.data?.type==='ready'){publish(true);audienceScreens.place(audience,'startSlideshowFullscreen');}});
-  function metadata() { if(noteEditing)storeNote();return {noteLayers:notes,focus:$('focusColor').value}; }
-  function applyMetadata(data={}) {
+  function metadata() { if(noteEditing)storeNote();return {noteLayers:notes,focus:$('focusColor').value,font:fontPick}; }
+  function applyMetadata(data) {
+    // 새 원고(data 없음)는 시작 화면의 글꼴, 저장된 원고는 저장된 글꼴을 쓴다. 글꼴 정보가 없던 예전 원고는 기본 글꼴 그대로다.
+    const fresh=data==null; data=data||{};
+    setFont(fresh?$('fontPick').value:typeof data.font==='string'?data.font:'');
     notes=Object.create(null);
     const fromLegacy=(text,i=0,count=LINES)=>({text:text.slice(0,2000),x:0.06,y:clamp(0.05+(i+0.3)*0.9/Math.max(1,count),0.04,0.9),size:20});
     if(data.notes&&typeof data.notes==='object')for(const [k,v]of Object.entries(data.notes))if(typeof v==='string'&&v.trim())notes[k]=[fromLegacy(v)];
