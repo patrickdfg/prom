@@ -124,7 +124,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 #toast{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
   padding:8px 14px;border-radius:8px;font-size:15px;display:none}
 </style>
-<link rel="stylesheet" href="workspace.css?v=20261103-font1">
+<link rel="stylesheet" href="workspace.css?v=20261103-font2">
 <link rel="stylesheet" href="extras.css?v=20261017-follow3">
 <style>.app-switch{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;flex-shrink:0;padding:8px 12px;border:1px solid #506a88;border-radius:8px;background:#20344c;color:#d6f5ec!important;font:600 12px/1.4 sans-serif;text-decoration:none;pointer-events:auto}.app-switch:hover{background:#2b4963}.app-switch:focus-visible{outline:3px solid #5de2ca;outline-offset:2px}</style>
 <link rel="stylesheet" href="display-screens.css?v=20261017-screen1">
@@ -204,6 +204,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <div class="control-group"><label id="pageNumOptWrap" title="쪽 번호를 왼쪽 위에 본문 글자 크기로 표시합니다. 원고에 쪽 번호가 없으면 프롬프터 페이지 번호를 표시합니다."><input type="checkbox" id="pageNumOpt" checked>쪽</label><label id="speedOptWrap" title="마이크를 켰을 때 오른쪽 위에 말하는 속도(현수 목소리=100)를 띄웁니다"><input type="checkbox" id="speedOpt">속도<span class="wide"> 표시</span></label><label id="dimOptWrap"><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label></div>
     <div class="control-group"><button id="note">발표 메모</button><button id="edit">연속 편집 (E)</button><button id="save" aria-haspopup="dialog" aria-controls="saveDialog">저장</button><button id="openf">열기</button></div>
     <label id="labOptWrap" title="줄 간격을 좁히고 다음 장 첫 줄을 하단에 표시합니다"><input type="checkbox" id="labNextLine" checked> 다음 장 첫 줄 보기</label>
+    <div class="control-group style-group"><label>글꼴 <select id="fontFamily" title="이 원고의 본문 글꼴 · 원고와 함께 저장됩니다"></select></label><label>강조 <select id="focusColor"><option value="#ffff00">노랑</option><option value="#b6f36a">연두</option></select></label></div>
     <button id="more" aria-expanded="false" aria-controls="moreTools">더보기</button>
     <span id="autosaveState" role="status">기기에 저장됨</span>
     <div id="moreTools" hidden>
@@ -211,8 +212,6 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
       <button id="saveVoiceLog" type="button" title="들은 글자와 위치 판정 기록을 파일로 저장합니다. 따라오지 못한 때 원인을 분석하는 데 씁니다.">인식 기록 저장</button> <span id="promDiagStatus" role="status" style="font-size:12px;opacity:.8">관리자 진단 저장 대기</span>
       <button id="obsFullscreenSetup" type="button" title="OBS 전체화면 전환 용도·사용법·다운로드">OBS풀스크린설명</button>
       <label>넘김 <select id="lead"><option value="6">빠르게</option><option value="3" selected>보통</option><option value="1">늦게</option></select></label>
-      <label>강조 <select id="focusColor"><option value="#ffff00">노랑</option><option value="#b6f36a">연두</option></select></label>
-      <label>글꼴 <select id="fontFamily" title="이 원고의 본문 글꼴 · 원고와 함께 저장됩니다"></select></label>
 
       <span id="heard"></span>
     </div>
