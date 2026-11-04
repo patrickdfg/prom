@@ -1095,9 +1095,8 @@ function wrapUnit(u){
   return groups.map((g,gi)=>({runs:join(g),blk:u.blk,ue:gi===groups.length-1,nosent:u.nosent}));
 }
 const plainOf=l=>l.runs.filter(r=>r.c!=='r').map(r=>r.t).join('').trimEnd();
-const gtRun=()=>[{t:'>>',c:'k'}];
 // 줄 목록(각 줄에 덩어리 번호 blk)을 K줄 쪽으로 나눈다.
-// 덩어리는 한 쪽에 섞지 않고, 짧은 쪽은 앞을 빈 줄로 채우며, 문장 도중이나 앞 쪽이 이어지면 마지막 줄에 >> 를 붙인다
+// 덩어리는 한 쪽에 섞지 않는다. 짧은 쪽도 빈 줄로 채우지 않고 >> 도 붙이지 않는다
 // 폰 화면용: 문단 사이에 빈 줄 하나만 두고 쪽을 위에서부터 채운다 (쪽 맨 앞에는 빈 줄을 두지 않는다)
 const paragraphRuns=(l,previous)=>l.runs.map((r,i)=>({...r,...(i===0&&previous&&previous.blk!==l.blk?{paragraphStart:true}:{})}));
 function paginateMobile(L,K){
@@ -1139,15 +1138,8 @@ function paginateLines(L,K,mix=3.0){
   }
   const pages=[];
   for(let i=0;i<N;){
-    const j=nxt[i], body=L.slice(i,j).map((l,offset)=>paragraphRuns(l,L[i+offset-1])), k=j-i, sf=K-k, last=j===N, f=info[j-1];
-    const boundary=!last&&L[j-1].blk!==L[j].blk;
-    let pg;
-    if(MOBILE) pg=body.map(r=>r.slice());          // 폰 화면용은 >> 와 빈 줄 채움 없이 글만 둔다
-    else if(last||boundary) pg=sf===0?body:[[]].concat(body,Array.from({length:sf-1},()=>[]));
-    else if(f.sent) pg=sf===0?body:Array.from({length:sf-1},()=>[]).concat(body,[gtRun()]);
-    else if(k===K){ pg=body.map(r=>r.slice()); pg[k-1].push({t:' >>',c:'k'}) }
-    else pg=Array.from({length:sf-1},()=>[]).concat(body,[gtRun()]);
-    pages.push(pg); i=j;
+    const j=nxt[i], body=L.slice(i,j).map((l,offset)=>paragraphRuns(l,L[i+offset-1]));
+    pages.push(body); i=j;      // 이어짐 표시(>>)와 빈 줄 채움 없이 글만 위에서부터 둔다. 새 문단은 첫 줄의 paragraphStart 로 안다
   }
   return pages;
 }
@@ -1324,6 +1316,19 @@ function pageContent(ls){
   if(L.length){const last=L[L.length-1], r=last[last.length-1]; if(r){r.t=r.t.replace(/s*>>s*$/,''); if(!r.t&&last.length>1)last.pop()}}
   while(L.length&&blankLine(L[0]))L.shift();
   return L;
+}
+// 예전 원고의 >> 와 앞뒤 빈 줄 채움을 없앤다. 쪽 사이의 이어짐은 >> 대신 다음 쪽 첫 글줄의 paragraphStart 로 남긴다(덩어리 끝 판정은 그대로)
+function dropLegacyMarks(pages){
+  const ends=pages.map((_,i)=>pagesEndBlock(pages,i));
+  const isText=l=>{const t=lineText(l).trim();return !!t&&t!=='>>'};
+  return pages.map((pg,i)=>{
+    const rows=pg.map(l=>l.map(r=>({...r})));
+    const first=rows.findIndex(isText), last=rows.length-1-[...rows].reverse().findIndex(isText);
+    const body=first<0?[]:rows.slice(first,last+1).filter(l=>lineText(l).trim()!=='>>');
+    const tail=body[body.length-1]; if(tail){const r=tail[tail.length-1]; if(r){r.t=r.t.replace(/\s*>>\s*$/,''); if(!r.t&&tail.length>1)tail.pop()}}
+    if(i>0&&ends[i-1]&&body.length){const lead=body.find(isText), r=lead&&lead.find(x=>x.t.trim()); if(r)r.paragraphStart=true}
+    return body;
+  });
 }
 // 연속 편집: from 쪽부터 그 덩어리가 끝나는 쪽까지만 다시 나눈다.
 // 넘친 줄은 같은 덩어리의 뒤 쪽이 이어받고, 덩어리가 끝나는 쪽이면 다음 덩어리로 밀지 않고 새 쪽이 된다.
@@ -2760,14 +2765,14 @@ function startPendingFile(){
     window.PromPptxOriginal?.clear();
     if(+r.mobile>=MFS_MIN&&+r.mobile<=MFS_MAX)MFS=+r.mobile;
     setMode(r.mobile);LINES=r.lines;
-    openPrompter(r.pages);notifyUI('applyMetadata',r.meta);render();
+    openPrompter(dropLegacyMarks(r.pages));notifyUI('applyMetadata',r.meta);render();
     lastSrc={pages:P.map(p=>p.slice())};dirty=false;
     toast('저장한 파일을 열었습니다 · '+P.length+'쪽 · '+LINES+'줄',5000);
   }else if(r.preserve){
     window.PromPptxOriginal?.clear();
     setMode(false);LINES=r.lines;
     if(r.preserve==='hwpx'){$('theme').value=r.bg?'cloud':r.dark?'dark':'white';applyTheme();}
-    openPrompter(r.pages,r.bg);
+    openPrompter(r.preserve==='html'?r.pages:dropLegacyMarks(r.pages),r.bg);
     lastSrc={pages:P.map(p=>p.slice()),bg:r.bg};dirty=false;
     if(r.preserve==='hwpx')toast('HWPX 파일을 열었습니다 · '+P.length+'쪽 · '+LINES+'줄',5000);
   }else startWith(r.pages,r.bg,r.original);
