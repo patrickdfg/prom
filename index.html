@@ -143,6 +143,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <div id="fileInputPanel" role="tabpanel" aria-labelledby="fileTab"><div id="drop">
       <b>원고 파일을 여기에 놓으세요</b><button class="btn" id="pick">파일 선택</button>
       <input type="file" id="file" accept=".hwp,.hwpx,.doc,.docx,.ppt,.pptx,.pdf,.txt,.html,.htm,.json" hidden>
+      <p id="selectedFileName" role="status" aria-live="polite" hidden></p>
       <div class="format-note">한글 · 워드 · 파워포인트 · PDF · TXT · HTML · 저장한 JSON</div>
     </div></div>
     <div id="pasteInputPanel" role="tabpanel" aria-labelledby="pasteTab" hidden>
@@ -2792,6 +2793,7 @@ function startPendingFile(){
 }
 async function loadFile(f){
   remClear(); pending=null; $('start').disabled=true; $('fname').textContent=''; $('loadmsg').textContent='읽는 중…';
+  $('selectedFileName').hidden=false;$('selectedFileName').textContent='선택한 원고: '+f.name;$('selectedFileName').title=f.name;
   baseName=f.name.replace(/\.[^.]+$/,'').replace(/_프롬프터$/,'')||'대본';
   try{
     let r;
@@ -2827,7 +2829,7 @@ async function loadFile(f){
     if(!r.original&&!r.pages.some(p=>p.some(l=>l.some(x=>x.t.trim()))))throw new Error('읽을 내용이 없습니다.');
     // 기존 프롬프터가 열려 있어도 새 원고는 시작 버튼을 누르기 전까지 적용하지 않는다.
     if($('view').style.display==='block')$('back').click();
-    pending=r;$('fileTab').click();$('start').disabled=false;
+    pending={...r,name:f.name};$('fileTab').click();$('start').disabled=false;
     $('fname').textContent=r.original?f.name+' · '+r.original.slides.length+'장 원본 모양 유지 · 시작을 누르세요.':f.name+' 을(를) 읽었습니다. 시작을 누르세요.';
     $('loadmsg').textContent=''; const rr=remReport(); if(rr)toast(rr,10000);
   }catch(e){$('loadmsg').textContent=e.message; if($('view').style.display==='block')toast(e.message,6000)}
@@ -2938,10 +2940,10 @@ if(window.PRELOAD_PAGES)openPrompter(window.PRELOAD_PAGES);
 <script src="slide-layout.js?v=20261016-6"></script>
 <script src="smooth-scroll.js?v=20261017-line1"></script>
 <script src="scroll-view.js?v=20261031-hex1"></script>
-<script src="display-screens.js?v=20261023-local-output"></script><script src="prompter-font.js?v=20261103-bold2"></script><script src="workspace.js?v=20261103-bold2"></script>
+<script src="display-screens.js?v=20261023-local-output"></script><script src="prompter-font.js?v=20261103-bold2"></script><script src="workspace.js?v=20261104-startup1"></script>
 <script src="overview.js?v=20261031-hex1"></script>
 <script src="voice-lab.js?v=20261016-1"></script>
-<script src="extras.js?v=20261023-stage-hide1"></script>
+<script src="extras.js?v=20261104-startup1"></script>
 <script src="ppt/drive-config.js?v=20261020-sync1"></script><script src="google-session.js?v=20261021-session1"></script><script src="prompter-pptx.js?v=20261031-hex1"></script><script src="prompter-hwpx.js?v=20261031-hex1"></script><script src="drive-sync.js?v=20261021-session1"></script>
 
 <div data-prom-support class="prom-support-floating" aria-label="사용자 도움말"></div><script src="support.js?v=20261102-current-help1"></script></body>

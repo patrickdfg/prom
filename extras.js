@@ -9,7 +9,9 @@
  <fieldset><legend>읽어주기 구간 반복</legend><div class="extras-row"><label>시작 쪽 <input id="repeatFrom" type="number" min="1" value="1"></label><label>끝 쪽 <input id="repeatTo" type="number" min="1" value="1"></label></div><label><input id="repeatTTS" type="checkbox"> 지정 구간 반복</label><button id="playRepeat">이 구간 읽기</button><p>배속은 읽어주기의 속도 설정(0.5~2배)을 따릅니다.</p></fieldset>
  <fieldset><legend>연습 녹음</legend><p>마이크 권한을 허용한 뒤 직접 녹음합니다. 녹음 파일은 서버로 보내지 않습니다. 안드로이드는 마이크 충돌 방지를 위해 음성 자동 넘김과 녹음을 번갈아 사용합니다.</p><div class="extras-row"><button id="recordStart">녹음 시작</button><button id="recordStop" disabled>녹음 종료</button><span id="recordStatus" role="status">대기</span></div><audio id="recordAudio" controls hidden></audio><a id="recordDownload" hidden>녹음 파일 저장</a><p>종료 후 파일을 저장해 주세요. 저장하지 않고 창을 닫으면 녹음이 사라집니다.</p></fieldset>`;
  document.body.appendChild(dialog);
- $('nextLineTools').appendChild($('labOptWrap'));$('labOptWrap').hidden=false;
+ const nextLineOptions=$('labOptWrap');
+ if(nextLineOptions){$('nextLineTools').appendChild(nextLineOptions);nextLineOptions.hidden=false;}
+ else $('nextLineTools').hidden=true;
  let emergency='',voiceKey='',voicePages=[],pending=null,lastSample='',lastPage=-1;
  let recorder=null,recordStream=null,recordUrl=null,recordTimer=null,recordAt=0,recordPending=false,unsavedRecording=false;
  try{localStorage.removeItem('promExtra:voiceLab')}catch(_){}

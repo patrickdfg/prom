@@ -1,11 +1,14 @@
 /* 프롬프터 준비·탐색·복구. 원고와 메모는 이 브라우저에만 보관한다. */
 (() => {
   'use strict';
-  try{const saved=localStorage.getItem('promLabNextLine'),prev=localStorage.getItem('prompterNextLine');$('labNextLine').checked=saved===null?(prev===null||prev!=='0'):(saved!=='false'&&saved!=='0');}catch(_){}
-  $('labNextLine').onchange=()=>{
-    try{localStorage.setItem('promLabNextLine',String($('labNextLine').checked));}catch(_){}
-    render();
-  };
+  const nextLineOption=$('labNextLine');
+  if(nextLineOption){
+    try{const saved=localStorage.getItem('promLabNextLine'),prev=localStorage.getItem('prompterNextLine');nextLineOption.checked=saved===null?(prev===null||prev!=='0'):(saved!=='false'&&saved!=='0');}catch(_){}
+    nextLineOption.onchange=()=>{
+      try{localStorage.setItem('promLabNextLine',String(nextLineOption.checked));}catch(_){}
+      render();
+    };
+  }
   const STORAGE = 'promWorkspaceV1';
   let inputTab = 'file', restoring = false, saveTimer, cached = null, background = null;
   let notes = {}, noteEditing = false, noteAnchor = null, bodyNoteAnchor = null;
@@ -19,7 +22,7 @@
     $('fileTab').setAttribute('aria-selected', String(which === 'file'));
     $('pasteTab').setAttribute('aria-selected', String(which === 'paste'));
     $('start').disabled = which === 'file' ? !pending : !$('paste').value.trim();
-    $('fname').textContent = which === 'file' ? (pending ? '원고 준비 완료 · 시작할 수 있습니다.' : '원고를 고른 뒤 시작하세요.') : '빈 줄과 원래 줄바꿈을 유지해서 붙여 넣으세요.';
+    $('fname').textContent = which === 'file' ? (pending ? (pending.name||baseName)+' · 시작할 수 있습니다.' : '원고를 고른 뒤 시작하세요.') : '빈 줄과 원래 줄바꿈을 유지해서 붙여 넣으세요.';
   }
   $('fileTab').onclick = () => setTab('file'); $('pasteTab').onclick = () => setTab('paste');
   [$('fileTab'),$('pasteTab')].forEach(b => b.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();setTab(inputTab==='file'?'paste':'file');$(inputTab==='file'?'fileTab':'pasteTab').focus();}}));
@@ -391,7 +394,6 @@
   const audienceScreens=window.PromAudienceScreens=PromDisplayScreens.create({automatic:true,onMessage:message=>toast(message,6000)});
   async function openSlideshow(){
     if(openingAudience)return;
-    if(window.screen?.isExtended===false){if(audience&&!audience.closed)audience.close();audience=null;openLocalSlideshow();return;}
     if(!channel) {
       if(!('BroadcastChannel' in window)){toast('이 브라우저는 슬라이드쇼을 지원하지 않습니다.');return;}
       channelId=crypto.randomUUID(); channel=new BroadcastChannel('prom-display-'+channelId);
@@ -402,7 +404,6 @@
       const preparation=audienceScreens.prepare(),fresh=!audience||audience.closed;
       if(fresh){audience=window.open('about:blank','promAudience',audienceScreens.features());if(!audience){toast('별도 화면이 차단되었습니다. 이 사이트의 팝업을 허용한 뒤 다시 눌러 주세요.',6000);return;}}
       const popup=audience;await preparation;if(popup.closed)return;
-      if(fresh&&audienceScreens.single()){popup.close();audience=null;openLocalSlideshow();return;}
       await audienceScreens.place(popup,'startSlideshowFullscreen');
       if(fresh)popup.location.replace('audience.html?fullscreen=1#'+channelId);
       localVoiceMode=false;
