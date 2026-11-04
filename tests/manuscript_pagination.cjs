@@ -27,9 +27,10 @@ function check(paras,K){
   for(const pg of pages){
     assert(pg.length<=K,'page row limit');
     const nonempty=pg.filter(l=>l.some(r=>r.t.trim()&&r.t.trim()!=='>>'));
-    assert(nonempty.every((l,i)=>i===0||!l.some(r=>r.paragraphStart)),'a new block must begin on a fresh page');
+    assert.equal(nonempty.length,pg.length,'a page has no blank or >> filler rows');
     assert(text(pg).every(t=>!/^\d+\.?$/.test(t.trim())),'bare number or number-dot must not occupy a separate line');
   }
+  assert(pages.slice(0,-1).every(pg=>pg.length===K),'every page but the last is filled to K rows');
   assert.equal(JSON.stringify(paras),original,'source formatting, marks and text are immutable');
   return {pages,lines};
 }

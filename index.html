@@ -204,7 +204,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <div class="control-group"><label id="pageNumOptWrap" title="쪽 번호를 왼쪽 위에 본문 글자 크기로 표시합니다. 원고에 쪽 번호가 없으면 프롬프터 페이지 번호를 표시합니다."><input type="checkbox" id="pageNumOpt" checked>쪽</label><label id="speedOptWrap" title="마이크를 켰을 때 오른쪽 위에 말하는 속도(현수 목소리=100)를 띄웁니다"><input type="checkbox" id="speedOpt">속도<span class="wide"> 표시</span></label><label id="dimOptWrap"><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label></div>
     <div class="control-group"><button id="note">발표 메모</button><button id="edit">연속 편집 (E)</button><button id="save" aria-haspopup="dialog" aria-controls="saveDialog">저장</button><button id="openf">열기</button></div>
     <label id="labOptWrap" title="줄 간격을 좁히고 다음 장 첫 줄을 하단에 표시합니다"><input type="checkbox" id="labNextLine" checked> 다음 장 첫 줄 보기</label>
-    <div class="control-group style-group"><label>글꼴 <select id="fontFamily" title="이 원고의 본문 글꼴 · 원고와 함께 저장됩니다"></select></label><label title="본문 글자를 굵게 표시합니다 · 원고와 함께 저장됩니다"><input type="checkbox" id="fontBold"> 굵게</label><label>강조 <select id="focusColor"><option value="#ffff00">노랑</option><option value="#b6f36a">연두</option></select></label></div>
+    <div class="control-group style-group"><label>글꼴 <select id="fontFamily" title="이 원고의 본문 글꼴 · 원고와 함께 저장됩니다"></select></label><span class="text-size" role="group" aria-label="글자 크기"><button type="button" id="pageTextSmaller" aria-label="글자 줄이기" title="쪽 보기 글자 줄이기">−</button><button type="button" id="pageTextReset" title="기본 글자 크기로">100%</button><button type="button" id="pageTextLarger" aria-label="글자 키우기" title="쪽 보기 글자 키우기">+</button></span><label title="본문 글자를 굵게 표시합니다 · 원고와 함께 저장됩니다"><input type="checkbox" id="fontBold"> 굵게</label><label>강조 <select id="focusColor"><option value="#ffff00">노랑</option><option value="#b6f36a">연두</option></select></label></div>
     <button id="more" aria-expanded="false" aria-controls="moreTools">더보기</button>
     <span id="autosaveState" role="status">기기에 저장됨</span>
     <div id="moreTools" hidden>
@@ -888,6 +888,10 @@ function render(){
   $('pg').textContent=`${page+1} / ${P.length}`;
   queueMicrotask(()=>notifyUI('render'));
 }
+// 쪽 보기 글자 크기(60~140%). 이 브라우저에만 저장한다
+let pageScale=(()=>{try{const n=Number(localStorage.getItem('promPageTextScale'));if(n>=60&&n<=140)return n}catch(_){}return 100})();
+function syncPageScale(){$('pageTextReset').textContent=pageScale+'%';$('pageTextSmaller').disabled=pageScale<=60;$('pageTextLarger').disabled=pageScale>=140}
+function setPageScale(n){pageScale=Math.max(60,Math.min(140,Math.round(n/10)*10||100));try{localStorage.setItem('promPageTextScale',String(pageScale))}catch(_){}syncPageScale();fit()}
 function fit(){
   const W=$('stage').clientWidth||innerWidth,H=$('stage').clientHeight||innerHeight,ratio=210/118, L=$('lines'), el=$('page');
   if(window.PromPptxOriginal?.isActive()){
@@ -922,7 +926,12 @@ function fit(){
   let w=W,h=W/ratio; if(h>H){h=H;w=H*ratio}
   el.style.width=w+'px'; el.style.height=h+'px';
   // 32pt 글자 / 118mm 높이 비율을 그대로 유지
-  el.style.fontSize=(h*11.29/118*5/LINES)+'px';
+  el.style.fontSize=(h*11.29/118*5/LINES*pageScale/100)+'px';
+  if(pageScale>100){      // 글자를 키워도 가장 긴 줄이 화면 폭을 넘지 않게 맞춘다
+    let over=1;
+    for(const row of L.children){const k=row.children;if(!k.length)continue;const w=k[k.length-1].getBoundingClientRect().right-k[0].getBoundingClientRect().left,max=row.clientWidth;if(w>max&&max>0)over=Math.min(over,max/w);}
+    if(over<1)el.style.fontSize=(parseFloat(el.style.fontSize)*over*.98)+'px';
+  }
   L.classList.toggle('g6',LINES===6); L.classList.toggle('g7',LINES===7);
   if(cueSpace)L.style.bottom=((LINES===7?13.39:LINES===6?8.82:4.24)+cueSpace*100)+'%';
   L.style.setProperty('--lh',(h*(1-2*0.0424)/LINES*(LINES===7?0.8:LINES===6?0.9:1))+'px');   // 편집할 때 한 줄 높이
@@ -1113,34 +1122,9 @@ function paginateMobile(L,K){
 function paginateLines(L,K,mix=3.0){
   const N=L.length; if(!N)return [];
   if(MOBILE)return paginateMobile(L,K);
-  const info=L.map(l=>{const t=plainOf(l); return {sent:!l.nosent&&R_SENT.test(t),clause:R_CLAUSE.test(t),ue:!!l.ue,wd:pw(l.runs.map(r=>r.t).join('').trimEnd())}});
-  const cost=(i,j)=>{
-    if(L[i].blk!==L[j-1].blk)return Infinity; // 빈 줄 경계 뒤 문단을 앞 쪽의 여백에 채우지 않는다
-    const k=j-i, last=j===N, sf=K-k; let c=0;
-    if(k===1)return 50;
-    if(k===2)c+=1.5; else if(sf>=2)c+=0.4;
-    const nb=new Set(L.slice(i,j).map(l=>l.blk)).size; c+=mix*(nb-1);
-    if(!last){
-      const f=info[j-1], boundary=L[j-1].blk!==L[j].blk;
-      if(boundary)c+=k>=4?0:0.5;
-      else if(f.sent)c+=sf===0?0:sf===1?0.2:sf===2?1.0:3.0;
-      else{
-        const base=f.clause?3.0:f.ue?2.0:6.0;
-        if(k===K)c+=f.wd+3.0<=MAXW?base:base+1.5;
-        else if(sf===1)c+=base+0.5; else c+=base+2;
-      }
-    }
-    return c;
-  };
-  const best=Array(N+1).fill(1e9), nxt=Array(N+1).fill(N); best[N]=0;
-  for(let i=N-1;i>=0;i--)for(let k=1;k<=K&&i+k<=N;k++){
-    const c=best[i+k]+cost(i,i+k); if(c<best[i]){best[i]=c;nxt[i]=i+k}
-  }
+  // 쪽은 빈 줄 없이 K줄씩 꽉 채운다(마지막 쪽만 모자랄 수 있다). 문단이 끝나도 다음 문단이 바로 이어 들어오고, 새 문단은 첫 줄의 paragraphStart 로 안다
   const pages=[];
-  for(let i=0;i<N;){
-    const j=nxt[i], body=L.slice(i,j).map((l,offset)=>paragraphRuns(l,L[i+offset-1]));
-    pages.push(body); i=j;      // 이어짐 표시(>>)와 빈 줄 채움 없이 글만 위에서부터 둔다. 새 문단은 첫 줄의 paragraphStart 로 안다
-  }
+  for(let i=0;i<N;i+=K)pages.push(L.slice(i,i+K).map((l,offset)=>paragraphRuns(l,L[i+offset-1])));
   return pages;
 }
 // 한 덩어리가 1~2줄인데 내용이 충분하면 단어 경계에서 자연스럽게 2~3줄로 펼친다.
@@ -1329,6 +1313,12 @@ function dropLegacyMarks(pages){
     if(i>0&&ends[i-1]&&body.length){const lead=body.find(isText), r=lead&&lead.find(x=>x.t.trim()); if(r)r.paragraphStart=true}
     return body;
   });
+}
+// 쪽 기준으로 빈 줄을 모두 없애고, 비던 자리를 뒤의 글로 채워 K줄씩 다시 나눈다. 새 문단 표시(paragraphStart)는 줄에 붙은 채로 따라간다
+function refillPages(pages,K){
+  const rows=pages.flat().filter(l=>lineText(l).trim()), out=[];
+  for(let i=0;i<rows.length;i+=K)out.push(rows.slice(i,i+K));
+  return out;
 }
 // 연속 편집: from 쪽부터 그 덩어리가 끝나는 쪽까지만 다시 나눈다.
 // 넘친 줄은 같은 덩어리의 뒤 쪽이 이어받고, 덩어리가 끝나는 쪽이면 다음 덩어리로 밀지 않고 새 쪽이 된다.
@@ -1995,6 +1985,8 @@ async function saveHwpx(editedPages){
   }catch(e){toast('HWPX 저장에 실패했습니다: '+(e.message||e),6000);return false;}
 }
 $('saveHwpx').onclick=()=>{$('saveDialog').close();saveHwpx();};
+for(const [id,delta] of [['pageTextSmaller',-10],['pageTextReset',0],['pageTextLarger',10]])$(id).onclick=e=>{setPageScale(delta?pageScale+delta:100);e.currentTarget.blur()};
+syncPageScale();
 $('openf').onclick=()=>{
   if(dirty&&!confirm('고친 내용을 저장하지 않았습니다. 그래도 다른 파일을 열까요?'))return;
   $('file').click();
@@ -2765,14 +2757,14 @@ function startPendingFile(){
     window.PromPptxOriginal?.clear();
     if(+r.mobile>=MFS_MIN&&+r.mobile<=MFS_MAX)MFS=+r.mobile;
     setMode(r.mobile);LINES=r.lines;
-    openPrompter(dropLegacyMarks(r.pages));notifyUI('applyMetadata',r.meta);render();
+    openPrompter(r.mobile?dropLegacyMarks(r.pages):refillPages(dropLegacyMarks(r.pages),LINES));notifyUI('applyMetadata',r.meta);render();
     lastSrc={pages:P.map(p=>p.slice())};dirty=false;
     toast('저장한 파일을 열었습니다 · '+P.length+'쪽 · '+LINES+'줄',5000);
   }else if(r.preserve){
     window.PromPptxOriginal?.clear();
     setMode(false);LINES=r.lines;
     if(r.preserve==='hwpx'){$('theme').value=r.bg?'cloud':r.dark?'dark':'white';applyTheme();}
-    openPrompter(r.preserve==='html'?r.pages:dropLegacyMarks(r.pages),r.bg);
+    openPrompter(r.preserve==='html'?r.pages:refillPages(dropLegacyMarks(r.pages),LINES),r.bg);
     lastSrc={pages:P.map(p=>p.slice()),bg:r.bg};dirty=false;
     if(r.preserve==='hwpx')toast('HWPX 파일을 열었습니다 · '+P.length+'쪽 · '+LINES+'줄',5000);
   }else startWith(r.pages,r.bg,r.original);

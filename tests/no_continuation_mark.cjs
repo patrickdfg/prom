@@ -17,9 +17,9 @@ const{chromium}=require('playwright'),assert=require('node:assert/strict');
     assert(rows.every(t=>t.trim()),'빈 줄 채움이 없다 '+count+'줄 '+(i+1)+'쪽');
     assert(rows.every(t=>!/>>/.test(t)),'>> 표시가 없다 '+count+'줄 '+(i+1)+'쪽');
    }
-   assert(pages.some(pg=>pg.length<count),'짧은 쪽을 채우지 않는다');
-   const starts=pages.map(pg=>pg[0].some(r=>r.paragraphStart));
-   assert.equal(starts[0],false);assert(starts.slice(1).some(Boolean),'새 문단의 첫 쪽은 paragraphStart 로 안다');
+   assert(pages.slice(0,-1).every(pg=>pg.length===count),'마지막 쪽을 뺀 모든 쪽이 꽉 찬다 '+count);
+   const rows=pages.flat();      // 문단이 쪽 가운데서 시작할 수 있으므로 쪽 첫 줄이 아니라 모든 줄에서 새 문단 표시를 찾는다
+   assert.equal(rows[0].some(r=>r.paragraphStart),false);assert(rows.slice(1).filter(l=>l.some(r=>r.paragraphStart)).length>=2,'새 문단의 첫 줄은 paragraphStart 로 안다');
   }
   // 예전 저장 파일(>> 와 앞뒤 빈 줄 채움, paragraphStart 없음)은 열 때 정리하고 문단 경계를 paragraphStart 로 남긴다
   const run=t=>[{t,c:'k'}];
@@ -32,12 +32,12 @@ const{chromium}=require('playwright'),assert=require('node:assert/strict');
   await page.evaluate(()=>openPrompter([[ [{t:'다른 원고',c:'k'}],[],[],[],[] ]]));
   await page.setInputFiles('#file',{name:'legacy.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(legacy))});
   await page.waitForFunction(()=>!!pending);await page.click('#start');
-  await page.waitForFunction(()=>P.length===4&&P[0][0][0]?.t==='첫째 줄');
+  await page.waitForFunction(()=>P.length===2&&P[0][0][0]?.t==='첫째 줄');
   const loaded=await page.evaluate(()=>P.map(pg=>pg.map(l=>({t:l.map(r=>r.t).join(''),ps:l.some(r=>r.paragraphStart)}))));
-  assert.deepEqual(loaded.map(pg=>pg.map(l=>l.t)),[['첫째 줄','둘째 줄','셋째 줄'],['이어진 줄'],['마지막 줄'],['새 문단']],'>> 와 빈 줄 채움을 뺀다');
-  assert.equal(loaded[1][0].ps,false,'>> 로 이어진 쪽은 새 문단이 아니다');
-  assert.equal(loaded[2][0].ps,true,'문단이 끝난 뒤의 쪽은 새 문단이다');
-  assert.equal(loaded[3][0].ps,true);
-  assert.deepEqual(errors,[]);console.log('PASS no >> and no blank filler in 5/6/7-row pagination, legacy saved file cleaned on open with block boundaries kept');
+  assert.deepEqual(loaded.map(pg=>pg.map(l=>l.t)),[['첫째 줄','둘째 줄','셋째 줄','이어진 줄','마지막 줄'],['새 문단']],'>> 와 빈 줄을 빼고 쪽을 5줄씩 다시 채운다');
+  assert.equal(loaded[0][3].ps,false,'>> 로 이어진 줄은 새 문단이 아니다');
+  assert.equal(loaded[0][4].ps,true,'문단이 끝난 뒤의 줄은 새 문단이다');
+  assert.equal(loaded[1][0].ps,true);
+  assert.deepEqual(errors,[]);console.log('PASS no >> and no blank filler in 5/6/7-row pagination, legacy saved file cleaned and refilled on open with block boundaries kept');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
