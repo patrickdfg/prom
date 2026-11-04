@@ -1033,10 +1033,15 @@ function buildUnits(paras){
     chars.forEach(([ch,c],i)=>{
       marksAt(i);
       if(ch===' ')endWord();
-      else if(ch==='\n')endUnit();
+      else if(ch==='\n'){
+        // 줄바꿈 바로 앞이 비어 있으면(문단 맨 앞의 줄바꿈, 줄바꿈 두 번) 원고에 빈 줄이 있는 것이다. 빈 문단과 똑같이 새 덩어리로 본다
+        if(!cw&&!cu.words.length&&units.length){blk++;cu={words:[],blk}}
+        else endUnit();
+      }
       else{ if(!cw)cw={segs:[],marks:[]}; const l=cw.segs[cw.segs.length-1]; if(l&&l.c===c)l.t+=ch; else cw.segs.push({t:ch,c}) }
     });
     marksAt(chars.length); endUnit();
+    if(chars.length&&chars[chars.length-1][0]==='\n'&&units.length)blk++;      // 문단 끝의 줄바꿈은 빈 줄을 남긴다
   }
   // 번호만 적힌 원고 줄은 같은 문단의 다음 본문과 합친다. 원본 원고·쪽 경계는 바꾸지 않는다.
   for(let i=0;i<units.length-1;i++){
@@ -1148,7 +1153,7 @@ function spreadSparsePrompterLines(lines,K){
 }
 // 일반 원고(hwp·hwpx·글) → 프롬프터 규칙 K줄 쪽
 function buildPrompter(paras,K){
-  const U=buildUnits(paras), L=spreadSparsePrompterLines(U.flatMap(wrapUnit),K);
+  const U=buildUnits(paras), L=U.flatMap(wrapUnit);      // 쪽을 K줄로 꽉 채우므로 짧은 덩어리를 억지로 늘려 펼치지 않는다
   return paginateLines(L,K,U.proverbs?8.0:3.0);      // 잠언은 한 잠언을 한 쪽에 두려고 섞는 비용을 크게 둔다
 }
 // 이미 프롬프터로 만든 쪽(5줄 기준)을 다른 줄 수로 다시 나눈다. 빈 줄 채움과 >> 는 지우고 새 쪽 규칙으로 다시 넣는다
