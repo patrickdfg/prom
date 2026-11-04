@@ -476,7 +476,7 @@
     visibleRange(){return localRenderer.visibleRange(lineRange);},
     metadata, applyMetadata, finishNote, syncPresentationMode,
     hasSlideshow(){return !!audience&&!audience.closed;},
-    readingStart(){return (localScroll||(audience&&!audience.closed))?cursor:undefined;},
+    readingStart(){return (localScroll||(audience&&!audience.closed&&outputViewMode==='scroll'))?cursor:undefined;},      // 송출창이 페이지 보기이면 쪽 방식(이 쪽의 맨 위부터)으로 따라간다
     speedLayer:placeSpeed,
     presentation(){if(!audience||audience.closed){localVoiceMode=true;$('viewScroll').click();}hideControls();showNote();},
     beforeBodyEdit(){if(localScroll){setLocalScroll(false);$('viewSingle').click();}finishNote();bodyNoteAnchor=noteKey(P[page]);},

@@ -6,5 +6,5 @@ const manual=c.payload();assert.equal(manual.extra.continuous,false);assert(!('d
 c.listening=true;const voice=c.payload();assert.equal(voice.extra.continuous,true);assert.equal(voice.document,document);assert.equal(voice.ranges,ranges);assert.equal(voice.cursor,5);assert.equal(voice.extra.mirrorX,true);assert.equal(voice.extra.message,'안내');
 c.listening=false;c.page=1;c.cursor=10;const stopped=c.payload();assert.equal(stopped.extra.continuous,false);assert.equal(stopped.pages,document[1]);assert(!('document'in stopped));assert.equal(JSON.stringify(document),before);
 assert.equal((html.match(/id="audience"/g)||[]).length,1);assert(!html.includes('id="scrollAudience"'));assert(!s.includes("$('scrollAudience')"));assert(s.includes("$('viewMultiple').click();"));
-assert(s.includes("readingStart(){return (localScroll||(audience&&!audience.closed))?cursor:undefined;}"));
+assert(s.includes("readingStart(){return (localScroll||(audience&&!audience.closed&&outputViewMode==='scroll'))?cursor:undefined;}"));
 console.log('PASS single output button, microphone-off slides, microphone-on continuous scroll, stop returns to pages, preserved cursor/mirror/message/manuscript, overview launch, single-monitor start behavior');

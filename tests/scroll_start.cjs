@@ -9,6 +9,6 @@ c.editing=true;c.cursor=120;nodes.viewScroll.onclick();assert.equal(c.cursor,160
 c.audience=null;c.continuous=false;vm.runInContext('var readingStart=({'+source.match(/readingStart\(\)\{[^\n]+\}/)[0]+'}).readingStart;',c);c.notifyUI=()=>c.readingStart();
 vm.runInContext(html.slice(html.indexOf('function recognitionStart(){'),html.indexOf('async function startMic(){')),c);
 assert.equal(c.recognitionStart(),160,'microphone must start at selected cursor');c.localScroll=false;c.page=4;assert.equal(c.recognitionStart(),120,'regular page presentation preserves previous behavior');
-c.audience={closed:false};c.continuous=true;assert.equal(c.recognitionStart(),160,'separate scroll slideshow also continues at cursor');c.audience.closed=true;assert.equal(c.recognitionStart(),120);
+c.audience={closed:false};c.outputViewMode='scroll';assert.equal(c.recognitionStart(),160,'separate scroll slideshow also continues at cursor');c.outputViewMode='page';assert.equal(c.recognitionStart(),120,'separate page slideshow follows by page: starts at the page top');c.outputViewMode='scroll';c.audience.closed=true;assert.equal(c.recognitionStart(),120);
 assert(html.includes('cursor=recognitionStart();'));
 console.log('PASS scroll entry cursor, editing caret, repeat-entry alignment, microphone current position and regular-view start');
