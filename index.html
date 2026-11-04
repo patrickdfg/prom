@@ -203,7 +203,7 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
     <div class="control-group view-switch" role="group" aria-label="원고 보기"><button id="viewSingle" aria-pressed="true">한 장</button><button id="viewMultiple" aria-pressed="false">여러 장</button><button id="viewScroll" aria-pressed="false" title="현재 창에서 원고를 부드럽게 스크롤합니다">스크롤 보기</button></div>
     <div class="control-group"><label id="pageNumOptWrap" title="쪽 번호를 왼쪽 위에 본문 글자 크기로 표시합니다. 원고에 쪽 번호가 없으면 프롬프터 페이지 번호를 표시합니다."><input type="checkbox" id="pageNumOpt" checked>쪽</label><label id="speedOptWrap" title="마이크를 켰을 때 오른쪽 위에 말하는 속도(현수 목소리=100)를 띄웁니다"><input type="checkbox" id="speedOpt">속도<span class="wide"> 표시</span></label><label id="dimOptWrap"><input type="checkbox" id="dim" checked> 읽은 줄 흐리게</label></div>
     <div class="control-group"><button id="note">발표 메모</button><button id="edit">연속 편집 (E)</button><button id="save" aria-haspopup="dialog" aria-controls="saveDialog">저장</button><button id="openf">열기</button></div>
-    <label id="labOptWrap" title="줄 간격을 좁히고 다음 장 첫 줄을 하단에 표시합니다"><input type="checkbox" id="labNextLine" checked> 다음 장 첫 줄 보기</label>
+    
     <div class="control-group style-group"><label>글꼴 <select id="fontFamily" title="이 원고의 본문 글꼴 · 원고와 함께 저장됩니다"></select></label><span class="text-size" role="group" aria-label="글자 크기"><button type="button" id="pageTextSmaller" aria-label="글자 줄이기" title="쪽 보기 글자 줄이기">−</button><button type="button" id="pageTextReset" title="기본 글자 크기로">100%</button><button type="button" id="pageTextLarger" aria-label="글자 키우기" title="쪽 보기 글자 키우기">+</button></span><label title="본문 글자를 굵게 표시합니다 · 원고와 함께 저장됩니다"><input type="checkbox" id="fontBold"> 굵게</label><label>강조 <select id="focusColor"><option value="#ffff00">노랑</option><option value="#b6f36a">연두</option></select></label></div>
     <button id="more" aria-expanded="false" aria-controls="moreTools">더보기</button>
     <span id="autosaveState" role="status">기기에 저장됨</span>
@@ -829,7 +829,7 @@ let page=0, cursor=0;
 function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
 // 미리보기는 별도 레이어: 원고 저장·편집·읽어주기에 중복 포함하지 않는다.
 function nextCueLine(){
-  if(!$('labNextLine').checked || editing || page+1>=P.length)return null;
+  if(editing || page+1>=P.length)return null;
   for(let pi=page+1;pi<P.length;pi++){
     const i=P[pi].findIndex((runs,li)=>lineRange[pi]?.[li]?.[1]>lineRange[pi]?.[li]?.[0]);
     if(i>=0)return {text:videoSpeech[pi][i],range:lineRange[pi][i],page:pi};
@@ -2035,11 +2035,20 @@ function editKey(e){      // 편집 중 키. true 를 돌려주면 여기서 처
   }
   return false;
 }
-function go(p,manual){
+function go(p,manual,source='button',key=''){
   notifyUI('finishNote');
   if(editing){const b=page,d=commitEdit(); if(p>b)p+=d}
+  const fromPage=page+1;
   p=Math.max(0,Math.min(P.length-1,p));
-  if(manual){ cursor=pStart[p]; heardCarry=''; sessionText=''; lastTail=''; pend=null; safeFollow?.reset(cursor); typeof vlogAdd==='function'&&vlogAdd({k:'nav',page:p+1,to:cursor}); }
+  if(manual){
+    const now=Date.now(),heard=lastRecognizedAt&&now-lastRecognizedAt<=30000?lastRecognizedText:'';
+    cursor=pStart[p]; heardCarry=''; sessionText=''; lastTail=''; pend=null; safeFollow?.reset(cursor);
+    if(p+1!==fromPage && typeof vlogAdd==='function')vlogAdd({
+      k:'nav',page:p+1,to:cursor,fromPage,toPage:p+1,source,
+      ...(key?{key}:{}),mode:source==='tts-auto'?'auto':'manual',
+      micActive:listening,heard,heardAt:heard?lastRecognizedAt:null
+    });
+  }
   page=p; render();
   if(editing)focusLine(0);
   if(manual&&tPlaying&&!tInternal)setTimeout(()=>tSpeakPage(page),0);
@@ -2048,6 +2057,7 @@ function go(p,manual){
 /* ---------- 음성 인식 ---------- */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 let rec=null, listening=false, heardCarry='', sessionText='', lastTail='';
+let lastRecognizedText='',lastRecognizedAt=0;
 let speechFloor=0,speechResultCount=0;
 function toast(msg,ms=3000){const t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',ms)}
 function setDot(cls){$('dot').className=cls||''; notifyUI('mic',cls)}
@@ -2184,6 +2194,7 @@ function cap(msg,force){
 
 function heardLogged(text,fin){
   const before=cursor;lastCap='';let err='';
+  if(String(text).trim()){lastRecognizedText=String(text).slice(-120);lastRecognizedAt=Date.now();}
   // 자주 틀리게 받아쓰는 말은 사전으로 원고 말로 바꿔 맞춰 본다 (원고 근처에 그 말이 있을 때만). 기록에는 들은 그대로 남긴다.
   const used=typeof PromLexicon==='object'?PromLexicon.fix(text,norm,cursor):text;
   try{onHeard(used)}catch(e){err=String(e&&e.message||e);throw e}
@@ -2556,13 +2567,13 @@ function tSplit(text,max=110){
   while(t.length>max){let k=t.lastIndexOf(', ',max); if(k<max*0.4)k=t.lastIndexOf(' ',max); if(k<max*0.3)k=max; out.push(t.slice(0,k+1).trim()); t=t.slice(k+1)}
   if(t.trim())out.push(t.trim()); return out;
 }
-function tGo(i){tInternal=true; go(i,true); tInternal=false}
-function tSpeakPage(i){
+function tGo(i,source='tts-auto'){tInternal=true; go(i,true,source); tInternal=false}
+function tSpeakPage(i,source='tts-auto'){
   if(window.PromExtras)i=PromExtras.ttsPage(i);
   SYN.cancel(); const my=++tTok;
   while(i<P.length&&!/[가-힣A-Za-z0-9]/.test(pageSay(i)))i++;
   if(i>=P.length){tStop(); toast('끝까지 읽었습니다.',4000); return}
-  if(i!==page)tGo(i);
+  if(i!==page)tGo(i,source);
   tChunks=tSplit(pageSay(i)); tCi=0; tNext(my);
 }
 function tNext(my){
@@ -2613,9 +2624,9 @@ $('ttsRateMinus').onclick=()=>tNudgeRate(-.1);$('ttsRatePlus').onclick=()=>tNudg
 function tRestartCur(){if(tPlaying)tSpeakPage(page)}
 $('tts').onclick=()=>ttsOn?tStop():tPlay();
 $('tPP').onclick=()=>tPlaying?tPause():(tPlaying=true,$('tPP').textContent='⏸',tSpeakPage(page));
-$('tPrev').onclick=()=>{const i=Math.max(0,page-1); tPlaying?tSpeakPage(i):tGo(i)};
-$('tNextB').onclick=()=>{const i=Math.min(P.length-1,page+1); tPlaying?tSpeakPage(i):tGo(i)};
-$('tRestart').onclick=()=>tPlaying?tSpeakPage(0):tGo(0);
+$('tPrev').onclick=()=>{const i=Math.max(0,page-1); tPlaying?tSpeakPage(i,'tts-control'):tGo(i,'tts-control')};
+$('tNextB').onclick=()=>{const i=Math.min(P.length-1,page+1); tPlaying?tSpeakPage(i,'tts-control'):tGo(i,'tts-control')};
+$('tRestart').onclick=()=>tPlaying?tSpeakPage(0,'tts-control'):tGo(0,'tts-control');
 $('tStop').onclick=tStop;
 $('tClose').onclick=()=>$('ttsPanel').classList.remove('open');
 $('tRate').oninput=e=>{TS.rate=+e.target.value;tShow();tSave()}; $('tRate').onchange=tContinueRate;
@@ -2631,7 +2642,7 @@ $('stage').addEventListener('touchend',e=>{
   if(!quick||Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.5)return;
   swiped=Date.now();const to=dx<0?page+1:page-1;
   if(to<0||to>=P.length)return;
-  if(ttsOn&&tPlaying)tSpeakPage(to);else go(to,true);
+  if(ttsOn&&tPlaying)tSpeakPage(to,'swipe');else go(to,true,'swipe');
 },{passive:true});
 $('stage').addEventListener('click',e=>{
   if(Date.now()-swiped<500)return;
@@ -2868,15 +2879,9 @@ function syncLines(from,to){document.querySelectorAll('input[name='+from+']').fo
 syncLines('lines','lines2'); syncLines('lines2','lines');
 $('usePaste').onclick=()=>{const t=$('paste').value.trim();remClear();if(t){startWith(parseTxt(t));const rr=remReport();if(rr)toast(rr,10000)}else $('loadmsg').textContent='붙여 넣은 글이 없습니다.'};
 $('mic').onclick=()=>listening?stopMic():startMic();
-$('prev').onclick=()=>go(page-1,true);
-$('next').onclick=()=>go(page+1,true);
+$('prev').onclick=()=>go(page-1,true,'button');
+$('next').onclick=()=>go(page+1,true,'button');
 $('dim').onchange=render;
-// 다음 장 첫 줄 미리보기는 기본으로 켜고, 사용자가 끈 설정은 유지한다.
-try{$('labNextLine').checked=localStorage.getItem('prompterNextLine')!=='0'}catch(_){}
-$('labNextLine').onchange=()=>{
-  try{localStorage.setItem('prompterNextLine',$('labNextLine').checked?'1':'0')}catch(_){}
-  render();
-};
 
 function applyTheme(){$('page').classList.toggle('dark',$('theme').value==='dark');$('page').classList.toggle('white',$('theme').value==='white');try{localStorage.setItem('prompterTheme',$('theme').value)}catch(_){}}
 try{const t=localStorage.getItem('prompterTheme');if(t)$('theme').value=t}catch(_){}
@@ -2896,9 +2901,9 @@ addEventListener('keydown',e=>{
   if(editing){editKey(e);showBar();return}
   const k=e.key;
   if(e.target.tagName==='BUTTON'&&[' ','Enter'].includes(k))return;
-  if(['ArrowRight','ArrowDown','PageDown',' '].includes(k)){e.preventDefault();go(page+1,true)}
-  else if(['ArrowLeft','ArrowUp','PageUp'].includes(k)){e.preventDefault();go(page-1,true)}
-  else if(k==='Home')go(0,true);
+  if(['ArrowRight','ArrowDown','PageDown',' '].includes(k)){e.preventDefault();go(page+1,true,'keyboard',k)}
+  else if(['ArrowLeft','ArrowUp','PageUp'].includes(k)){e.preventDefault();go(page-1,true,'keyboard',k)}
+  else if(k==='Home')go(0,true,'keyboard',k);
   else if(k==='m'||k==='M'||k==='ㅡ')$('mic').click();
   else if(k==='f'||k==='F'||k==='ㄹ')$('fs').click();
   else if(k==='e'||k==='E'||k==='ㄷ'){e.preventDefault();ceOpen()}
