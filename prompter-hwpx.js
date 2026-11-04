@@ -83,7 +83,24 @@ async function read(zip,headerText){
   push();
  }}
  if(page.length)pages.push(page);
- return {pages,bg,lines:Math.max(count,...pages.map(p=>p.length)),dark};
+ // 한글에서 고치다 쪽 나눔이 빠져 count 줄을 넘는 쪽은 줄 수를 늘리지 않고(글자가 작아진다) 문단 경계에서 나눈다. count 줄 이하인 쪽은 그대로 둔다
+ const blank=r=>!r.some(x=>x.t.trim()),fit=pg=>{
+  if(pg.length<=count)return [pg];
+  const groups=[];let g=[];
+  for(const row of pg){if(blank(row)){if(g.length)groups.push(g);g=[];}else g.push(row);}
+  if(g.length)groups.push(g);
+  const out=[];let cur=[];
+  for(const grp of groups)for(let i=0;i<grp.length;i+=count){
+   const part=grp.slice(i,i+count),sep=i===0&&cur.length?1:0;
+   if(cur.length&&cur.length+sep+part.length>count){out.push(cur);cur=[];}
+   else if(sep)cur.push([]);
+   cur.push(...part);
+  }
+  if(cur.length)out.push(cur);
+  return out.length?out:[pg.slice(0,count)];
+ };
+ const fitted=pages.flatMap(fit);
+ return {pages:fitted,bg,lines:count,dark};
 }
 return {create,read};
 })();
