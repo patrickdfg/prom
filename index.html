@@ -1301,16 +1301,20 @@ function pageContent(ls){
   while(L.length&&blankLine(L[0]))L.shift();
   return L;
 }
-// 예전 원고의 >> 와 앞뒤 빈 줄 채움을 없앤다. 쪽 사이의 이어짐은 >> 대신 다음 쪽 첫 글줄의 paragraphStart 로 남긴다(덩어리 끝 판정은 그대로)
+// 예전 원고의 >> 와 앞뒤 빈 줄 채움을 없앤다. 한 쪽 안의 글 사이에 낀 빈 줄이나 >> 줄은 스크롤 보기의 문단 간격이었으므로 다음 글줄의 paragraphStart 로 옮긴다
 function dropLegacyMarks(pages){
-  const ends=pages.map((_,i)=>pagesEndBlock(pages,i));
   const isText=l=>{const t=lineText(l).trim();return !!t&&t!=='>>'};
-  return pages.map((pg,i)=>{
+  return pages.map(pg=>{
     const rows=pg.map(l=>l.map(r=>({...r})));
     const first=rows.findIndex(isText), last=rows.length-1-[...rows].reverse().findIndex(isText);
-    const body=first<0?[]:rows.slice(first,last+1).filter(l=>lineText(l).trim()!=='>>');
+    if(first<0)return [];
+    const body=[]; let gap=false;
+    for(const l of rows.slice(first,last+1)){
+      if(!isText(l)){gap=true;continue}
+      if(gap){const r=l.find(x=>x.t.trim()); if(r)r.paragraphStart=true; gap=false}
+      body.push(l);
+    }
     const tail=body[body.length-1]; if(tail){const r=tail[tail.length-1]; if(r){r.t=r.t.replace(/\s*>>\s*$/,''); if(!r.t&&tail.length>1)tail.pop()}}
-    if(i>0&&ends[i-1]&&body.length){const lead=body.find(isText), r=lead&&lead.find(x=>x.t.trim()); if(r)r.paragraphStart=true}
     return body;
   });
 }

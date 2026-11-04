@@ -23,7 +23,7 @@ const{chromium}=require('playwright'),assert=require('node:assert/strict');
    s=s.replace(/pageBreak="1"/g,m=>drop.includes(n++)?'pageBreak="0"':m);
    zip.file('Contents/section0.xml',s);
    const r=await parseHwpx(await zip.generateAsync({type:'arraybuffer'}));
-   return {lines:r.lines,pages:r.pages.map(pg=>pg.map(l=>l.map(x=>x.t).join('')))};
+   return {lines:r.lines,pages:r.pages.map(pg=>pg.map(l=>l.map(x=>x.t).join(''))),gaps:r.pages.flat().filter(l=>l.some(x=>x.paragraphStart)).map(l=>l.map(x=>x.t).join(''))};
   },{pages,drop:[0,1,2,3,5]});
   assert.equal(result.lines,5,'쪽 나눔이 빠져도 줄 수가 늘지 않는다');
   assert(result.pages.every(pg=>pg.length<=5),'모든 쪽이 5줄 이하');
@@ -35,6 +35,7 @@ const{chromium}=require('playwright'),assert=require('node:assert/strict');
   assert.deepEqual(result.pages[2],['C1','C2','C3','C4','C5']);
   assert.deepEqual(result.pages[3],['D1','D2']);
   assert.deepEqual(result.pages[4],['E1','E2','E3','E4','E5']);
+  assert.deepEqual(result.gaps,['C1','E1'],'글 사이의 빈 줄은 스크롤 보기 간격(paragraphStart)으로 남는다');
   // 앱에서도 5줄 화면으로 열린다
   await page.evaluate(async({pages,drop})=>{
    const blob=await PromHwpx.create(pages,{count:5}),zip=await JSZip.loadAsync(await blob.arrayBuffer());

@@ -87,7 +87,8 @@ async function read(zip,headerText){
  const blank=r=>!r.some(x=>x.t.trim()),fit=pg=>{
   if(pg.length<=count)return [pg];
   const groups=[];let g=[];
-  for(const row of pg){if(blank(row)){if(g.length)groups.push(g);g=[];}else g.push(row);}
+  let gap=false;      // 글 사이의 빈 줄은 스크롤 보기의 문단 간격이므로 다음 글줄의 paragraphStart 로 남긴다
+  for(const row of pg){if(blank(row)){if(g.length){groups.push(g);gap=true}g=[];}else{if(gap&&row[0])row[0].paragraphStart=true;gap=false;g.push(row);}}
   if(g.length)groups.push(g);
   const out=[];let cur=[];
   for(const grp of groups)for(let i=0;i<grp.length;i+=count){
