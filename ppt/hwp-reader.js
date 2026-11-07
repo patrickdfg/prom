@@ -32,11 +32,8 @@ async function parseHwp(buf){
   if(flags&2)throw new Error('암호가 걸린 hwp 파일입니다. 암호를 풀고 저장해 주세요.');
   if(flags&4)throw new Error('배포용 hwp 파일이라 읽을 수 없습니다. 한글에서 hwpx로 저장해 주세요.');
   const read=async n=>{const d=get(n);if(!d)return null;return (flags&1)?inflateRaw(d):d};
-  const colors=[], numberings=[], pshapes=[], bullets=[];
+  const colors=[], numberings=[], pshapes=[];
   for(const r of hwpRecords(await read('DocInfo'))){
-    if(r.tag===24&&r.data.length>=14){ // 글머리표 정의: 12바이트 위치가 글머리표 글자(○ ◎ 등)
-      bullets.push(String.fromCharCode(new DataView(r.data.buffer,r.data.byteOffset).getUint16(12,true)));
-    }
     if(r.tag===23){ // 문단 번호 정의: 7수준 × (속성4·너비2·거리2·글자모양4·번호 형식 문자열) 뒤에 시작 번호
       const dv=new DataView(r.data.buffer,r.data.byteOffset,r.data.byteLength), fm=[]; let k=0;
       try{ for(let lv=0;lv<7;lv++){ k+=12; const n=dv.getUint16(k,true); k+=2; fm.push(new TextDecoder('utf-16le').decode(r.data.subarray(k,k+2*n))); k+=2*n }
@@ -72,7 +69,6 @@ async function parseHwp(buf){
   const cnt={};
   for(const pa of paras){      // 자동 문단 번호('1.' 등)는 글자가 아니라 문단 모양에 있으므로 따로 센다
     const ps=pshapes[pa.psid], nd=ps&&ps.numId>0?numberings[ps.numId-1]:null;
-    if(ps&&ps.head===3&&ps.numId>0&&bullets[ps.numId-1]?.trim())pa.bullet=bullets[ps.numId-1];   // 글머리표(○ ◎)도 글자가 아니라 문단 모양에 있다
     if(!ps||!nd||(ps.head!==1&&ps.head!==2))continue;
     const c=cnt[ps.numId]||(cnt[ps.numId]=[0,0,0,0,0,0,0]), lv=Math.min(ps.lvl,6);
     c[lv]=c[lv]?c[lv]+1:Math.max(1,nd.st[lv]||1); for(let j=lv+1;j<7;j++)c[j]=0;
@@ -85,7 +81,6 @@ async function parseHwp(buf){
   }
   const out=paras.map(pa=>{
     const runs=[], marks=pa.marks; let mi=0, outLen=0;
-    if(pa.bullet&&pa.text){const t=pa.bullet+' ';runs.push({t,hex:colors[pa.cs.length?pa.cs[0][1]:0]||'000000'});outLen+=t.length;}   // 글머리표를 문단 맨 앞 글자로 넣는다
     if(pa.text){
       const dv=new DataView(pa.text.buffer,pa.text.byteOffset,pa.text.byteLength), n=pa.text.length>>1;
       const colorAt=pos=>{let id=pa.cs.length?pa.cs[0][1]:0;for(const [st,cid] of pa.cs)if(st<=pos)id=cid;return colors[id]||'000000'};
