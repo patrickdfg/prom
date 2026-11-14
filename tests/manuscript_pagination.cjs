@@ -35,6 +35,17 @@ function check(paras,K){
   return {pages,lines};
 }
 for(const K of [5,6,7])for(const paras of fixtures)check(paras,K);
+// Literal angle-bracket notes must not disappear at the manuscript start or before a greeting.
+for(const K of [5,6,7]){
+  const heading=check([para('<오늘의 말씀>'),para('하나님은 <사랑>이십니다.')],K).pages.flatMap(text).join(' ');
+  assert(heading.includes('<오늘의 말씀>'),'opening angle-bracket heading preserved');
+  assert(heading.includes('<사랑>'),'inline angle-bracket text preserved');
+  const beforeGreeting=check([para('<본문 말씀>'),para('할렐루야! 오늘 말씀을 전합니다.')],K).pages.flatMap(text).join(' ');
+  assert(beforeGreeting.includes('<본문 말씀>'),'angle-bracket heading before greeting preserved');
+  assert(beforeGreeting.includes('할렐루야!'),'greeting preserved');
+  const markers=check([para('<영상>'),para('<기도>')],K).pages.flatMap(text).join(' ');
+  assert(markers.includes('<영상>')&&markers.includes('<기도>'),'standalone angle-bracket notes preserved');
+}
 const headed=check(fixtures.find(paras=>paras.some(p=>p.runs.some(r=>r.t==='<소제목>'))),5).pages;
 assert(headed.some(pg=>text(pg).some(t=>t.includes('<소제목>'))&&text(pg).some(t=>t.includes('본문'))),'short heading stays with its following paragraph');
 const colored=[{runs:[{t:'1.',hex:'FF0000'},{t:' 강조한 첫 단어와 나머지 문장을 읽습니다.',hex:'0000FF'}],marks:[{off:8,page:2}]}];
