@@ -1017,8 +1017,10 @@ function paraSegs(p){
 // 원고 → 덩어리(빈 줄로 구분)와 뜻 단위(문단·줄바꿈)별 단어 목록. 원고 쪽번호는 그 쪽이 시작되기 직전 단어 뒤에 붙인다
 function buildUnits(paras){
   const rawOf=p=>p.runs.map(r=>r.t).join('');
-  let s=paras.findIndex(p=>p.runs.some(r=>r.t.includes('할렐루야')));   // 제목·본문 구절은 건너뛰고 인사부터
-  if(s<0){ s=paras.findIndex(p=>rawOf(p).trim()); if(s>=0&&/^<[^>]*>$/.test(rawOf(paras[s]).trim()))s++; if(s<0)s=0 }   // 인사가 없으면 <날짜 제목> 한 줄만 건너뜀
+  let s=paras.findIndex(p=>p.runs.some(r=>r.t.includes('할렐루야')));   // 기존 원고는 인사부터 읽는다
+  const bracketBefore=paras.findIndex((p,i)=>(s<0||i<s)&&/^\s*<[^>]+>\s*$/.test(rawOf(p)));
+  if(bracketBefore>=0)s=bracketBefore;  // 인사보다 앞에 있는 <...> 원고도 화면에 표시한다.
+  else if(s<0){s=paras.findIndex(p=>rawOf(p).trim());if(s<0)s=0;}
   // 잠언처럼 빈 줄 없이 한 칸 들여 쓴 문단이 앞 문단을 잇는 원고는, 들여 쓰지 않은 문단마다 새 덩어리(= 한 잠언 한 쪽)
   const rest=paras.slice(s).filter(p=>rawOf(p).trim());
   const indented=p=>/^[ \t 　]/.test(rawOf(p));
