@@ -998,10 +998,10 @@ let MAXW=17.5, TARGET=12.5, MOBILE=false, MOBILE_LINES=10;
 function setMode(m){MOBILE=!!m; MAXW=m?Math.max(6,Math.floor(innerWidth*0.94/MFS*2)/2):17.5; TARGET=MAXW*12.5/17.5; if(m)MOBILE_LINES=mobileLines()}
 function mobileLines(){return Math.max(4,Math.min(60,Math.floor(Math.max(120,innerHeight-174)*0.92/(MFS*1.55))))}
 const R_SENT=/[.?!][”’)\]」』"']*$/, R_CLAUSE=/[,;:]$/;
-// 문단 하나를 (색 구간, 원고 쪽 바뀜 위치)로 바꾼다. 괄호로 감싼 주황 연출 메모와 ◎ ◯ 는 뺀다
+// 문단 하나를 (색 구간, 원고 쪽 바뀜 위치)로 바꾼다. 괄호로 감싼 주황 연출 메모는 뺀다. 글머리표(◎ ○ ◯)는 화면에 남긴다(음성 맞춤에는 글자·숫자만 쓰므로 영향이 없다)
 function paraSegs(p){
   const segs=[], mpos=[], marks=p.marks||[]; let mi=0, raw=0, total=0;
-  const cl=(s,q)=>cleanText(s,q).replace(/[◎◯]/g,'');
+  const cl=(s,q)=>cleanText(s,q);
   for(const r of p.runs){
     const c=classify(r.hex,true,r.t), end=raw+r.t.length;
     while(mi<marks.length&&marks[mi].off<=end){
@@ -1077,7 +1077,7 @@ function wrapUnit(u){
   });
   // 문단 첫 번호의 마침표는 문장 끝이 아니다. 번호와 첫 단어는 한 줄에 붙인다.
   // 한글 자동 번호와 직접 쓴 "1. 내용" 모두 처리하되 본문 속 숫자·소수점은 건드리지 않는다.
-  if(ws.length>1&&(u.words[0].num||/^(?:\d+(?:[.)])?|[①-⑳])$/.test(u.words[0].segs.map(s=>s.t).join('')))){
+  if(ws.length>1&&(u.words[0].num||/^(?:\d+(?:[.)])?|[①-⑳]|[◎○◯●■□▶▷◆◇※])$/.test(u.words[0].segs.map(s=>s.t).join('')))){
     const first=ws.shift(), next=ws[0];
     next.segs=[...first.segs,{t:' ',c:first.segs[first.segs.length-1].c},...next.segs];
     next.w+=first.w+0.5;
