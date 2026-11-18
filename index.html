@@ -1019,17 +1019,20 @@ function buildUnits(paras){
   const rawOf=p=>p.runs.map(r=>r.t).join('');
   let s=paras.findIndex(p=>p.runs.some(r=>r.t.includes('할렐루야')));   // 기존 원고는 인사부터 읽는다
   const bracketBefore=paras.findIndex((p,i)=>(s<0||i<s)&&/^\s*<[^>]+>\s*$/.test(rawOf(p)));
+  const hello=s;      // 인사(할렐루야)가 있는 문단
   if(bracketBefore>=0)s=bracketBefore;  // 인사보다 앞에 있는 <...> 원고도 화면에 표시한다.
   else if(s<0){s=paras.findIndex(p=>rawOf(p).trim());if(s<0)s=0;}
+  const helloBreak=hello>s?hello:-1;      // 제목·본문이 인사 앞에 함께 나오면, 본문이 끝난 자리에서 쪽을 바꿔 인사가 새 쪽 맨 위에서 시작하게 한다
   // 잠언처럼 빈 줄 없이 한 칸 들여 쓴 문단이 앞 문단을 잇는 원고는, 들여 쓰지 않은 문단마다 새 덩어리(= 한 잠언 한 쪽)
   const rest=paras.slice(s).filter(p=>rawOf(p).trim());
   const indented=p=>/^[ \t 　]/.test(rawOf(p));
   const indentMode=rest.length===paras.slice(s).length&&rest.some(indented)&&rest.some(p=>!indented(p));
   const proverbs=indentMode||rest.filter(p=>p.num).length>=3;   // 번호 매긴 문단이 여러 개면 말씀 중간의 잠언 목록으로 본다
-  const units=[]; let blk=0, last=null;
+  const units=[]; let blk=0, last=null, pendingBrk=false;
   for(let pi=s;pi<paras.length;pi++){
     const p=paras[pi];
-    if(p.pb&&units.length)blk++;      // 원고의 명시적인 쪽 나누기도 유지한다
+    if(p.pb&&units.length){blk++;pendingBrk=true}      // 원고의 명시적인 쪽 나누기(Ctrl+Enter)는 새 쪽으로 시작한다
+    if(pi===helloBreak&&units.length){blk++;pendingBrk=true}
     if(!p.runs.some(r=>r.t.replace(/[\s 　]/g,''))&&units.length){
       // <소제목>만 외딴 한 쪽이 되지 않도록 그 뒤의 빈 줄은 다음 본문과 잇는다.
       const tail=units[units.length-1].words.map(w=>w.segs.map(s=>s.t).join('')).join(' ');
@@ -1042,7 +1045,7 @@ function buildUnits(paras){
     let cw=null, cu={words:[],blk}, mk=0;
     if(p.num&&rawOf(p).trim())cu.words.push({segs:[{t:p.num,c:'n'}],marks:[],num:true});   // 번호는 단어로 맨 앞에 (직전 단어로 치지 않는다)
     const endWord=()=>{if(cw){cu.words.push(cw);last=cw;cw=null}};
-    const endUnit=()=>{endWord();if(cu.words.length)units.push(cu);cu={words:[],blk}};
+    const endUnit=()=>{endWord();if(cu.words.length){if(pendingBrk){cu.brk=true;pendingBrk=false}units.push(cu)}cu={words:[],blk}};
     const marksAt=i=>{while(mk<mpos.length&&mpos[mk].pos<=i){const w=cw||last;if(w)w.marks.push(mpos[mk].page);mk++}};
     chars.forEach(([ch,c],i)=>{
       marksAt(i);
@@ -1061,7 +1064,7 @@ function buildUnits(paras){
   for(let i=0;i<units.length-1;i++){
     const cur=units[i],next=units[i+1],value=cur.words.map(w=>w.segs.map(r=>r.t).join('')).join('').normalize('NFKC').trim();
     if(cur.blk!==next.blk||cur.words.length!==1||!/^\d+\.?$/.test(value)||!next.words.length)continue;
-    next.words.unshift(cur.words[0]);units.splice(i,1);i--;
+    next.words.unshift(cur.words[0]);if(cur.brk)next.brk=true;units.splice(i,1);i--;
   }
   units.proverbs=proverbs; return units;
 }
@@ -1120,7 +1123,7 @@ function wrapUnit(u){
     }
     groups.push(...selected);
   }
-  return groups.map((g,gi)=>({runs:join(g),blk:u.blk,ue:gi===groups.length-1,nosent:u.nosent}));
+  return groups.map((g,gi)=>({runs:join(g),blk:u.blk,ue:gi===groups.length-1,nosent:u.nosent,...(u.brk&&gi===0?{brk:true}:{})}));
 }
 const plainOf=l=>l.runs.filter(r=>r.c!=='r').map(r=>r.t).join('').trimEnd();
 // 줄 목록(각 줄에 덩어리 번호 blk)을 K줄 쪽으로 나눈다.
@@ -1141,9 +1144,14 @@ function paginateMobile(L,K){
 function paginateLines(L,K,mix=3.0){
   const N=L.length; if(!N)return [];
   if(MOBILE)return paginateMobile(L,K);
-  // 쪽은 빈 줄 없이 K줄씩 꽉 채운다(마지막 쪽만 모자랄 수 있다). 문단이 끝나도 다음 문단이 바로 이어 들어오고, 새 문단은 첫 줄의 paragraphStart 로 안다
-  const pages=[];
-  for(let i=0;i<N;i+=K)pages.push(L.slice(i,i+K).map((l,offset)=>paragraphRuns(l,L[i+offset-1])));
+  // 쪽은 빈 줄 없이 K줄씩 꽉 채운다(마지막 쪽과 원고의 쪽 나누기 앞의 쪽만 모자랄 수 있다). 문단이 끝나도 다음 문단이 바로 이어 들어오고, 새 문단은 첫 줄의 paragraphStart 로 안다
+  // 원고의 쪽 나누기(brk)가 붙은 줄은 새 쪽 맨 위에서 시작한다
+  const pages=[]; let pg=[];
+  L.forEach((l,i)=>{
+    if(pg.length&&(pg.length>=K||l.brk)){pages.push(pg);pg=[]}
+    pg.push(paragraphRuns(l,L[i-1]));
+  });
+  if(pg.length)pages.push(pg);
   return pages;
 }
 // 한 덩어리가 1~2줄인데 내용이 충분하면 단어 경계에서 자연스럽게 2~3줄로 펼친다.

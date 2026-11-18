@@ -30,7 +30,7 @@ function check(paras,K){
     assert.equal(nonempty.length,pg.length,'a page has no blank or >> filler rows');
     assert(text(pg).every(t=>!/^\d+\.?$/.test(t.trim())),'bare number or number-dot must not occupy a separate line');
   }
-  assert(pages.slice(0,-1).every(pg=>pg.length===K),'every page but the last is filled to K rows');
+  if(!paras.some(p=>p.pb||p.runs.some(r=>r.t.includes('할렐루야'))))assert(pages.slice(0,-1).every(pg=>pg.length===K),'every page but the last is filled to K rows');      // 원고의 쪽 나누기와 인사(할렐루야) 앞의 쪽은 모자랄 수 있다(tests/new_page_breaks.cjs)
   assert.equal(JSON.stringify(paras),original,'source formatting, marks and text are immutable');
   return {pages,lines};
 }
