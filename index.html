@@ -986,13 +986,14 @@ function scrubTofu(){
   toast('네모로 나오던 글자 '+k.slice(0,8).map(c=>'U+'+(+c).toString(16).toUpperCase().padStart(4,'0')+'×'+bad[c]).join(', ')+' 를 지웠습니다',10000);
   window.__tofu=bad;
 }
-let LINES=5, pending=null, pageTemplate=1;      // 쪽 구성 템플릿: 1=꽉 채움(>> 없음), 2=문단별 쪽(>> 있음)
+let LINES=5, pending=null;
 const chosenTemplate=()=>$('pageTemplate')&&$('pageTemplate').value==='2'?2:1;
 const chosenMode=()=>{const r=document.querySelector('input[name=lines]:checked');return r?r.value:'5'};
 const chosenLines=()=>{const m=chosenMode();return m==='m'?MOBILE_LINES:+m};
 /* ---------- 프롬프터 규칙으로 쪽 나누기 ---------- */
 // 폭: 한글·한자·전각은 1, 그 밖(영문·숫자·따옴표·부호)은 0.5. 한 줄은 17.5 이하, 줄 길이는 12.5 안팎으로 맞춘다
 const pw=s=>{let w=0;for(const ch of s)w+=/[가-힣ᄀ-ᇿ㄰-㆏一-鿿　-〿！-｠￠-￦]/.test(ch)?1:0.5;return w};
+let pageTemplate=1;      // 쪽 구성 템플릿: 1=꽉 채움(>> 없음), 2=문단별 쪽(>> 있음)
 // 한 줄 폭. 모바일(폰 세로 전용)은 한 줄을 짧게(10.5) 하고 한 쪽에 10줄을 넣어 길게 만든다
 // 모바일 글자 크기(px). 기본은 성령말씀 앱 본문(16px)보다 1 큰 17px. 한 줄 글자 수와 한 쪽 줄 수는 이 크기와 화면에 맞춰 정한다
 const MFS_MIN=14, MFS_MAX=40; let MFS=17;
