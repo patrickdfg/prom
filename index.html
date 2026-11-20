@@ -1152,15 +1152,17 @@ function paginateBlocks(L,K,mix=3.0){
   if(MOBILE)return paginateMobile(L,K);
   const info=L.map(l=>{const t=plainOf(l); return {sent:!l.nosent&&R_SENT.test(t),clause:R_CLAUSE.test(t),ue:!!l.ue,wd:pw(l.runs.map(r=>r.t).join('').trimEnd())}});
   const cost=(i,j)=>{
-    if(L[i].blk!==L[j-1].blk)return Infinity; // 빈 줄 경계 뒤 문단을 앞 쪽의 여백에 채우지 않는다
     const k=j-i, last=j===N, sf=K-k; let c=0;
+    for(let m=i+1;m<j;m++)if(L[m].brk)return Infinity;      // 원고의 쪽 나누기·인사(할렐루야) 앞에서는 반드시 쪽을 바꾼다
+    // 서로 다른 덩어리는 한 쪽을 K줄로 정확히 채울 때만 합친다 (3줄+2줄, 1줄+4줄처럼 짧은 쪽이 둘로 남는 것을 막는다)
+    const nb=new Set(L.slice(i,j).map(l=>l.blk)).size;
+    if(nb>1){if(k!==K)return Infinity;c+=mix*0.4*(nb-1)}
     if(k===1)return 50;
     if(k===2)c+=1.5; else if(sf>=2)c+=0.4;
-    const nb=new Set(L.slice(i,j).map(l=>l.blk)).size; c+=mix*(nb-1);
     if(!last){
       const f=info[j-1], boundary=L[j-1].blk!==L[j].blk;
       if(boundary)c+=k>=4?0:0.5;
-      else if(f.sent)c+=sf===0?0:sf===1?0.2:sf===2?1.0:3.0;
+      else if(f.sent)c+=sf===0?0:sf===1?0.4:sf===2?2.0:5.0;      // 문장이 끝나도 쪽이 많이 비면 다음 쪽 글을 끌어와 채운다
       else{
         const base=f.clause?3.0:f.ue?2.0:6.0;
         if(k===K)c+=f.wd+3.0<=MAXW?base:base+1.5;
@@ -1173,16 +1175,17 @@ function paginateBlocks(L,K,mix=3.0){
   for(let i=N-1;i>=0;i--)for(let k=1;k<=K&&i+k<=N;k++){
     const c=best[i+k]+cost(i,i+k); if(c<best[i]){best[i]=c;nxt[i]=i+k}
   }
+  const blanks=n=>Array.from({length:Math.max(0,n)},()=>[]);
   const pages=[];
   for(let i=0;i<N;){
     const j=nxt[i], body=L.slice(i,j).map((l,offset)=>paragraphRuns(l,L[i+offset-1])), k=j-i, sf=K-k, last=j===N, f=info[j-1];
     const boundary=!last&&L[j-1].blk!==L[j].blk;
     let pg;
+    // 글은 늘 쪽 위에서부터 놓고 모자란 줄은 아래를 빈 줄로 채운다. 이어지면 글 바로 아래 줄에 >> 를 둔다
     if(MOBILE) pg=body.map(r=>r.slice());          // 폰 화면용은 >> 와 빈 줄 채움 없이 글만 둔다
-    else if(last||boundary) pg=sf===0?body:[[]].concat(body,Array.from({length:sf-1},()=>[]));
-    else if(f.sent) pg=sf===0?body:Array.from({length:sf-1},()=>[]).concat(body,[gtRun()]);
+    else if(last||boundary||sf===0&&f.sent) pg=body.concat(blanks(sf));
     else if(k===K){ pg=body.map(r=>r.slice()); pg[k-1].push({t:' >>',c:'k'}) }
-    else pg=Array.from({length:sf-1},()=>[]).concat(body,[gtRun()]);
+    else pg=body.concat([gtRun()],blanks(sf-1));
     pages.push(pg); i=j;
   }
   return pages;
@@ -1231,7 +1234,8 @@ function reflow(pages,n){
   const L=[]; let blk=0;
   for(const pg of pages){
     const firstBlank=pg.length>0&&!lineText(pg[0]).trim();
-    const lastTxt=pg.length?lineText(pg[pg.length-1]).trim():'';
+    let kk=pg.length-1;while(kk>0&&!lineText(pg[kk]).trim())kk--;      // 뒤쪽 빈 줄 채움은 건너뛴다
+    const lastTxt=pg.length?lineText(pg[kk]).trim():'';
     for(const ln of pg){
       const t=lineText(ln).trim(); if(!t||t==='>>')continue;
       if(ln.some(r=>r.paragraphStart)&&L.length)blk++;
@@ -1353,7 +1357,8 @@ function focusLine(i,atEnd){
 // 쪽이 덩어리(문단)의 끝인지. 맨 끝 쪽이거나, 앞이 비고 >> 로 끝나지 않는 쪽(reflow 와 같은 기준)
 function pageEndsBlock(pg,last){
   if(last||!pg.length)return true;
-  const lastTxt=lineText(pg[pg.length-1]).trim(), firstBlank=!lineText(pg[0]).trim();
+  let k=pg.length-1; while(k>0&&!lineText(pg[k]).trim())k--;      // 뒤쪽 빈 줄 채움은 건너뛴다
+  const lastTxt=lineText(pg[k]).trim(), firstBlank=!lineText(pg[0]).trim();
   return !/>>$/.test(lastTxt)&&(lastTxt===''||firstBlank);
 }
 // 쪽의 첫 글줄이 새 문단(paragraphStart)으로 시작하는지. 꽉 찬 쪽이나 Ctrl+Enter 로 나눈 쪽은 빈 줄 표시가 없어서 이것으로 알아본다
@@ -2964,7 +2969,7 @@ if(matchMedia('(max-width:700px)').matches&&$('theme').value==='cloud')$('theme'
 // 쪽 구성 템플릿 선택. 고른 값은 이 브라우저에 기억하고, 아래에 그 템플릿의 특징을 보여 준다
 const TEMPLATE_NOTES={
   1:'꽉 채움 · 쪽마다 줄을 빈 줄 없이 채우고 문단이 바로 이어집니다. >> 표시가 없고, 쪽 아래에 다음 쪽 첫 줄이 보여 이어짐을 알 수 있습니다. 원고의 쪽 나누기와 제목·본문 뒤 할렐루야는 새 쪽에서 시작합니다.',
-  2:'문단별 쪽 · 문단마다 쪽을 나누어 서로 다른 문단을 한 쪽에 섞지 않습니다. 짧은 쪽은 빈 줄로 채우고, 문장이 다음 쪽으로 이어지면 마지막 줄에 >> 를 붙입니다. 짧은 문단은 2~3줄로 펼칩니다.'
+  2:'문단별 쪽 · 문단 경계를 지켜 쪽을 나누고, 짧은 문단 둘이 딱 한 쪽이 되면 합칩니다. 글은 쪽 위에서부터 놓고 모자란 줄은 아래를 비우며, 문장이 이어지면 글 바로 아래에 >> 를 붙입니다. 짧은 문단은 2~3줄로 펼칩니다.'
 };
 function syncTemplateUI(n){const sel=$('pageTemplate');if(!sel)return;sel.value=String(n===2?2:1);$('templateNote').textContent=TEMPLATE_NOTES[sel.value==='2'?2:1]}
 try{const t=localStorage.getItem('prompterTemplate');if(t==='2'||t==='1')$('pageTemplate').value=t}catch(_){}

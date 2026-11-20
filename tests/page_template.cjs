@@ -15,14 +15,14 @@ const SAMPLE=['<2026년 10월 7일 수요말씀>','','이기는 자','본 문 :'
   const note1=await page.locator('#templateNote').textContent();assert(note1.includes('꽉 채움')&&note1.includes('>> 표시가 없고'),'템플릿1 설명');
   await page.selectOption('#pageTemplate','2');
   const note2=await page.locator('#templateNote').textContent();assert(note2.includes('문단별 쪽')&&note2.includes('>> 를 붙입니다'),'템플릿2 설명');assert.notEqual(note1,note2);
-  const stat=()=>page.evaluate(()=>({tpl:pageTemplate,pages:P.length,gt:P.flat().filter(l=>/>>/.test(l.map(r=>r.t).join(''))).length,blank:P.flat().filter(l=>!l.map(r=>r.t).join('').trim()).length,rows:P.map(pg=>pg.length),mixed:P.some(pg=>pg.filter(l=>{const t=l.map(r=>r.t).join('').trim();return t&&t!=='>>'}).some((l,i)=>i>0&&l.some(r=>r.paragraphStart)))}));
+  const stat=()=>page.evaluate(()=>({tpl:pageTemplate,pages:P.length,gt:P.flat().filter(l=>/>>/.test(l.map(r=>r.t).join(''))).length,blank:P.flat().filter(l=>!l.map(r=>r.t).join('').trim()).length,rows:P.map(pg=>pg.length),top:P.every(pg=>{const t=pg[0]?pg[0].map(r=>r.t).join('').trim():'';return t&&t!=='>>'}),mixed:P.some(pg=>pg.filter(l=>{const t=l.map(r=>r.t).join('').trim();return t&&t!=='>>'}).some((l,i)=>i>0&&l.some(r=>r.paragraphStart)))}));
   const open=async t=>{await page.selectOption('#pageTemplate',t);await page.setInputFiles('#file',{name:'sample.txt',mimeType:'text/plain',buffer:Buffer.from(SAMPLE)});await page.waitForFunction(()=>!!pending);await page.click('#start');await page.waitForFunction(()=>document.getElementById('view').style.display==='block');return stat();};
   const t1=await open('1');
   assert.equal(t1.tpl,1);assert.equal(t1.gt,0,'템플릿1에는 >> 가 없다');assert.equal(t1.blank,0,'템플릿1에는 빈 줄 채움이 없다');assert(t1.rows.slice(0,-1).filter(n=>n!==5).length<=1,'템플릿1은 쪽을 꽉 채운다(할렐루야 앞 쪽만 모자랄 수 있다)');
   assert.equal(t1.mixed,true,'템플릿1은 한 쪽에 여러 문단이 이어진다');
   await page.click('#back').catch(()=>{});
   const t2=await open('2');
-  assert.equal(t2.tpl,2);assert(t2.gt>0,'템플릿2에는 >> 가 있다');assert(t2.blank>0,'템플릿2는 짧은 쪽을 빈 줄로 채운다');assert.equal(t2.mixed,false,'템플릿2는 한 쪽에 서로 다른 문단을 섞지 않는다');assert(t2.pages>t1.pages,'템플릿2는 문단별로 쪽을 나눠 쪽이 더 많다');
+  assert.equal(t2.tpl,2);assert(t2.gt>0,'템플릿2에는 >> 가 있다');assert(t2.blank>0,'템플릿2는 짧은 쪽을 빈 줄로 채운다');assert.equal(t2.top,true,'템플릿2는 쪽의 글을 위에서부터 놓는다');assert(t2.pages>=t1.pages,'템플릿2는 문단 경계를 지키므로 쪽이 템플릿1보다 적지 않다');
   // 선택은 이 브라우저에 기억된다
   assert.equal(await page.evaluate(()=>localStorage.getItem('prompterTemplate')),'2');
   // 저장 파일(JSON): 템플릿을 함께 저장하고, 템플릿2 쪽은 열어도 >> 와 빈 줄 채움을 그대로 둔다
