@@ -437,7 +437,7 @@
   function saveNow() {
     clearTimeout(saveTimer); if(!P.length || restoring)return;
     try {
-      const data={app:'sermon-prompter',v:1,lines:LINES,mobile:MOBILE?MFS:false,pages:snapshotPages(),name:baseName,page,cursor,bg:background,meta:metadata(),savedAt:Date.now()};
+      const data={app:'sermon-prompter',v:1,lines:LINES,mobile:MOBILE?MFS:false,template:pageTemplate,pages:snapshotPages(),name:baseName,page,cursor,bg:background,meta:metadata(),savedAt:Date.now()};
       localStorage.setItem(STORAGE,JSON.stringify(data)); cached=data;
       $('autosaveState').textContent='기기에 저장됨'; refreshResume();
     } catch(_) { $('autosaveState').textContent='자동 저장 안 됨'; toast('기기 저장 공간이 부족하거나 저장이 차단되어 있습니다. 더보기 → 저장으로 원고를 보관하세요.',6000); }
@@ -452,7 +452,7 @@
     if(!cached)return; const data=cached;
     try {
       const parsed=parseSaved(JSON.stringify(data)); restoring=true;
-      if(parsed.mobile)MFS=+parsed.mobile||17; setMode(!!parsed.mobile); LINES=parsed.lines; baseName=data.name||'최근 원고';
+      if(parsed.mobile)MFS=+parsed.mobile||17; setMode(!!parsed.mobile); LINES=parsed.lines; pageTemplate=parsed.template===2?2:1; baseName=data.name||'최근 원고';
       openPrompter(parsed.pages,data.bg); applyMetadata(data.meta); lastSrc={pages:P.map(p=>p.slice()),bg:data.bg};
       page=Math.max(0,Math.min(P.length-1,data.page||0)); cursor=pStart[page]||0;
       dirty=false; restoring=false; render(); toast('저장한 쪽을 열었습니다. 마이크를 켜면 이 쪽의 맨 위부터 따라갑니다.',5000);

@@ -151,6 +151,8 @@ textarea{width:100%;height:160px;margin-top:14px;background:var(--panel);color:v
 쪽을 직접 나누려면 --- 를 한 줄로 넣으세요."></textarea>
     </div>
     <div class="mode-row"><label for="layoutMode">화면 구성</label><select id="layoutMode"><option value="desktop">PC · 큰 화면</option><option value="mobile">모바일 · 세로 화면</option></select></div>
+    <div class="mode-row"><label for="pageTemplate">쪽 구성</label><select id="pageTemplate" title="새로 만드는 프롬프터의 쪽을 나누는 방식입니다"><option value="1">템플릿1 · 꽉 채움</option><option value="2">템플릿2 · 문단별 쪽</option></select></div>
+    <div id="templateNote" aria-live="polite"></div>
     <div class="mode-row"><label for="fontPick">글꼴</label><select id="fontPick" title="새로 만드는 프롬프터의 본문 글꼴입니다. 이 PC에 설치된 글꼴만 표시됩니다."></select><label title="새로 만드는 프롬프터의 본문을 굵게 표시합니다"><input type="checkbox" id="fontPickBold" checked> 굵게</label></div>
     <div id="optrow"><div class="row" id="desktopLines"><b>한 화면 줄 수</b>
       <label><input type="radio" name="lines" value="5" checked> 5줄</label>
@@ -984,7 +986,8 @@ function scrubTofu(){
   toast('네모로 나오던 글자 '+k.slice(0,8).map(c=>'U+'+(+c).toString(16).toUpperCase().padStart(4,'0')+'×'+bad[c]).join(', ')+' 를 지웠습니다',10000);
   window.__tofu=bad;
 }
-let LINES=5, pending=null;
+let LINES=5, pending=null, pageTemplate=1;      // 쪽 구성 템플릿: 1=꽉 채움(>> 없음), 2=문단별 쪽(>> 있음)
+const chosenTemplate=()=>$('pageTemplate')&&$('pageTemplate').value==='2'?2:1;
 const chosenMode=()=>{const r=document.querySelector('input[name=lines]:checked');return r?r.value:'5'};
 const chosenLines=()=>{const m=chosenMode();return m==='m'?MOBILE_LINES:+m};
 /* ---------- 프롬프터 규칙으로 쪽 나누기 ---------- */
@@ -1141,9 +1144,52 @@ function paginateMobile(L,K){
   if(pg.length)pages.push(pg);
   return pages;
 }
+const gtRun=()=>[{t:'>>',c:'k'}];
+// 템플릿2(문단별 쪽): 덩어리를 한 쪽에 섞지 않고, 짧은 쪽은 앞을 빈 줄로 채우며, 문장 도중이나 앞 쪽이 이어지면 마지막 줄에 >> 를 붙인다
+function paginateBlocks(L,K,mix=3.0){
+  const N=L.length; if(!N)return [];
+  if(MOBILE)return paginateMobile(L,K);
+  const info=L.map(l=>{const t=plainOf(l); return {sent:!l.nosent&&R_SENT.test(t),clause:R_CLAUSE.test(t),ue:!!l.ue,wd:pw(l.runs.map(r=>r.t).join('').trimEnd())}});
+  const cost=(i,j)=>{
+    if(L[i].blk!==L[j-1].blk)return Infinity; // 빈 줄 경계 뒤 문단을 앞 쪽의 여백에 채우지 않는다
+    const k=j-i, last=j===N, sf=K-k; let c=0;
+    if(k===1)return 50;
+    if(k===2)c+=1.5; else if(sf>=2)c+=0.4;
+    const nb=new Set(L.slice(i,j).map(l=>l.blk)).size; c+=mix*(nb-1);
+    if(!last){
+      const f=info[j-1], boundary=L[j-1].blk!==L[j].blk;
+      if(boundary)c+=k>=4?0:0.5;
+      else if(f.sent)c+=sf===0?0:sf===1?0.2:sf===2?1.0:3.0;
+      else{
+        const base=f.clause?3.0:f.ue?2.0:6.0;
+        if(k===K)c+=f.wd+3.0<=MAXW?base:base+1.5;
+        else if(sf===1)c+=base+0.5; else c+=base+2;
+      }
+    }
+    return c;
+  };
+  const best=Array(N+1).fill(1e9), nxt=Array(N+1).fill(N); best[N]=0;
+  for(let i=N-1;i>=0;i--)for(let k=1;k<=K&&i+k<=N;k++){
+    const c=best[i+k]+cost(i,i+k); if(c<best[i]){best[i]=c;nxt[i]=i+k}
+  }
+  const pages=[];
+  for(let i=0;i<N;){
+    const j=nxt[i], body=L.slice(i,j).map((l,offset)=>paragraphRuns(l,L[i+offset-1])), k=j-i, sf=K-k, last=j===N, f=info[j-1];
+    const boundary=!last&&L[j-1].blk!==L[j].blk;
+    let pg;
+    if(MOBILE) pg=body.map(r=>r.slice());          // 폰 화면용은 >> 와 빈 줄 채움 없이 글만 둔다
+    else if(last||boundary) pg=sf===0?body:[[]].concat(body,Array.from({length:sf-1},()=>[]));
+    else if(f.sent) pg=sf===0?body:Array.from({length:sf-1},()=>[]).concat(body,[gtRun()]);
+    else if(k===K){ pg=body.map(r=>r.slice()); pg[k-1].push({t:' >>',c:'k'}) }
+    else pg=Array.from({length:sf-1},()=>[]).concat(body,[gtRun()]);
+    pages.push(pg); i=j;
+  }
+  return pages;
+}
 function paginateLines(L,K,mix=3.0){
   const N=L.length; if(!N)return [];
   if(MOBILE)return paginateMobile(L,K);
+  if(pageTemplate===2)return paginateBlocks(L,K,mix);
   // 쪽은 빈 줄 없이 K줄씩 꽉 채운다(마지막 쪽과 원고의 쪽 나누기 앞의 쪽만 모자랄 수 있다). 문단이 끝나도 다음 문단이 바로 이어 들어오고, 새 문단은 첫 줄의 paragraphStart 로 안다
   // 원고의 쪽 나누기(brk)가 붙은 줄은 새 쪽 맨 위에서 시작한다
   const pages=[]; let pg=[];
@@ -1175,7 +1221,7 @@ function spreadSparsePrompterLines(lines,K){
 }
 // 일반 원고(hwp·hwpx·글) → 프롬프터 규칙 K줄 쪽
 function buildPrompter(paras,K){
-  const U=buildUnits(paras), L=U.flatMap(wrapUnit);      // 쪽을 K줄로 꽉 채우므로 짧은 덩어리를 억지로 늘려 펼치지 않는다
+  const U=buildUnits(paras), W=U.flatMap(wrapUnit), L=pageTemplate===2?spreadSparsePrompterLines(W,K):W;      // 템플릿1은 쪽을 K줄로 꽉 채우므로 짧은 덩어리를 펼치지 않고, 템플릿2만 2~3줄로 펼친다
   return paginateLines(L,K,U.proverbs?8.0:3.0);      // 잠언은 한 잠언을 한 쪽에 두려고 섞는 비용을 크게 둔다
 }
 // 이미 프롬프터로 만든 쪽(5줄 기준)을 다른 줄 수로 다시 나눈다. 빈 줄 채움과 >> 는 지우고 새 쪽 규칙으로 다시 넣는다
@@ -1242,6 +1288,7 @@ function stripParen(pages){
 function startWith(pages,bg,original=null){
   if(original){
     window.PromPptxOriginal.activate(original);
+    pageTemplate=1;
     lastSrc={pages,bg,original};
     try{localStorage.setItem('prompterLines','5')}catch(_){}
     setMode(false);
@@ -1251,6 +1298,7 @@ function startWith(pages,bg,original=null){
     return;
   }
   window.PromPptxOriginal?.clear();
+  pageTemplate=chosenTemplate();try{localStorage.setItem('prompterTemplate',String(pageTemplate))}catch(_){}
   try{localStorage.setItem('prompterSkipParen',$('skipParen').checked?'1':'0')}catch(_){}
   if($('skipParen').checked)pages=stripParen(pages);
   lastSrc={pages,bg};
@@ -1939,7 +1987,7 @@ function snapshotPages(){
 async function savePages(){
   if(!P.length)return;
   const q=snapshotPages();
-  const body='{"app":"sermon-prompter","v":1,"lines":'+LINES+(MOBILE?',"mobile":'+MFS:'')+',"pages":[\n'+q.map(p=>JSON.stringify(p)).join(',\n')+'\n],"meta":'+JSON.stringify(window.PromUI?.metadata()||{})+'}\n';
+  const body='{"app":"sermon-prompter","v":1,"lines":'+LINES+(MOBILE?',"mobile":'+MFS:'')+',"template":'+pageTemplate+',"pages":[\n'+q.map(p=>JSON.stringify(p)).join(',\n')+'\n],"meta":'+JSON.stringify(window.PromUI?.metadata()||{})+'}\n';
   const name=baseName+'_프롬프터.json', blob=new Blob([body],{type:'application/json'});
   window.PromDrive?.save(name,body);      // 구글에 로그인했으면 드라이브에도 같은 이름으로 저장한다
   if(window.showSaveFilePicker){      // 크롬: 내 컴퓨터에서 저장할 폴더·이름을 고른다
@@ -1960,7 +2008,7 @@ function parseSaved(text){
     .map(r=>({t:cleanText(r.t,true),c:['k','b','r','n'].includes(r.c)?r.c:'k',...(/^#[0-9a-f]{6}$/i.test(r.hex||'')?{hex:r.hex.toLowerCase()}:{}),...(r.paragraphStart===true?{paragraphStart:true}:{})})).filter(r=>r.t)));
   const lines=Math.min(o.mobile?60:16,Math.max(o.mobile?4:5,+o.lines||5,...pages.map(p=>p.length)));      // 모바일은 화면 높이에 따라 4~16줄
   if(!pages.some(hasText))throw new Error('읽을 내용이 없습니다.');
-  return {pages,lines,mobile:o.mobile||false,meta:o.meta||{}};
+  return {pages,lines,mobile:o.mobile||false,meta:o.meta||{},template:+o.template===2?2:1};
 }
 $('save').onclick=()=>{$('saveDialog').showModal();showBar();};
 $('saveDialog').addEventListener('keydown',e=>e.stopPropagation());
@@ -2006,7 +2054,7 @@ async function saveHwpx(editedPages){
   try{
     const pages=editedPages||snapshotPages(),fontName=$('page').classList.contains('fallback')?'Malgun Gothic':'HY견고딕';
     const backgroundJpeg=$('theme').value==='cloud'?await currentPptBackgroundJpeg():'';
-    const blob=await PromHwpx.create(pages,{count:LINES,dark:$('theme').value==='dark',title:baseName,fontName,backgroundJpeg}),name=baseName+'_프롬프터.hwpx';
+    const blob=await PromHwpx.create(pages,{count:LINES,dark:$('theme').value==='dark',title:baseName,fontName,backgroundJpeg,template:pageTemplate}),name=baseName+'_프롬프터.hwpx';
     if(window.showSaveFilePicker){
       try{const h=await showSaveFilePicker({suggestedName:name,types:[{description:'한글 문서',accept:{'application/hwp+zip':['.hwpx']}}]});const w=await h.createWritable();await w.write(blob);await w.close();toast('HWPX로 저장했습니다 · '+h.name+' · '+pages.length+'쪽',6000);return true;}
       catch(e){if(e&&e.name==='AbortError')return;}
@@ -2799,14 +2847,16 @@ function startPendingFile(){
     window.PromPptxOriginal?.clear();
     if(+r.mobile>=MFS_MIN&&+r.mobile<=MFS_MAX)MFS=+r.mobile;
     setMode(r.mobile);LINES=r.lines;
-    openPrompter(r.mobile?dropLegacyMarks(r.pages):refillPages(dropLegacyMarks(r.pages),LINES));notifyUI('applyMetadata',r.meta);render();
+    pageTemplate=r.template===2?2:1;
+    openPrompter(r.mobile||pageTemplate===2?r.pages:refillPages(dropLegacyMarks(r.pages),LINES));notifyUI('applyMetadata',r.meta);render();
     lastSrc={pages:P.map(p=>p.slice())};dirty=false;
     toast('저장한 파일을 열었습니다 · '+P.length+'쪽 · '+LINES+'줄',5000);
   }else if(r.preserve){
     window.PromPptxOriginal?.clear();
     setMode(false);LINES=r.lines;
     if(r.preserve==='hwpx'){$('theme').value=r.bg?'cloud':r.dark?'dark':'white';applyTheme();}
-    openPrompter(r.preserve==='html'?r.pages:refillPages(dropLegacyMarks(r.pages),LINES),r.bg);
+    pageTemplate=r.template===2?2:1;
+    openPrompter(r.preserve==='html'||pageTemplate===2?r.pages:refillPages(dropLegacyMarks(r.pages),LINES),r.bg);
     lastSrc={pages:P.map(p=>p.slice()),bg:r.bg};dirty=false;
     if(r.preserve==='hwpx')toast('HWPX 파일을 열었습니다 · '+P.length+'쪽 · '+LINES+'줄',5000);
   }else startWith(r.pages,r.bg,r.original);
@@ -2910,6 +2960,15 @@ function applyTheme(){$('page').classList.toggle('dark',$('theme').value==='dark
 try{const t=localStorage.getItem('prompterTheme');if(t)$('theme').value=t}catch(_){}
 // 폰은 검정·흰색 배경만 쓴다. 구름 배경이 골라져 있으면 흰색으로 바꾼다
 if(matchMedia('(max-width:700px)').matches&&$('theme').value==='cloud')$('theme').value='white';
+// 쪽 구성 템플릿 선택. 고른 값은 이 브라우저에 기억하고, 아래에 그 템플릿의 특징을 보여 준다
+const TEMPLATE_NOTES={
+  1:'꽉 채움 · 쪽마다 줄을 빈 줄 없이 채우고 문단이 바로 이어집니다. >> 표시가 없고, 쪽 아래에 다음 쪽 첫 줄이 보여 이어짐을 알 수 있습니다. 원고의 쪽 나누기와 제목·본문 뒤 할렐루야는 새 쪽에서 시작합니다.',
+  2:'문단별 쪽 · 문단마다 쪽을 나누어 서로 다른 문단을 한 쪽에 섞지 않습니다. 짧은 쪽은 빈 줄로 채우고, 문장이 다음 쪽으로 이어지면 마지막 줄에 >> 를 붙입니다. 짧은 문단은 2~3줄로 펼칩니다.'
+};
+function syncTemplateUI(n){const sel=$('pageTemplate');if(!sel)return;sel.value=String(n===2?2:1);$('templateNote').textContent=TEMPLATE_NOTES[sel.value==='2'?2:1]}
+try{const t=localStorage.getItem('prompterTemplate');if(t==='2'||t==='1')$('pageTemplate').value=t}catch(_){}
+$('pageTemplate').onchange=()=>syncTemplateUI(+$('pageTemplate').value);
+syncTemplateUI(+$('pageTemplate').value);
 try{const n=localStorage.getItem('prompterLines');['lines','lines2'].forEach(nm=>{const r=n&&document.querySelector('input[name='+nm+'][value="'+n+'"]');if(r)r.checked=true})}catch(_){}
 $('theme').onchange=applyTheme;
 $('fs').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();else toast('이 브라우저에서는 메뉴에서 전체화면으로 열어 주세요.')}catch(_){toast('전체화면으로 바꾸지 못했습니다. 다시 눌러 주세요.')}};

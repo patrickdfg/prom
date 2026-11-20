@@ -8,7 +8,7 @@ const serialize=doc=>'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+n
 const all=(node,ns,name)=>Array.from(node.getElementsByTagNameNS(ns,name));
 const element=(doc,ns,name,attrs={})=>{const e=doc.createElementNS(ns,name);for(const[k,v]of Object.entries(attrs))e.setAttribute(k,String(v));return e;};
 const nextId=table=>Math.max(-1,...Array.from(table.children,e=>+e.getAttribute('id')))+1;
-async function create(pages,{count=5,dark=true,title='프롬프터',fontName='Malgun Gothic',backgroundJpeg=''}={}){
+async function create(pages,{count=5,dark=true,title='프롬프터',fontName='Malgun Gothic',backgroundJpeg='',template=1}={}){
  const zip=await JSZip.loadAsync(TEMPLATE,{base64:true}),header=parse(await zip.file('Contents/header.xml').async('string')),section=parse(await zip.file('Contents/section0.xml').async('string'));
  const chars=all(header,HH,'charProperties')[0],paras=all(header,HH,'paraProperties')[0],styles=all(header,HH,'styles')[0],borders=all(header,HH,'borderFills')[0];
  const rows=Math.max(count,...pages.map(p=>p.length)),height=33449,width=59528,bottom=Math.round(height*(rows===7?.1339:rows===6?.0882:.0424)),margin=2835,pitch=Math.floor((height-margin-bottom)/rows),size=Math.round(3200*5/rows);
@@ -29,6 +29,7 @@ async function create(pages,{count=5,dark=true,title='프롬프터',fontName='Ma
  paras.appendChild(para);
  const styleId=nextId(styles);styles.appendChild(element(header,HH,'hh:style',{id:styleId,type:'PARA',name:'PROM '+rows+'줄',engName:'PROM '+rows+' rows',paraPrIDRef:paraId,charPrIDRef:ids.k,nextStyleIDRef:styleId,langID:'1042',lockForm:'0'}));
  const startStyleId=nextId(styles);styles.appendChild(element(header,HH,'hh:style',{id:startStyleId,type:'PARA',name:'PROM paragraph start',engName:'PROM paragraph start',paraPrIDRef:paraId,charPrIDRef:ids.k,nextStyleIDRef:styleId,langID:'1042',lockForm:'0'}));
+ if(template===2)styles.appendChild(element(header,HH,'hh:style',{id:nextId(styles),type:'PARA',name:'PROM template 2',engName:'PROM template 2',paraPrIDRef:paraId,charPrIDRef:ids.k,nextStyleIDRef:styleId,langID:'1042',lockForm:'0'}));      // 템플릿2(문단별 쪽)로 만든 원고 표시
  const border=borders.firstElementChild.cloneNode(true),borderId=nextId(borders);border.setAttribute('id',borderId);
  const fill=element(header,HC,'hc:fillBrush');
  if(backgroundJpeg){const brush=element(header,HC,'hc:imgBrush',{mode:'TOTAL'});brush.appendChild(element(header,HC,'hc:img',{binaryItemIDRef:'promBackground',bright:'0',contrast:'0',effect:'REAL_PIC',alpha:'0'}));fill.appendChild(brush);zip.file('BinData/prom-background.jpg',backgroundJpeg,{base64:true});}
@@ -101,7 +102,7 @@ async function read(zip,headerText){
   return out.length?out:[pg.slice(0,count)];
  };
  const fitted=pages.flatMap(fit);
- return {pages:fitted,bg,lines:count,dark};
+ return {pages:fitted,bg,lines:count,dark,template:styles.some(s=>s.getAttribute('name')==='PROM template 2')?2:1};
 }
 return {create,read};
 })();
